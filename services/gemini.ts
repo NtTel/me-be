@@ -1,25 +1,21 @@
-// services/gemini.ts
-import { GoogleGenAI } from "@google/genai";
 
-// Lấy API key từ biến môi trường Vite
-const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
+import { GoogleGenAI, Type } from "@google/genai";
 
-// Khởi tạo client Gemini
-const ai = new GoogleGenAI({
-  apiKey: apiKey || "",
-});
+// Use import.meta.env for Vite compatibility
+// @ts-ignore
+const apiKey = (import.meta && import.meta.env) ? import.meta.env.VITE_API_KEY : "";
 
-export const getAiAnswer = async (
-  questionTitle: string,
-  questionContent: string
-): Promise<string> => {
+// Initialize with the key (if available) or empty string to prevent crash on init
+const ai = new GoogleGenAI({ apiKey: apiKey || "dummy_key" });
+
+export const getAiAnswer = async (questionTitle: string, questionContent: string): Promise<string> => {
   if (!apiKey) {
-    return "Vui lòng cấu hình VITE_API_KEY trên Vercel để sử dụng tính năng này.";
+    console.warn("VITE_API_KEY is missing.");
+    return "Tính năng AI đang được bảo trì hoặc chưa cấu hình Key. Mẹ vui lòng quay lại sau nhé!";
   }
-
+  
   try {
     const model = "gemini-2.5-flash";
-
     const prompt = `
       Bạn là một chuyên gia tư vấn nuôi dạy con cái và sức khỏe gia đình trên nền tảng Asking.vn.
       Hãy trả lời câu hỏi sau đây của một người mẹ Việt Nam.
@@ -34,74 +30,49 @@ export const getAiAnswer = async (
     `;
 
     const response = await ai.models.generateContent({
-      model,
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }],
-        },
-      ],
+      model: model,
+      contents: prompt,
     });
 
-    // Tuỳ theo version lib, có thể là response.text hoặc response.response.text()
-    // Dưới đây xử lý an toàn:
-    const text =
-      // @ts-ignore
-      (typeof response.text === "function" ? await response.text() : response.text) ||
-      // @ts-ignore
-      (response.response && (await response.response.text?.()));
-
-    return (
-      text ||
-      "Xin lỗi, hiện tại mình chưa thể trả lời câu hỏi này. Mẹ thử lại sau nhé!"
-    );
+    return response.text || "Xin lỗi, hiện tại mình chưa thể trả lời câu hỏi này. Mẹ thử lại sau nhé!";
   } catch (error) {
     console.error("Gemini API Error:", error);
     return "Hệ thống đang bận, mẹ vui lòng thử lại sau nhé.";
   }
 };
 
-export const suggestTitles = async (
-  title: string,
-  content: string = ""
-): Promise<string[]> => {
+export const suggestTitles = async (title: string, content: string = ""): Promise<string[]> => {
   if (!apiKey) return [];
-  if (!title || title.length < 5) return [];
 
   try {
+    if (!title || title.length < 5) return [];
+    
     const model = "gemini-2.5-flash";
-
     const prompt = `
       Người dùng đang đặt câu hỏi trên diễn đàn Mẹ & Bé. 
       Tiêu đề nháp: "${title}"
-      ${content ? `Nội dung chi tiết: "${content}"` : ""}
+      ${content ? `Nội dung chi tiết: "${content}"` : ''}
 
       Hãy đóng vai một biên tập viên nội dung giỏi. Gợi ý 3 tiêu đề câu hỏi khác hay hơn, rõ ràng, ngắn gọn và thu hút sự chú ý của các mẹ bỉm sữa.
       Tiêu đề nên đánh vào trọng tâm vấn đề và gợi sự tò mò hoặc đồng cảm.
-      
-      Trả về kết quả CHỈ là một JSON Array chứa các chuỗi string. Ví dụ: ["Tiêu đề 1", "Tiêu đề 2", "Tiêu đề 3"].
     `;
 
     const response = await ai.models.generateContent({
-      model,
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }],
-        },
-      ],
-      config: {
+      model: model,
+      contents: prompt,
+      config: { 
         responseMimeType: "application/json",
-        temperature: 0.7,
-      } as any,
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.STRING
+          }
+        },
+        temperature: 0.7 
+      }
     });
 
-    // @ts-ignore
-    const text =
-      (typeof response.text === "function" ? await response.text() : response.text) ||
-      // @ts-ignore
-      (response.response && (await response.response.text?.()));
-
+    const text = response.text;
     if (!text) return [];
     return JSON.parse(text);
   } catch (error) {
@@ -110,15 +81,11 @@ export const suggestTitles = async (
   }
 };
 
-export const generateDraftAnswer = async (
-  questionTitle: string,
-  questionContent: string
-): Promise<string> => {
+export const generateDraftAnswer = async (questionTitle: string, questionContent: string): Promise<string> => {
   if (!apiKey) return "";
 
   try {
     const model = "gemini-2.5-flash";
-
     const prompt = `
       Bạn là một trợ lý AI giúp người dùng soạn thảo câu trả lời cho một câu hỏi trên diễn đàn Mẹ & Bé.
       
@@ -133,22 +100,11 @@ export const generateDraftAnswer = async (
     `;
 
     const response = await ai.models.generateContent({
-      model,
-      contents: [
-        {
-          role: "user",
-          parts: [{ text: prompt }],
-        },
-      ],
+      model: model,
+      contents: prompt,
     });
 
-    // @ts-ignore
-    const text =
-      (typeof response.text === "function" ? await response.text() : response.text) ||
-      // @ts-ignore
-      (response.response && (await response.response.text?.()));
-
-    return text || "";
+    return response.text || "";
   } catch (error) {
     console.error("Gemini Draft Error:", error);
     return "";

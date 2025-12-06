@@ -2,12 +2,13 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
-// Helper to safely access env vars
+// Safe environment variable access
 const getEnv = () => {
   try {
     // @ts-ignore
-    return import.meta.env || {};
+    return (import.meta && import.meta.env) ? import.meta.env : {};
   } catch {
     return {};
   }
@@ -15,7 +16,7 @@ const getEnv = () => {
 
 const env = getEnv();
 
-// Use environment variables if available, otherwise fall back to hardcoded values (as provided)
+// Configuration using Vite environment variables with Hardcoded Fallbacks for Preview
 const firebaseConfig = {
   apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyD4BcKMNU54sbRVIz9qlA5lccyHJg730NA",
   authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "askingkisd.firebaseapp.com",
@@ -30,15 +31,18 @@ const firebaseConfig = {
 let app;
 let auth: any;
 let db: any;
+let storage: any;
 let googleProvider: any;
 
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
+  storage = getStorage(app);
   googleProvider = new GoogleAuthProvider();
+  console.log("Firebase initialized successfully");
 } catch (error) {
-  console.warn("Firebase not fully initialized. Check your configuration keys.", error);
+  console.error("Firebase initialization failed:", error);
 }
 
-export { auth, db, googleProvider };
+export { auth, db, storage, googleProvider };

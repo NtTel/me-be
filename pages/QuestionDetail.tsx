@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 // @ts-ignore
 import { useParams, useNavigate } from 'react-router-dom';
@@ -11,6 +12,7 @@ interface DetailProps {
   onAddAnswer: (questionId: string, answer: Answer) => void;
   onMarkBestAnswer: (questionId: string, answerId: string) => void;
   onVerifyAnswer: (questionId: string, answerId: string) => void;
+  onOpenAuth: () => void; // Add Open Auth Handler
   
   // CRUD Actions
   onEditQuestion: (id: string, title: string, content: string) => void;
@@ -27,6 +29,7 @@ export const QuestionDetail: React.FC<DetailProps> = ({
   onAddAnswer, 
   onMarkBestAnswer, 
   onVerifyAnswer,
+  onOpenAuth,
   onEditQuestion,
   onDeleteQuestion,
   onHideQuestion,
@@ -112,6 +115,13 @@ export const QuestionDetail: React.FC<DetailProps> = ({
 
   const handleGenerateDraft = async () => {
     if (isGeneratingDraft) return;
+    
+    // Check Auth first
+    if (currentUser.isGuest) {
+        onOpenAuth();
+        return;
+    }
+
     setIsGeneratingDraft(true);
     
     // Call the draft specific service
@@ -127,6 +137,12 @@ export const QuestionDetail: React.FC<DetailProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAnswer.trim()) return;
+
+    // GUARD: Check if user is Guest
+    if (currentUser.isGuest) {
+        onOpenAuth();
+        return;
+    }
 
     const isAi = usedAiAssistance;
 
@@ -302,15 +318,16 @@ export const QuestionDetail: React.FC<DetailProps> = ({
               <h2 className="text-xl md:text-2xl font-bold text-textDark mb-3 leading-snug">{question.title}</h2>
               <p className="text-textDark/80 leading-relaxed whitespace-pre-wrap text-[15px]">{question.content}</p>
               
-              {/* Attached Images */}
+              {/* Attached Images - Updated to Facebook Style (Vertical Stack, Full Width) */}
               {question.images && question.images.length > 0 && (
-                <div className="flex gap-2 mt-4 overflow-x-auto pb-2">
+                <div className="mt-4 space-y-3">
                   {question.images.map((img, idx) => (
-                    <div key={idx} className="relative group shrink-0">
+                    <div key={idx} className="relative group overflow-hidden rounded-xl border border-gray-100 shadow-sm">
                       <img 
                         src={img} 
-                        alt={`Ảnh đính kèm ${idx + 1}`} 
-                        className="h-32 md:h-48 w-auto rounded-xl border border-gray-100 object-cover" 
+                        alt={`Ảnh minh họa ${idx + 1}`} 
+                        className="w-full h-auto object-cover max-h-[500px]" 
+                        loading="lazy"
                       />
                     </div>
                   ))}
@@ -513,7 +530,7 @@ export const QuestionDetail: React.FC<DetailProps> = ({
                         if (e.target.value === '') setUsedAiAssistance(false);
                     }}
                     disabled={isGeneratingDraft}
-                    placeholder={isGeneratingDraft ? "Đang viết câu trả lời..." : "Viết câu trả lời của mẹ..."}
+                    placeholder={currentUser.isGuest ? "Đăng nhập để trả lời..." : (isGeneratingDraft ? "Đang viết câu trả lời..." : "Viết câu trả lời của mẹ...")}
                     className="w-full bg-transparent border-none pl-4 pr-12 py-3.5 focus:ring-0 resize-none max-h-32 min-h-[52px] text-[15px] text-textDark placeholder-gray-400 disabled:opacity-50"
                     rows={1}
                     style={{height: 'auto'}} 
@@ -521,6 +538,9 @@ export const QuestionDetail: React.FC<DetailProps> = ({
                       const target = e.target as HTMLTextAreaElement;
                       target.style.height = 'auto';
                       target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
+                    }}
+                    onClick={() => {
+                      if (currentUser.isGuest) onOpenAuth();
                     }}
                 />
                 {/* AI Pen Button */}

@@ -1,13 +1,15 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 // @ts-ignore
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, ArrowLeft, RefreshCw, Lightbulb, Plus, X, Image as ImageIcon, UploadCloud } from 'lucide-react';
+import { Sparkles, ArrowLeft, RefreshCw, Lightbulb, Plus, X, Image as ImageIcon, UploadCloud, Loader2 } from 'lucide-react';
 import { Question, User } from '../types';
 import { suggestTitles } from '../services/gemini';
 import { AuthModal } from '../components/AuthModal';
+import { uploadMultipleFiles } from '../services/storage';
 
 interface AskProps {
-  onAddQuestion: (q: Question) => void;
+  onAddQuestion: (q: Question) => Promise<void>;
   currentUser: User;
   categories: string[];
   onAddCategory: (category: string) => void;
@@ -45,36 +47,32 @@ export const Ask: React.FC<AskProps> = ({
   // Auth Modal State
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loadingText, setLoadingText] = useState('');
 
   // Function to fetch suggestions
   const fetchSuggestions = async (currentTitle: string, currentContent: string) => {
     if (currentTitle.length < 5) return;
-    
     setIsSuggesting(true);
     const results = await suggestTitles(currentTitle, currentContent);
     setSuggestions(results);
     setIsSuggesting(false);
   };
 
-  // Debounce suggestion on title change
   useEffect(() => {
     const timer = setTimeout(() => {
       if (title.length > 5) {
         fetchSuggestions(title, content);
       }
     }, 800);
-
     return () => clearTimeout(timer);
   }, [title]); 
   
-  // Clean up object URLs to avoid memory leaks
   useEffect(() => {
     return () => {
       previewUrls.forEach(url => URL.revokeObjectURL(url));
     };
   }, [previewUrls]);
 
-  // Focus input when adding category
   useEffect(() => {
     if (isAddingCategory && newCategoryInputRef.current) {
       newCategoryInputRef.current.focus();
@@ -104,7 +102,7 @@ export const Ask: React.FC<AskProps> = ({
       setSelectedImages(newImages);
 
       // Generate previews
-      const newPreviews = filesArray.map(file => URL.createObjectURL(file));
+      const newPreviews = filesArray.map(file => URL.createObjectURL(file as Blob));
       setPreviewUrls([...previewUrls, ...newPreviews]);
     }
   };
@@ -115,35 +113,55 @@ export const Ask: React.FC<AskProps> = ({
     setSelectedImages(newImages);
 
     const newPreviews = [...previewUrls];
-    URL.revokeObjectURL(newPreviews[index]); // Cleanup
+    URL.revokeObjectURL(newPreviews[index]); 
     newPreviews.splice(index, 1);
     setPreviewUrls(newPreviews);
   };
 
-  const finalizeSubmission = (user: User) => {
-    const newQuestion: Question = {
-      id: Date.now().toString(),
-      title,
-      content,
-      category,
-      author: user,
-      answers: [],
-      likes: 0,
-      views: 0,
-      createdAt: new Date().toISOString(),
-      images: previewUrls 
-    };
+  const finalizeSubmission = async (user: User) => {
+    if (!title || !content) return;
+    setIsSubmitting(true);
+    setLoadingText('Đang xử lý...');
 
-    onAddQuestion(newQuestion);
-    setIsSubmitting(false);
-    navigate('/');
+    try {
+      // 1. Upload Images First (if any)
+      let imageUrls: string[] = [];
+      if (selectedImages.length > 0) {
+        setLoadingText('Đang tải ảnh lên...');
+        imageUrls = await uploadMultipleFiles(selectedImages, 'question_images');
+      }
+
+      // 2. Create Question Object
+      const newQuestion: Question = {
+        id: Date.now().toString(),
+        title,
+        content,
+        category,
+        author: user,
+        answers: [],
+        likes: 0,
+        views: 0,
+        createdAt: new Date().toISOString(),
+        images: imageUrls // Use real Cloud URLs, not blob URLs
+      };
+
+      // 3. Save to Firestore
+      setLoadingText('Đang lưu câu hỏi...');
+      await onAddQuestion(newQuestion);
+      
+      setIsSubmitting(false);
+      navigate('/');
+    } catch (error) {
+      console.error("Failed to submit question", error);
+      setIsSubmitting(false);
+      alert("Có lỗi xảy ra khi gửi câu hỏi. Mẹ thử lại nhé!");
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title || !content) return;
 
-    // Check if user is Guest
     if (currentUser.isGuest) {
       setShowAuthModal(true);
     } else {
@@ -155,21 +173,24 @@ export const Ask: React.FC<AskProps> = ({
   const handleEmailLogin = async (email: string, pass: string) => {
     const user = await onLogin(email, pass);
     finalizeSubmission(user);
+    return user;
   };
 
   const handleRegister = async (email: string, pass: string, name: string) => {
     const user = await onRegister(email, pass, name);
     finalizeSubmission(user);
+    return user;
   };
 
   const handleGoogleAuth = async () => {
     const user = await onGoogleLogin();
     finalizeSubmission(user);
+    return user;
   };
 
   const handleGuestContinue = () => {
     setShowAuthModal(false);
-    finalizeSubmission(currentUser); // Current user is already Guest
+    finalizeSubmission(currentUser); 
   };
 
   return (
@@ -212,7 +233,6 @@ export const Ask: React.FC<AskProps> = ({
               )}
             </div>
             
-            {/* Suggestions Area */}
             {(suggestions.length > 0 || isSuggesting) && (
               <div className="mt-3 bg-gradient-to-br from-cream to-white p-4 rounded-xl border border-secondary/30 shadow-sm animate-pop-in">
                 <div className="flex justify-between items-center mb-2">
@@ -269,7 +289,6 @@ export const Ask: React.FC<AskProps> = ({
                 </button>
               ))}
               
-              {/* Add New Category Button/Input */}
               {isAddingCategory ? (
                 <div className="flex items-center gap-1 bg-white border-2 border-primary rounded-lg px-2 overflow-hidden">
                    <input 
@@ -285,7 +304,6 @@ export const Ask: React.FC<AskProps> = ({
                         if (e.key === 'Escape') setIsAddingCategory(false);
                       }}
                       onBlur={() => {
-                        // Small timeout to allow click on check button to fire
                         setTimeout(() => {
                            if(newCategoryName) handleAddNewCategory();
                            else setIsAddingCategory(false);
@@ -307,7 +325,6 @@ export const Ask: React.FC<AskProps> = ({
             </div>
           </div>
 
-          {/* Image Upload Section */}
           <div>
             <label className="block text-sm font-bold text-textDark mb-2 flex items-center justify-between">
                <span>Hình ảnh minh họa</span>
@@ -366,7 +383,10 @@ export const Ask: React.FC<AskProps> = ({
             className="w-full bg-primary text-white font-bold text-lg py-4 rounded-full shadow-lg hover:bg-[#25A99C] hover:shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2 disabled:bg-gray-300"
           >
             {isSubmitting ? (
-              <span>Đang xử lý...</span>
+              <span className="flex items-center gap-2">
+                <Loader2 className="animate-spin" size={20} />
+                {loadingText}
+              </span>
             ) : (
               <>
                 <span>Gửi câu hỏi</span>

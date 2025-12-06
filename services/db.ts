@@ -8,12 +8,18 @@ import {
   onSnapshot, 
   query, 
   orderBy, 
-  getDoc
+  getDoc,
+  arrayUnion // Add arrayUnion
 } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { Question, Answer } from '../types';
 
 const QUESTIONS_COLLECTION = 'questions';
+
+// Helper to remove undefined values which Firestore rejects
+const sanitizeData = <T>(data: T): T => {
+  return JSON.parse(JSON.stringify(data));
+};
 
 // --- REALTIME LISTENER ---
 export const subscribeToQuestions = (callback: (questions: Question[]) => void) => {
@@ -37,7 +43,8 @@ export const addQuestionToDb = async (question: Question) => {
   if (!db) return;
   try {
     const docRef = doc(db, QUESTIONS_COLLECTION, question.id);
-    await setDoc(docRef, question);
+    const cleanData = sanitizeData(question);
+    await setDoc(docRef, cleanData);
   } catch (error) {
     console.error("Error adding question:", error);
     throw error;
@@ -48,7 +55,7 @@ export const updateQuestionInDb = async (id: string, data: Partial<Question>) =>
   if (!db) return;
   try {
     const docRef = doc(db, QUESTIONS_COLLECTION, id);
-    await updateDoc(docRef, data);
+    await updateDoc(docRef, sanitizeData(data));
   } catch (error) {
     console.error("Error updating question:", error);
   }
@@ -65,22 +72,19 @@ export const deleteQuestionFromDb = async (id: string) => {
 };
 
 // --- ANSWER CRUD ---
-// Since answers are stored as an array within the question document,
-// we need to read the doc, modify the array, and write it back.
-
 export const addAnswerToDb = async (questionId: string, answer: Answer) => {
   if (!db) return;
   try {
     const docRef = doc(db, QUESTIONS_COLLECTION, questionId);
-    const docSnap = await getDoc(docRef);
     
-    if (docSnap.exists()) {
-      const question = docSnap.data() as Question;
-      const updatedAnswers = [...question.answers, answer];
-      await updateDoc(docRef, { answers: updatedAnswers });
-    }
+    // Use arrayUnion for atomic updates (safer and requires less permission complexity logic)
+    // IMPORTANT: Firebase Rule must allow 'update' on 'answers' field for signed-in users
+    await updateDoc(docRef, {
+      answers: arrayUnion(sanitizeData(answer))
+    });
   } catch (error) {
     console.error("Error adding answer:", error);
+    throw error; // Re-throw to UI
   }
 };
 
@@ -93,7 +97,7 @@ export const updateAnswerInDb = async (questionId: string, answerId: string, upd
     if (docSnap.exists()) {
       const question = docSnap.data() as Question;
       const updatedAnswers = question.answers.map(a => 
-        a.id === answerId ? { ...a, ...updates } : a
+        a.id === answerId ? { ...a, ...sanitizeData(updates) } : a
       );
       await updateDoc(docRef, { answers: updatedAnswers });
     }

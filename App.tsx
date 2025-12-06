@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 // @ts-ignore
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -198,6 +199,7 @@ export default function App() {
               onAddAnswer={handleAddAnswer} 
               onMarkBestAnswer={handleMarkBestAnswer}
               onVerifyAnswer={handleVerifyAnswer}
+              onOpenAuth={() => setShowGlobalAuthModal(true)} // Pass Auth Handler
               onEditQuestion={handleEditQuestion}
               onDeleteQuestion={handleDeleteQuestion}
               onHideQuestion={handleHideQuestion}
