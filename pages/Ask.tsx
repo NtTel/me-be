@@ -1,5 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
+// @ts-ignore
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, ArrowLeft, RefreshCw, Lightbulb, Plus, X, Image as ImageIcon, UploadCloud } from 'lucide-react';
 import { Question, User } from '../types';

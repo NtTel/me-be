@@ -1,5 +1,6 @@
 import React from 'react';
 import { ArrowLeft, Mail, MapPin, Phone, Shield, Users, FileText, Heart } from 'lucide-react';
+// @ts-ignore
 import { useNavigate } from 'react-router-dom';
 
 const PageContainer: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => {

@@ -1,7 +1,7 @@
-
 import React, { useState } from 'react';
 import { User, Question } from '../types';
 import { Settings, ShieldCheck, MapPin, Calendar, Medal, MessageCircle, HelpCircle, Heart, Star, LogOut, Clock, Briefcase, ChevronRight } from 'lucide-react';
+// @ts-ignore
 import { Link } from 'react-router-dom';
 
 interface ProfileProps {

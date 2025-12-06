@@ -1,5 +1,5 @@
-
 import React, { useState } from 'react';
+// @ts-ignore
 import { Link } from 'react-router-dom';
 import { Search, MessageCircle, Heart, ChevronDown, ChevronUp, HelpCircle, Clock, Flame, MessageSquareOff, ShieldCheck, ChevronRight } from 'lucide-react';
 import { Question } from '../types';

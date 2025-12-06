@@ -1,5 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
+// @ts-ignore
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { Home } from './pages/Home';
@@ -13,6 +13,15 @@ import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { AuthModal } from './components/AuthModal';
 import { Question, User, Answer, CATEGORIES } from './types';
 import { subscribeToAuthChanges, logoutUser, loginWithGoogle, loginWithEmail, registerWithEmail } from './services/auth';
+import { 
+  subscribeToQuestions, 
+  addQuestionToDb, 
+  updateQuestionInDb, 
+  deleteQuestionFromDb, 
+  addAnswerToDb, 
+  updateAnswerInDb, 
+  deleteAnswerFromDb 
+} from './services/db';
 
 // Default Guest User
 const GUEST_USER: User = {
@@ -26,62 +35,14 @@ const GUEST_USER: User = {
   isGuest: true
 };
 
-const INITIAL_QUESTIONS: Question[] = [
-  {
-    id: 'q1',
-    title: 'Bé 2 tuổi biếng ăn phải làm sao?',
-    content: 'Bé nhà mình dạo này cứ đến bữa là khóc, không chịu ăn cháo. Mình đã đổi món liên tục nhưng không cải thiện. Các mẹ có kinh nghiệm gì không ạ?',
-    category: '1-3 tuổi',
-    author: { id: 'u2', name: 'Mẹ Sóc', avatar: 'https://picsum.photos/id/65/200/200', isExpert: false, isGuest: false },
-    answers: [
-      {
-        id: 'a1',
-        questionId: 'q1',
-        author: { id: 'e1', name: 'BS. Lan Anh', avatar: 'https://picsum.photos/id/66/200/200', isExpert: true, specialty: 'Bác sĩ Nhi khoa', isGuest: false },
-        content: 'Chào mẹ Sóc. Ở giai đoạn 2 tuổi, bé bắt đầu có tâm lý "khủng hoảng tuổi lên 2" và muốn khẳng định bản thân, bao gồm cả việc ăn uống. Mẹ thử cho bé tự bốc hoặc dùng thìa xem sao nhé. Đừng ép bé ăn, hãy để bữa ăn vui vẻ.',
-        likes: 12,
-        isBestAnswer: true,
-        isExpertVerified: true,
-        createdAt: '2023-10-25T10:00:00Z',
-        isAi: false
-      }
-    ],
-    likes: 5,
-    views: 120,
-    createdAt: '2023-10-25T08:00:00Z'
-  },
-  {
-    id: 'q2',
-    title: 'Nên cho bé học tiếng Anh từ mấy tuổi?',
-    content: 'Mình thấy nhiều trung tâm nhận bé từ 3 tuổi. Không biết sớm quá có ảnh hưởng đến tiếng Việt của con không?',
-    category: 'Giáo dục sớm',
-    author: { id: 'u3', name: 'Bố Ken', avatar: 'https://picsum.photos/id/68/200/200', isExpert: false, isGuest: false },
-    answers: [],
-    likes: 2,
-    views: 45,
-    createdAt: '2023-10-26T09:30:00Z'
-  },
-  {
-     id: 'q3',
-     title: 'Thực đơn ăn dặm cho bé 6 tháng?',
-     content: 'Bắp nhà mình sắp 6 tháng, mình định cho ăn theo kiểu Nhật. Mẹ nào có thực đơn chia sẻ mình với ạ.',
-     category: 'Dinh dưỡng',
-     author: { id: 'u4', name: 'Mẹ Bắp', avatar: 'https://picsum.photos/id/64/200/200', isExpert: false, isGuest: false },
-     answers: [],
-     likes: 8,
-     views: 200,
-     createdAt: '2024-01-15T09:30:00Z'
-  }
-];
-
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User>(GUEST_USER);
-  const [questions, setQuestions] = useState<Question[]>(INITIAL_QUESTIONS);
+  const [questions, setQuestions] = useState<Question[]>([]); 
   const [categories, setCategories] = useState<string[]>(CATEGORIES);
   const [authLoading, setAuthLoading] = useState(true);
   const [showGlobalAuthModal, setShowGlobalAuthModal] = useState(false);
 
-  // Subscribe to Real Auth Changes
+  // 1. Subscribe to Auth Changes
   useEffect(() => {
     const unsubscribe = subscribeToAuthChanges((user) => {
       if (user) {
@@ -91,7 +52,14 @@ export default function App() {
       }
       setAuthLoading(false);
     });
+    return () => unsubscribe();
+  }, []);
 
+  // 2. Subscribe to Questions from Firestore (Realtime)
+  useEffect(() => {
+    const unsubscribe = subscribeToQuestions((fetchedQuestions) => {
+      setQuestions(fetchedQuestions);
+    });
     return () => unsubscribe();
   }, []);
 
@@ -99,21 +67,24 @@ export default function App() {
     await logoutUser();
   };
 
-  // Question CRUD
-  const handleAddQuestion = (q: Question) => {
-    setQuestions([q, ...questions]);
+  // --- Question Handlers (Connect to DB) ---
+  const handleAddQuestion = async (q: Question) => {
+    await addQuestionToDb(q);
   };
 
-  const handleEditQuestion = (id: string, title: string, content: string) => {
-    setQuestions(questions.map(q => q.id === id ? { ...q, title, content } : q));
+  const handleEditQuestion = async (id: string, title: string, content: string) => {
+    await updateQuestionInDb(id, { title, content });
   };
 
-  const handleDeleteQuestion = (id: string) => {
-    setQuestions(questions.filter(q => q.id !== id));
+  const handleDeleteQuestion = async (id: string) => {
+    await deleteQuestionFromDb(id);
   };
 
-  const handleHideQuestion = (id: string) => {
-    setQuestions(questions.map(q => q.id === id ? { ...q, isHidden: !q.isHidden } : q));
+  const handleHideQuestion = async (id: string) => {
+    const q = questions.find(q => q.id === id);
+    if (q) {
+      await updateQuestionInDb(id, { isHidden: !q.isHidden });
+    }
   };
 
   const handleAddCategory = (newCategory: string) => {
@@ -122,81 +93,56 @@ export default function App() {
     }
   };
 
-  // Answer CRUD
-  const handleAddAnswer = (qId: string, answer: Answer) => {
-    setQuestions(questions.map(q => {
-      if (q.id === qId) {
-        return { ...q, answers: [...q.answers, answer] };
-      }
-      return q;
-    }));
+  // --- Answer Handlers (Connect to DB) ---
+  const handleAddAnswer = async (qId: string, answer: Answer) => {
+    await addAnswerToDb(qId, answer);
   };
 
-  const handleEditAnswer = (qId: string, aId: string, newContent: string) => {
-    setQuestions(questions.map(q => {
-      if (q.id === qId) {
-        return {
-          ...q,
-          answers: q.answers.map(a => a.id === aId ? { ...a, content: newContent } : a)
-        };
-      }
-      return q;
-    }));
+  const handleEditAnswer = async (qId: string, aId: string, newContent: string) => {
+    await updateAnswerInDb(qId, aId, { content: newContent });
   };
 
-  const handleDeleteAnswer = (qId: string, aId: string) => {
-    setQuestions(questions.map(q => {
-      if (q.id === qId) {
-        return {
-          ...q,
-          answers: q.answers.filter(a => a.id !== aId)
-        };
-      }
-      return q;
-    }));
+  const handleDeleteAnswer = async (qId: string, aId: string) => {
+    await deleteAnswerFromDb(qId, aId);
   };
 
-  const handleHideAnswer = (qId: string, aId: string) => {
-    setQuestions(questions.map(q => {
-      if (q.id === qId) {
-        return {
-          ...q,
-          answers: q.answers.map(a => a.id === aId ? { ...a, isHidden: !a.isHidden } : a)
-        };
-      }
-      return q;
-    }));
+  const handleHideAnswer = async (qId: string, aId: string) => {
+    const q = questions.find(q => q.id === qId);
+    const a = q?.answers.find(ans => ans.id === aId);
+    if (a) {
+      await updateAnswerInDb(qId, aId, { isHidden: !a.isHidden });
+    }
   };
 
-  const handleMarkBestAnswer = (questionId: string, answerId: string) => {
-    setQuestions(questions.map(q => {
-      if (q.id === questionId) {
-        const updatedAnswers = q.answers.map(a => ({
-          ...a,
-          isBestAnswer: a.id === answerId ? !a.isBestAnswer : false // Toggle selection, unique best answer
-        }));
-        return { ...q, answers: updatedAnswers };
-      }
-      return q;
+  const handleMarkBestAnswer = async (questionId: string, answerId: string) => {
+    const q = questions.find(item => item.id === questionId);
+    if (!q) return;
+
+    // Reset others and mark current
+    const updatedAnswers = q.answers.map(a => ({
+      ...a,
+      isBestAnswer: a.id === answerId ? !a.isBestAnswer : false
     }));
+    
+    await updateQuestionInDb(questionId, { answers: updatedAnswers });
   };
 
-  const handleVerifyAnswer = (questionId: string, answerId: string) => {
-    setQuestions(questions.map(q => {
-      if (q.id === questionId) {
-        const updatedAnswers = q.answers.map(a => {
-          if (a.id === answerId) {
-            return { ...a, isExpertVerified: !a.isExpertVerified }; // Toggle verification
-          }
-          return a;
-        });
-        return { ...q, answers: updatedAnswers };
+  const handleVerifyAnswer = async (questionId: string, answerId: string) => {
+    const q = questions.find(item => item.id === questionId);
+    if (!q) return;
+
+    const updatedAnswers = q.answers.map(a => {
+      if (a.id === answerId) {
+        return { ...a, isExpertVerified: !a.isExpertVerified };
       }
-      return q;
-    }));
+      return a;
+    });
+
+    await updateQuestionInDb(questionId, { answers: updatedAnswers });
   };
 
   const handleExpertRegistration = (data: any) => {
+    // Ideally update user in DB here, but for now update local state
     setCurrentUser({
       ...currentUser,
       expertStatus: 'pending',
@@ -210,11 +156,12 @@ export default function App() {
   const handleGlobalRegister = async (email: string, pass: string, name: string) => { await registerWithEmail(email, pass, name); };
   const handleGlobalGoogle = async () => { await loginWithGoogle(); };
 
+  if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-cream text-primary font-bold">Đang tải dữ liệu...</div>;
+
   return (
     <HashRouter>
       <PWAInstallPrompt />
       
-      {/* Global Auth Modal for Profile/Navigation */}
       <AuthModal 
         isOpen={showGlobalAuthModal}
         onClose={() => setShowGlobalAuthModal(false)}
@@ -276,7 +223,6 @@ export default function App() {
           </Layout>
         } />
         
-        {/* Expert Registration */}
         <Route path="/expert-register" element={
           <Layout>
             <ExpertRegistration currentUser={currentUser} onSubmitApplication={handleExpertRegistration} />

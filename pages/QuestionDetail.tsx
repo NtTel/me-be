@@ -1,5 +1,5 @@
-
 import React, { useState, useEffect, useRef } from 'react';
+// @ts-ignore
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, MessageCircle, BadgeCheck, Bot, ShieldCheck, PenLine, Sparkles, Loader2, Send, MoreVertical, Trash2, Edit2, EyeOff, Eye, Save, X } from 'lucide-react';
 import { Question, Answer, User } from '../types';

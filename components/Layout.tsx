@@ -1,4 +1,5 @@
 import React from 'react';
+// @ts-ignore
 import { Link, useLocation } from 'react-router-dom';
 import { Home, PlusCircle, Gamepad2, Heart, Facebook, Instagram, Youtube, User } from 'lucide-react';
 
