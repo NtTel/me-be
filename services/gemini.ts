@@ -1,103 +1,74 @@
-import { GoogleGenAI } from "@google/genai";
+Skip to contentmb – Deployment Source – Vercel
+asking
+asking
 
-// Initialize Gemini with process.env.API_KEY as per strict guidelines
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+Pro
 
-export const getAiAnswer = async (questionTitle: string, questionContent: string): Promise<string> => {
-  if (!process.env.API_KEY) {
-    console.warn("API_KEY is missing");
-    return "Hệ thống chưa được cấu hình API Key.";
-  }
-  
-  try {
-    const model = "gemini-2.5-flash";
-    const prompt = `
-      Bạn là một chuyên gia tư vấn nuôi dạy con cái và sức khỏe gia đình trên nền tảng Asking.vn.
-      Hãy trả lời câu hỏi sau đây của một người mẹ Việt Nam.
+mb
+
+6iV4NqGpG
+
+
+Find…
+F
+
+Source
+Output
+index.html
+
       
-      Câu hỏi: ${questionTitle}
-      Chi tiết: ${questionContent}
-      
-      Yêu cầu:
-      1. Trả lời bằng tiếng Việt, giọng điệu ân cần, thông cảm, như một người mẹ có kinh nghiệm chia sẻ với người mẹ khác.
-      2. Câu trả lời ngắn gọn, súc tích (khoảng 150-200 từ), dễ đọc.
-      3. Cuối câu trả lời, hãy thêm một dòng lưu ý: "Đây là gợi ý từ AI tham khảo, mẹ nên hỏi ý kiến bác sĩ chuyên khoa nếu bé có dấu hiệu bất thường nhé."
-    `;
-
-    const response = await ai.models.generateContent({
-      model: model,
-      contents: prompt,
-    });
-
-    return response.text || "Xin lỗi, hiện tại mình chưa thể trả lời câu hỏi này. Mẹ thử lại sau nhé!";
-  } catch (error) {
-    console.error("Gemini API Error:", error);
-    return "Hệ thống đang bận, mẹ vui lòng thử lại sau nhé.";
-  }
-};
-
-export const suggestTitles = async (title: string, content: string = ""): Promise<string[]> => {
-  if (!process.env.API_KEY) return [];
-
-  try {
-    if (!title || title.length < 5) return [];
-    
-    const model = "gemini-2.5-flash";
-    const prompt = `
-      Người dùng đang đặt câu hỏi trên diễn đàn Mẹ & Bé. 
-      Tiêu đề nháp: "${title}"
-      ${content ? `Nội dung chi tiết: "${content}"` : ''}
-
-      Hãy đóng vai một biên tập viên nội dung giỏi. Gợi ý 3 tiêu đề câu hỏi khác hay hơn, rõ ràng, ngắn gọn và thu hút sự chú ý của các mẹ bỉm sữa.
-      Tiêu đề nên đánh vào trọng tâm vấn đề và gợi sự tò mò hoặc đồng cảm.
-      
-      Trả về kết quả CHỈ là một JSON Array chứa các chuỗi string. Ví dụ: ["Tiêu đề 1", "Tiêu đề 2", "Tiêu đề 3"].
-    `;
-
-    const response = await ai.models.generateContent({
-      model: model,
-      contents: prompt,
-      config: { 
-        responseMimeType: "application/json",
-        temperature: 0.7 
+      #root {
+        height: 100%;
+        overflow-y: auto; /* Internal scrolling for app-like feel */
+        -webkit-overflow-scrolling: touch;
       }
-    });
 
-    const text = response.text;
-    if (!text) return [];
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("Gemini Suggestion Error:", error);
-    return [];
-  }
-};
-
-export const generateDraftAnswer = async (questionTitle: string, questionContent: string): Promise<string> => {
-  if (!process.env.API_KEY) return "";
-
-  try {
-    const model = "gemini-2.5-flash";
-    const prompt = `
-      Bạn là một trợ lý AI giúp người dùng soạn thảo câu trả lời cho một câu hỏi trên diễn đàn Mẹ & Bé.
+      /* Utilities */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
       
-      Câu hỏi: "${questionTitle}"
-      Nội dung: "${questionContent}"
-
-      Hãy viết một bản nháp câu trả lời:
-      1. Giọng điệu chia sẻ, đồng cảm, hữu ích (như người đi trước chia sẻ kinh nghiệm).
-      2. Đi thẳng vào vấn đề, đưa ra lời khuyên thực tế.
-      3. Ngắn gọn (dưới 150 từ) để người dùng có thể chỉnh sửa thêm.
-      4. KHÔNG thêm các câu chào hỏi rườm rà kiểu "Chào bạn, mình là AI". Viết như một người dùng thật.
-    `;
-
-    const response = await ai.models.generateContent({
-      model: model,
-      contents: prompt,
-    });
-
-    return response.text || "";
-  } catch (error) {
-    console.error("Gemini Draft Error:", error);
-    return "";
+      /* Disable selection for UI elements */
+      .select-none {
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      
+      /* Safe area padding utilities fallback */
+      .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom, 20px);
+      }
+      .pt-safe {
+        padding-top: env(safe-area-inset-top, 20px);
+      }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.31.0",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.10.1",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
+    "vite": "https://aistudiocdn.com/vite@^7.2.6",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1"
   }
-};
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+    <!-- Entry Point for Vite Build -->
+    <script type="module" src="./index.tsx"></script>
+  </body>
+</html>
+14:02:00
+success:
+Deployment created.
+1
