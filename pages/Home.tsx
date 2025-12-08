@@ -1,25 +1,116 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 // @ts-ignore
 import { Link } from 'react-router-dom';
-import { Search, MessageCircle, Heart, ChevronDown, ChevronUp, HelpCircle, Clock, Flame, MessageSquareOff, ShieldCheck, ChevronRight, Sparkles } from 'lucide-react';
-import { Question } from '../types';
+import { Search, MessageCircle, Heart, ChevronDown, ChevronUp, HelpCircle, Clock, Flame, MessageSquareOff, ShieldCheck, ChevronRight, Sparkles, X, Filter, User as UserIcon, CornerDownRight } from 'lucide-react';
+import { Question, User } from '../types';
 
 interface HomeProps {
   questions: Question[];
   categories: string[];
 }
 
+// Component hiển thị Grid ảnh phong cách Facebook
+const FBImageGrid: React.FC<{ images: string[] }> = ({ images }) => {
+  if (!images || images.length === 0) return null;
+  const count = images.length;
+
+  if (count === 1) {
+    return (
+      <div className="mt-3 rounded-xl overflow-hidden border border-gray-100 bg-gray-50">
+        <img src={images[0]} className="w-full h-64 object-cover" loading="lazy" />
+      </div>
+    );
+  }
+
+  if (count === 2) {
+    return (
+      <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-gray-100 bg-gray-50 h-64">
+        <img src={images[0]} className="w-full h-full object-cover" loading="lazy" />
+        <img src={images[1]} className="w-full h-full object-cover" loading="lazy" />
+      </div>
+    );
+  }
+
+  if (count === 3) {
+    return (
+      <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-gray-100 bg-gray-50 h-64">
+        <img src={images[0]} className="w-full h-full object-cover row-span-2" loading="lazy" />
+        <div className="grid grid-rows-2 gap-1 h-full">
+           <img src={images[1]} className="w-full h-full object-cover" loading="lazy" />
+           <img src={images[2]} className="w-full h-full object-cover" loading="lazy" />
+        </div>
+      </div>
+    );
+  }
+
+  // 4 or more
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-gray-100 bg-gray-50 h-64">
+       <img src={images[0]} className="w-full h-full object-cover" loading="lazy" />
+       <div className="grid grid-rows-2 gap-1 h-full">
+          <img src={images[1]} className="w-full h-full object-cover" loading="lazy" />
+          <div className="relative w-full h-full">
+              <img src={images[2]} className="w-full h-full object-cover" loading="lazy" />
+              {count > 3 && (
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white font-bold text-xl backdrop-blur-[2px]">
+                   +{count - 3}
+                </div>
+              )}
+          </div>
+       </div>
+    </div>
+  );
+};
+
 export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
   const [activeCategory, setActiveCategory] = useState<string>('Tất cả');
-  const [showAllCategories, setShowAllCategories] = useState(false);
   const [viewFilter, setViewFilter] = useState<'newest' | 'active' | 'unanswered'>('newest');
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Filter & Sort Logic
+  // 1. Filter by Category
   let displayQuestions = activeCategory === 'Tất cả' 
     ? [...questions] 
     : questions.filter(q => q.category === activeCategory);
 
+  // 2. Filter by Search Query (Enhanced)
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase().trim();
+    displayQuestions = displayQuestions.filter(q => {
+      // Check Title & Content
+      const matchMain = q.title.toLowerCase().includes(query) || q.content.toLowerCase().includes(query);
+      // Check Author Name
+      const matchAuthor = q.author.name.toLowerCase().includes(query);
+      // Check Answers (Content or Author)
+      const matchAnswers = q.answers.some(a => 
+        a.content.toLowerCase().includes(query) || a.author.name.toLowerCase().includes(query)
+      );
+
+      return matchMain || matchAuthor || matchAnswers;
+    });
+  }
+
+  // 3. Extract Matching Users (For "People" Search Section)
+  const matchingUsers = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase().trim();
+    const usersMap = new Map<string, User>();
+    
+    questions.forEach(q => {
+        if (q.author.name.toLowerCase().includes(query)) {
+            usersMap.set(q.author.id, q.author);
+        }
+        q.answers.forEach(a => {
+            if (a.author.name.toLowerCase().includes(query)) {
+                usersMap.set(a.author.id, a.author);
+            }
+        });
+    });
+    
+    return Array.from(usersMap.values());
+  }, [questions, searchQuery]);
+
+  // 4. Sort Logic
   switch (viewFilter) {
     case 'newest':
       displayQuestions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -37,209 +128,187 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
       break;
   }
 
-  const CATEGORY_LIMIT = 5;
-  const visibleCategories = showAllCategories ? categories : categories.slice(0, CATEGORY_LIMIT);
-
   return (
-    <div className="space-y-6 animate-fade-in pb-safe">
-      {/* Hero / Search Section - Full Bleed on Mobile */}
-      <div className="bg-gradient-to-br from-primary to-[#26A69A] rounded-b-[2.5rem] md:rounded-3xl p-6 md:p-10 text-white shadow-xl shadow-primary/20 relative overflow-hidden -mx-4 md:mx-0 pt-safe-top md:pt-10">
-        {/* Decorative background elements */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 w-40 h-40 bg-yellow-400 opacity-10 rounded-full blur-2xl translate-y-1/2 -translate-x-1/2 pointer-events-none"></div>
-
-        <div className="relative z-10">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6 md:gap-4 mb-6">
-            <div className="flex-1 mt-2 md:mt-0">
-              <h1 className="text-2xl md:text-3xl font-bold mb-2 leading-tight">Mẹ đang thắc mắc điều gì?</h1>
-              <p className="opacity-90 text-sm md:text-base font-medium">Cùng hơn 10,000 mẹ bỉm sữa chia sẻ kinh nghiệm.</p>
+    <div className="space-y-4 animate-fade-in">
+      
+      {/* Mobile Search Bar - Floating effect */}
+      <div className="px-4 md:px-0 sticky top-0 md:relative z-30 pt-2 pb-2 md:pt-0">
+        <div className="relative group shadow-[0_4px_20px_rgba(0,0,0,0.05)] rounded-2xl">
+            <div className="absolute inset-0 bg-white/80 backdrop-blur-xl rounded-2xl"></div>
+            <div className="relative flex items-center bg-white/90 rounded-2xl border border-gray-100 focus-within:ring-2 focus-within:ring-primary/20 transition-all overflow-hidden">
+                <div className="pl-4 text-primary">
+                    <Search size={20} />
+                </div>
+                <input 
+                    type="text" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Tìm kiếm câu hỏi, người dùng..." 
+                    className="w-full py-3.5 px-3 bg-transparent text-textDark placeholder-gray-400 focus:outline-none text-[15px] font-medium"
+                />
+                {searchQuery && (
+                    <button onClick={() => setSearchQuery('')} className="pr-4 text-gray-400">
+                        <X size={16} />
+                    </button>
+                )}
             </div>
+        </div>
+      </div>
+
+      {/* FOUND USERS SECTION */}
+      {searchQuery && matchingUsers.length > 0 && (
+        <div className="pl-4 md:px-0 animate-slide-up">
+           <div className="flex items-center gap-1 mb-2">
+                <UserIcon size={14} className="text-blue-500" />
+                <span className="text-xs font-bold text-textGray uppercase tracking-wider">Mọi người</span>
+           </div>
+           <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 pr-4 snap-x">
+              {matchingUsers.map(user => (
+                  <Link to={`/profile/${user.id}`} key={user.id} className="snap-start flex-shrink-0 bg-white p-3 pr-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3 min-w-[160px] active:scale-95 transition-transform">
+                      <div className="relative">
+                        <img src={user.avatar} className="w-10 h-10 rounded-full object-cover border border-gray-100" />
+                        {user.isExpert && <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-0.5 border border-white"><ShieldCheck size={10} /></div>}
+                      </div>
+                      <div className="flex flex-col">
+                          <span className="text-sm font-bold text-textDark truncate max-w-[100px]">{user.name}</span>
+                          <span className="text-[10px] text-primary font-medium">Xem trang</span>
+                      </div>
+                  </Link>
+              ))}
+           </div>
+        </div>
+      )}
+
+      {/* Banner / Hero Section (Hidden when searching) */}
+      {!searchQuery && (
+        <div className="px-4 md:px-0">
+            <div className="bg-gradient-to-br from-primary to-[#26A69A] rounded-3xl p-6 text-white shadow-xl shadow-primary/20 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+                <div className="relative z-10 flex justify-between items-center">
+                    <div>
+                        <h2 className="text-xl font-bold mb-1">Góc Chuyên Gia</h2>
+                        <p className="text-blue-50 text-xs font-medium opacity-90 mb-3">Kết nối với bác sĩ & chuyên gia uy tín.</p>
+                        <Link to="/expert-register" className="inline-flex items-center gap-1 bg-white/20 hover:bg-white/30 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 border border-white/20">
+                            Đăng ký ngay <ChevronRight size={14} />
+                        </Link>
+                    </div>
+                    <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center text-3xl shadow-inner border border-white/10">
+                        👨‍⚕️
+                    </div>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* Categories Horizontal Scroll (Hidden when searching) */}
+      {!searchQuery && (
+        <div className="pl-4 md:px-0">
+            <div className="flex items-center gap-1 mb-2">
+                <Sparkles size={14} className="text-accent" fill="currentColor" />
+                <span className="text-xs font-bold text-textGray uppercase tracking-wider">Chủ đề</span>
+            </div>
+            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 pr-4 snap-x">
+            <button 
+                onClick={() => setActiveCategory('Tất cả')}
+                className={`snap-start flex-shrink-0 px-5 py-2.5 rounded-2xl text-sm font-bold whitespace-nowrap transition-all active:scale-95 ${activeCategory === 'Tất cả' ? 'bg-textDark text-white shadow-lg shadow-gray-200' : 'bg-white text-textGray border border-gray-100 shadow-sm'}`}
+            >
+                Tất cả
+            </button>
             
-            {/* Expert Registration Button - Premium Glass Effect */}
-            <div className="flex flex-col items-start md:items-end gap-2 shrink-0">
-              <Link 
-                to="/expert-register"
-                className="group flex items-center gap-3 bg-white/15 hover:bg-white/25 backdrop-blur-md border border-white/20 hover:border-white/40 px-4 py-2 rounded-2xl transition-all shadow-sm active:scale-95 w-full md:w-auto"
-              >
-                <div className="bg-white/90 p-1.5 rounded-xl shadow-sm group-hover:scale-110 transition-transform">
-                  <ShieldCheck size={18} className="text-blue-600" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-xs font-bold text-white leading-none mb-0.5">Đăng ký Chuyên gia</span>
-                  <span className="text-[10px] text-blue-50 opacity-90 leading-none">Xác thực uy tín</span>
-                </div>
-                <ChevronRight size={16} className="text-white/60 ml-auto" />
-              </Link>
+            {categories.map(cat => (
+                <button 
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`snap-start flex-shrink-0 px-5 py-2.5 rounded-2xl text-sm font-bold whitespace-nowrap transition-all active:scale-95 ${activeCategory === cat ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-white text-textGray border border-gray-100 shadow-sm'}`}
+                >
+                {cat}
+                </button>
+            ))}
             </div>
-          </div>
-          
-          <div className="relative group">
-            <input 
-              type="text" 
-              placeholder="Tìm kiếm (vd: bé ăn dặm, sốt mọc răng)..." 
-              className="w-full pl-12 pr-4 py-4 rounded-2xl text-textDark bg-white/95 backdrop-blur-xl shadow-lg shadow-teal-900/10 focus:outline-none focus:ring-4 focus:ring-white/30 placeholder-gray-400 transition-all text-sm md:text-base font-medium"
-            />
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-primary" size={22} />
-          </div>
         </div>
+      )}
+
+      {/* Filters */}
+      <div className="px-4 md:px-0 flex items-center justify-between">
+         <h3 className="font-bold text-lg text-textDark">
+             {searchQuery ? `Kết quả tìm kiếm (${displayQuestions.length})` : 'Cộng đồng hỏi đáp'}
+         </h3>
+         {!searchQuery && (
+            <div className="flex bg-white p-1 rounded-xl border border-gray-100 shadow-sm">
+                <button onClick={() => setViewFilter('newest')} className={`p-1.5 rounded-lg transition-all ${viewFilter === 'newest' ? 'bg-gray-100 text-textDark' : 'text-gray-400'}`}><Clock size={16} /></button>
+                <button onClick={() => setViewFilter('active')} className={`p-1.5 rounded-lg transition-all ${viewFilter === 'active' ? 'bg-orange-50 text-orange-500' : 'text-gray-400'}`}><Flame size={16} /></button>
+                <button onClick={() => setViewFilter('unanswered')} className={`p-1.5 rounded-lg transition-all ${viewFilter === 'unanswered' ? 'bg-blue-50 text-blue-500' : 'text-gray-400'}`}><MessageSquareOff size={16} /></button>
+            </div>
+         )}
       </div>
 
-      {/* Categories - Premium Horizontal Scroll */}
-      <div className="md:px-0">
-        <div className="flex justify-between items-center mb-3 px-4 md:px-0">
-          <h2 className="font-bold text-lg text-textDark flex items-center gap-2">
-            <Sparkles size={18} className="text-accent" /> Chủ đề quan tâm
-          </h2>
-          
-          <div className="hidden md:block">
-            {categories.length > CATEGORY_LIMIT && (
-              <button
-                onClick={() => setShowAllCategories(!showAllCategories)}
-                className="text-xs font-bold text-primary flex items-center gap-1 hover:bg-primary/5 px-2 py-1 rounded-lg transition-colors"
-              >
-                {showAllCategories ? 'Thu gọn' : 'Xem thêm'}
-                {showAllCategories ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </button>
-            )}
-          </div>
-        </div>
-        
-        {/* Mobile: Horizontal Scroll View with Snap & Safe Padding */}
-        <div className="md:hidden overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 snap-x snap-mandatory flex items-center gap-3 after:content-[''] after:w-4 after:shrink-0">
-          <button 
-            onClick={() => setActiveCategory('Tất cả')}
-            className={`snap-start scroll-ml-4 flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all shadow-sm active:scale-95 ${activeCategory === 'Tất cả' ? 'bg-textDark text-white shadow-lg shadow-gray-200' : 'bg-white text-textGray border border-gray-100'}`}
-          >
-            Tất cả
-          </button>
-          
-          {categories.map(cat => (
-            <button 
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`snap-start flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all shadow-sm active:scale-95 ${activeCategory === cat ? 'bg-primary text-white shadow-lg shadow-primary/20 ring-2 ring-primary ring-offset-1' : 'bg-white text-textGray border border-gray-100'}`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {/* Desktop: Wrapped View */}
-        <div className="hidden md:flex flex-wrap gap-3">
-          <button 
-            onClick={() => setActiveCategory('Tất cả')}
-            className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95 ${activeCategory === 'Tất cả' ? 'bg-textDark text-white shadow-lg' : 'bg-white text-textGray border border-gray-100 hover:bg-gray-50'}`}
-          >
-            Tất cả
-          </button>
-          
-          {visibleCategories.map(cat => (
-            <button 
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm active:scale-95 ${activeCategory === cat ? 'bg-primary text-white shadow-lg ring-2 ring-primary ring-offset-1' : 'bg-white text-textGray border border-gray-100 hover:bg-gray-50'}`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Filter Tabs & Feed */}
-      <div className="md:px-0">
-        {/* Filter Tabs - Sticky Header Effect */}
-        <div className="sticky top-0 z-20 bg-[#F7F7F5]/95 backdrop-blur-sm py-2 -mx-4 px-4 md:static md:bg-transparent md:mx-0 md:px-0 mb-2">
-          <div className="overflow-x-auto no-scrollbar flex items-center gap-3 after:content-[''] after:w-4 after:shrink-0">
-            <FilterTab 
-              active={viewFilter === 'newest'} 
-              onClick={() => setViewFilter('newest')} 
-              icon={<Clock size={15} />} 
-              label="Mới nhất" 
-              activeColor="bg-blue-600 border-blue-600 text-white"
-            />
-            <FilterTab 
-              active={viewFilter === 'active'} 
-              onClick={() => setViewFilter('active')} 
-              icon={<Flame size={15} />} 
-              label="Sôi nổi" 
-              activeColor="bg-orange-500 border-orange-500 text-white"
-            />
-            <FilterTab 
-              active={viewFilter === 'unanswered'} 
-              onClick={() => setViewFilter('unanswered')} 
-              icon={<MessageSquareOff size={15} />} 
-              label="Chưa trả lời" 
-              activeColor="bg-primary border-primary text-white"
-            />
-          </div>
-        </div>
-
-        {/* Question List */}
-        <div className="space-y-4 px-4 md:px-0 min-h-[50vh]">
+      {/* Feed List */}
+      <div className="px-4 md:px-0 space-y-4 pb-10">
           {displayQuestions.length === 0 && (
-            <div className="text-center py-16 bg-white rounded-[2rem] border-2 border-dashed border-gray-100 mx-auto max-w-sm mt-8">
-              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-300 animate-bounce-small">
-                <HelpCircle size={40} strokeWidth={1.5} />
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-300">
+                <HelpCircle size={32} strokeWidth={1.5} />
               </div>
-              <h3 className="font-bold text-textDark mb-1">Chưa có câu hỏi nào</h3>
-              <p className="text-sm text-textGray">Hãy là người đầu tiên đặt câu hỏi cho chủ đề này!</p>
+              <p className="text-sm text-textGray font-medium">
+                  {searchQuery ? 'Không tìm thấy kết quả nào.' : 'Chưa có bài viết nào phù hợp.'}
+              </p>
             </div>
           )}
 
-          {displayQuestions.map(q => (
-            <Link to={`/question/${q.id}`} key={q.id} className="block group">
-              <div className="bg-white p-5 md:p-6 rounded-[1.5rem] shadow-sm border border-gray-100/60 hover:border-secondary hover:shadow-xl hover:shadow-primary/5 transition-all active:scale-[0.98] duration-200">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="bg-secondary/30 text-teal-700 text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wide border border-secondary/20">{q.category}</span>
-                    {q.images && q.images.length > 0 && (
-                       <span className="bg-blue-50 text-blue-600 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                          📷 {q.images.length}
-                       </span>
-                    )}
-                  </div>
-                  <span className="text-[11px] text-gray-400 font-medium">{new Date(q.createdAt).toLocaleDateString('vi-VN')}</span>
-                </div>
-                
-                <h3 className="text-[17px] md:text-lg font-bold text-textDark mb-2 leading-snug group-hover:text-primary transition-colors line-clamp-2">{q.title}</h3>
-                <p className="text-textGray text-sm line-clamp-2 mb-4 font-normal leading-relaxed">{q.content}</p>
-                
-                <div className="flex items-center justify-between pt-4 border-t border-gray-50/80">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-full bg-gray-100 overflow-hidden ring-2 ring-white shadow-sm group-hover:ring-secondary transition-all">
-                      <img src={q.author.avatar} alt={q.author.name} className="w-full h-full object-cover" />
+          {displayQuestions.map(q => {
+             // Logic to highlight if matched by Answer
+             const query = searchQuery.toLowerCase().trim();
+             const matchedAnswer = searchQuery && q.answers.find(a => a.content.toLowerCase().includes(query) || a.author.name.toLowerCase().includes(query));
+             
+             return (
+                <Link to={`/question/${q.id}`} key={q.id} className="block group">
+                <div className="bg-white p-5 rounded-[1.5rem] shadow-[0_2px_15px_rgba(0,0,0,0.03)] border border-gray-100 active:scale-[0.98] transition-all relative overflow-hidden">
+                    {q.answers.length === 0 && <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-orange-100 to-transparent rounded-bl-full -mr-8 -mt-8"></div>}
+                    
+                    <div className="flex items-start justify-between mb-3 relative z-10">
+                    <div className="flex items-center gap-2">
+                        <img src={q.author.avatar} className="w-8 h-8 rounded-full border border-gray-100 object-cover" />
+                        <div>
+                            <p className="text-xs font-bold text-textDark flex items-center gap-1">
+                                {q.author.name}
+                                {q.author.isExpert && <ShieldCheck size={10} className="text-blue-500" />}
+                            </p>
+                            <p className="text-[10px] text-gray-400">{new Date(q.createdAt).toLocaleDateString('vi-VN')}</p>
+                        </div>
                     </div>
-                    <span className="text-xs font-bold text-textGray/90">{q.author.name}</span>
-                    {q.author.isExpert && <ShieldCheck size={12} className="text-blue-500" />}
-                  </div>
-                  <div className="flex items-center gap-4 text-gray-400 text-xs font-bold">
-                    <span className="flex items-center gap-1.5 transition-colors group-hover:text-red-500"><Heart size={16} /> {q.likes}</span>
-                    <span className={`flex items-center gap-1.5 transition-colors ${q.answers.length === 0 ? 'text-accent' : 'group-hover:text-blue-500'}`}>
-                      <MessageCircle size={16} /> 
-                      {q.answers.length === 0 ? 'Giúp mẹ ấy' : `${q.answers.length} trả lời`}
-                    </span>
-                  </div>
+                    <span className="bg-gray-50 text-textGray text-[10px] font-bold px-2 py-1 rounded-lg border border-gray-100">{q.category}</span>
+                    </div>
+                    
+                    <h3 className="text-[16px] font-bold text-textDark mb-2 leading-snug line-clamp-2">{q.title}</h3>
+                    <p className="text-textGray text-sm line-clamp-2 mb-3 font-normal">{q.content}</p>
+                    
+                    <FBImageGrid images={q.images || []} />
+
+                    {/* Show matched answer preview if search mode */}
+                    {matchedAnswer && (
+                        <div className="bg-blue-50 rounded-xl p-3 mb-3 flex gap-2 border border-blue-100 mt-3">
+                             <CornerDownRight size={16} className="text-blue-400 shrink-0 mt-0.5" />
+                             <div>
+                                <p className="text-xs font-bold text-textDark mb-0.5">{matchedAnswer.author.name} đã trả lời:</p>
+                                <p className="text-xs text-textGray line-clamp-1 italic">"{matchedAnswer.content}"</p>
+                             </div>
+                        </div>
+                    )}
+                    
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-50 mt-3">
+                    <div className="flex items-center gap-4 text-xs font-bold text-gray-400">
+                        <span className="flex items-center gap-1.5"><Heart size={14} className={q.likes > 0 ? "text-red-500 fill-red-500" : ""} /> {q.likes}</span>
+                        <span className="flex items-center gap-1.5"><MessageCircle size={14} className={q.answers.length > 0 ? "text-blue-500 fill-blue-500" : ""} /> {q.answers.length}</span>
+                    </div>
+                    {q.answers.length === 0 && (
+                        <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded-full">Chưa có trả lời</span>
+                    )}
+                    </div>
                 </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+                </Link>
+             );
+          })}
       </div>
     </div>
   );
 };
-
-// Helper Component for Filter Tabs
-const FilterTab: React.FC<{ active: boolean; onClick: () => void; icon: React.ReactNode; label: string; activeColor: string }> = ({ active, onClick, icon, label, activeColor }) => (
-  <button 
-    onClick={onClick}
-    className={`flex items-center gap-1.5 whitespace-nowrap text-xs md:text-sm font-bold px-4 py-2.5 rounded-full transition-all border shadow-sm active:scale-95 ${
-      active 
-      ? activeColor + ' shadow-md'
-      : 'bg-white text-gray-500 border-gray-200/80 hover:bg-gray-50'
-    }`}
-  >
-    {icon}
-    {label}
-  </button>
-);

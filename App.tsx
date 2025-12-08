@@ -8,6 +8,10 @@ import { Ask } from './pages/Ask';
 import { QuestionDetail } from './pages/QuestionDetail';
 import { GameZone } from './pages/GameZone';
 import { Profile } from './pages/Profile';
+import { Notifications } from './pages/Notifications';
+import { Messages } from './pages/Messages';
+import { ChatDetail } from './pages/ChatDetail';
+import { AiChat } from './pages/AiChat';
 import { ExpertRegistration } from './pages/ExpertRegistration';
 import { About, Terms, Privacy, Contact } from './pages/StaticPages';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
@@ -24,7 +28,6 @@ import {
   deleteAnswerFromDb 
 } from './services/db';
 
-// Default Guest User
 const GUEST_USER: User = {
   id: 'guest',
   name: 'Khách',
@@ -43,7 +46,6 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [showGlobalAuthModal, setShowGlobalAuthModal] = useState(false);
 
-  // 1. Subscribe to Auth Changes
   useEffect(() => {
     const unsubscribe = subscribeToAuthChanges((user) => {
       if (user) {
@@ -56,7 +58,6 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Subscribe to Questions from Firestore (Realtime)
   useEffect(() => {
     const unsubscribe = subscribeToQuestions((fetchedQuestions) => {
       setQuestions(fetchedQuestions);
@@ -68,7 +69,6 @@ export default function App() {
     await logoutUser();
   };
 
-  // --- Question Handlers (Connect to DB) ---
   const handleAddQuestion = async (q: Question) => {
     await addQuestionToDb(q);
   };
@@ -94,9 +94,11 @@ export default function App() {
     }
   };
 
-  // --- Answer Handlers (Connect to DB) ---
   const handleAddAnswer = async (qId: string, answer: Answer) => {
-    await addAnswerToDb(qId, answer);
+    const q = questions.find(i => i.id === qId);
+    if (q) {
+        await addAnswerToDb(q, answer);
+    }
   };
 
   const handleEditAnswer = async (qId: string, aId: string, newContent: string) => {
@@ -118,32 +120,26 @@ export default function App() {
   const handleMarkBestAnswer = async (questionId: string, answerId: string) => {
     const q = questions.find(item => item.id === questionId);
     if (!q) return;
-
-    // Reset others and mark current
     const updatedAnswers = q.answers.map(a => ({
       ...a,
       isBestAnswer: a.id === answerId ? !a.isBestAnswer : false
     }));
-    
     await updateQuestionInDb(questionId, { answers: updatedAnswers });
   };
 
   const handleVerifyAnswer = async (questionId: string, answerId: string) => {
     const q = questions.find(item => item.id === questionId);
     if (!q) return;
-
     const updatedAnswers = q.answers.map(a => {
       if (a.id === answerId) {
         return { ...a, isExpertVerified: !a.isExpertVerified };
       }
       return a;
     });
-
     await updateQuestionInDb(questionId, { answers: updatedAnswers });
   };
 
   const handleExpertRegistration = (data: any) => {
-    // Ideally update user in DB here, but for now update local state
     setCurrentUser({
       ...currentUser,
       expertStatus: 'pending',
@@ -152,7 +148,6 @@ export default function App() {
     });
   };
 
-  // Wrapper functions for Global Auth Modal
   const handleGlobalLogin = async (email: string, pass: string) => { await loginWithEmail(email, pass); };
   const handleGlobalRegister = async (email: string, pass: string, name: string) => { await registerWithEmail(email, pass, name); };
   const handleGlobalGoogle = async () => { await loginWithGoogle(); };
@@ -191,6 +186,29 @@ export default function App() {
             />
           </Layout>
         } />
+        <Route path="/notifications" element={
+          <Layout>
+            <Notifications 
+              currentUser={currentUser}
+              onOpenAuth={() => setShowGlobalAuthModal(true)}
+            />
+          </Layout>
+        } />
+        <Route path="/messages" element={
+          <Layout>
+            <Messages />
+          </Layout>
+        } />
+        <Route path="/messages/:userId" element={
+          <Layout>
+            <ChatDetail />
+          </Layout>
+        } />
+        <Route path="/ai-chat" element={
+          <Layout>
+            <AiChat />
+          </Layout>
+        } />
         <Route path="/question/:id" element={
           <Layout>
             <QuestionDetail 
@@ -199,7 +217,7 @@ export default function App() {
               onAddAnswer={handleAddAnswer} 
               onMarkBestAnswer={handleMarkBestAnswer}
               onVerifyAnswer={handleVerifyAnswer}
-              onOpenAuth={() => setShowGlobalAuthModal(true)} // Pass Auth Handler
+              onOpenAuth={() => setShowGlobalAuthModal(true)} 
               onEditQuestion={handleEditQuestion}
               onDeleteQuestion={handleDeleteQuestion}
               onHideQuestion={handleHideQuestion}
@@ -214,7 +232,21 @@ export default function App() {
             <GameZone />
           </Layout>
         } />
+        
+        {/* User Self Profile */}
         <Route path="/profile" element={
+          <Layout>
+            <Profile 
+              user={currentUser} 
+              questions={questions} 
+              onLogout={handleLogout}
+              onOpenAuth={() => setShowGlobalAuthModal(true)}
+            />
+          </Layout>
+        } />
+
+        {/* Public Profile Route */}
+        <Route path="/profile/:userId" element={
           <Layout>
             <Profile 
               user={currentUser} 

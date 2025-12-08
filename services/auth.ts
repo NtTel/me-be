@@ -3,6 +3,7 @@ import {
   signInWithPopup, 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
+  signInAnonymously,
   signOut, 
   onAuthStateChanged,
   updateProfile,
@@ -16,7 +17,7 @@ import { User } from '../types';
 const mapUser = (fbUser: FirebaseUser, dbUser?: any): User => {
   return {
     id: fbUser.uid,
-    name: dbUser?.name || fbUser.displayName || 'Người dùng',
+    name: dbUser?.name || fbUser.displayName || (fbUser.isAnonymous ? 'Khách ẩn danh' : 'Người dùng'),
     avatar: dbUser?.avatar || fbUser.photoURL || 'https://cdn-icons-png.flaticon.com/512/3177/3177440.png',
     isExpert: dbUser?.isExpert || false,
     expertStatus: dbUser?.expertStatus || 'none',
@@ -26,8 +27,44 @@ const mapUser = (fbUser: FirebaseUser, dbUser?: any): User => {
     joinedAt: dbUser?.joinedAt || new Date().toISOString(),
     specialty: dbUser?.specialty,
     workplace: dbUser?.workplace,
-    isGuest: false
+    isGuest: false // Once logged in (even anonymously), they are no longer a "UI Guest"
   };
+};
+
+export const loginAnonymously = async (): Promise<User> => {
+  if (!auth) throw new Error("Firebase chưa được cấu hình.");
+  
+  try {
+    const result = await signInAnonymously(auth);
+    const fbUser = result.user;
+    
+    // Create a minimal user record in Firestore for the anonymous user
+    // This allows them to have notifications, likes, etc.
+    const userDocRef = doc(db, 'users', fbUser.uid);
+    const userDoc = await getDoc(userDocRef);
+
+    if (!userDoc.exists()) {
+       const newUser = {
+          name: 'Khách ẩn danh',
+          avatar: 'https://cdn-icons-png.flaticon.com/512/3177/3177440.png',
+          createdAt: new Date().toISOString(),
+          isExpert: false,
+          points: 0,
+          isAnonymous: true
+       };
+       await setDoc(userDocRef, newUser);
+       return mapUser(fbUser, newUser);
+    }
+
+    return mapUser(fbUser, userDoc.data());
+  } catch (error: any) {
+    console.warn("Anonymous login failed, likely disabled in console:", error.code);
+    // If anonymous auth is disabled or restricted, throw specific error to trigger Auth Modal
+    if (error.code === 'auth/admin-restricted-operation' || error.code === 'auth/operation-not-allowed') {
+        throw new Error("ANONYMOUS_DISABLED");
+    }
+    throw error;
+  }
 };
 
 export const loginWithGoogle = async (): Promise<User> => {

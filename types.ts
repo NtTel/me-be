@@ -11,7 +11,9 @@ export interface User {
   bio?: string;
   points?: number;
   joinedAt?: string;
-  isGuest?: boolean; // New flag for guest mode
+  isGuest?: boolean;
+  followers?: string[]; // Array of User IDs
+  following?: string[]; // Array of User IDs
 }
 
 export interface Answer {
@@ -37,8 +39,38 @@ export interface Question {
   likes: number;
   views: number;
   createdAt: string;
-  images?: string[]; // Array of image URLs
+  images?: string[]; 
   isHidden?: boolean;
+}
+
+export interface Notification {
+  id: string;
+  userId: string; 
+  sender: { name: string; avatar: string };
+  type: 'LIKE' | 'ANSWER' | 'VERIFY' | 'SYSTEM' | 'BEST_ANSWER' | 'FOLLOW' | 'MESSAGE';
+  content: string;
+  link: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export interface Message {
+  id: string;
+  senderId: string;
+  content: string;
+  createdAt: string;
+  isRead: boolean;
+  type: 'text' | 'image';
+}
+
+export interface ChatSession {
+  id: string;
+  participants: string[]; // [uid1, uid2]
+  participantData: { [uid: string]: { name: string; avatar: string; isExpert?: boolean } };
+  lastMessage: string;
+  lastMessageTime: string;
+  updatedAt: string;
+  unreadCount: { [uid: string]: number };
 }
 
 export enum GameType {
@@ -50,11 +82,11 @@ export enum GameType {
 
 export interface GameItem {
   id: string;
-  question: string; // "What color is this?"
-  value: string; // The correct answer value (text or hex)
-  display: string; // What to show (text, hex code, or emoji)
-  options: string[]; // Possible answers
-  audio: string; // Text to speak
+  question: string;
+  value: string;
+  display: string;
+  options: string[];
+  audio: string;
 }
 
 export const CATEGORIES = [

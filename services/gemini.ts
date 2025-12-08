@@ -1,16 +1,31 @@
+
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Lấy API key từ biến môi trường Vite
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
+// Safe access helper to prevent "undefined is not an object" error
+const getEnv = (key: string): string | undefined => {
+  try {
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      // @ts-ignore
+      return import.meta.env[key];
+    }
+  } catch (e) {
+    console.warn("Environment access failed", e);
+  }
+  return undefined;
+};
 
-// Khởi tạo client một cách an toàn (không có key thì không crash)
+// Try standard VITE_API_KEY first, then specific VITE_GEMINI_API_KEY
+const apiKey = getEnv('VITE_API_KEY') || getEnv('VITE_GEMINI_API_KEY');
+
+// Initialize client safely
 let ai: GoogleGenAI | null = null;
 
 if (apiKey && apiKey.trim() !== "") {
   ai = new GoogleGenAI({ apiKey });
 } else {
   console.warn(
-    "⚠️ VITE_GEMINI_API_KEY is missing. Gemini AI features are disabled on this build."
+    "⚠️ VITE_API_KEY is missing. Gemini AI features are disabled."
   );
 }
 
@@ -21,9 +36,9 @@ export const getAiAnswer = async (
   questionTitle: string,
   questionContent: string
 ): Promise<string> => {
-  // Nếu không có AI client -> trả lời fallback, KHÔNG throw để tránh trắng trang
+  // Fallback if AI client is not initialized
   if (!ai) {
-    return "Tính năng AI đang được bảo trì hoặc chưa cấu hình Key. Mẹ vui lòng quay lại sau nhé!";
+    return "Tính năng AI chưa được cấu hình Key (VITE_API_KEY). Vui lòng kiểm tra file .env hoặc Vercel Settings.";
   }
 
   try {
@@ -47,7 +62,7 @@ export const getAiAnswer = async (
       contents: prompt,
     });
 
-    // Tuỳ SDK, đôi khi là response.text(), đôi khi là response.text
+    // Handle different SDK response structures
     const text = (response as any).text ?? (response as any).response?.text?.();
     return (
       text ||

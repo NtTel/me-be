@@ -1,0 +1,162 @@
+
+import React, { useState, useRef, useEffect } from 'react';
+import { GoogleGenAI } from "@google/genai";
+import { Send, Bot, User, Sparkles, ArrowLeft, Loader2, Sparkles as SparklesIcon } from 'lucide-react';
+// @ts-ignore
+import { useNavigate } from 'react-router-dom';
+
+export const AiChat: React.FC = () => {
+  const navigate = useNavigate();
+  const [messages, setMessages] = useState<{role: 'user' | 'model', text: string}[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Initialize Chat with Welcome Message
+  useEffect(() => {
+    setMessages([
+      {
+        role: 'model',
+        text: 'Chào mẹ! Mình là Trợ lý AI của Asking.vn. Mẹ đang lo lắng hay thắc mắc điều gì về bé yêu hay sức khỏe gia đình không? Hãy chia sẻ với mình nhé! 💖'
+      }
+    ]);
+  }, []);
+
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  const handleSend = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    const userMsg = input.trim();
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setIsLoading(true);
+    scrollToBottom();
+
+    try {
+      // @ts-ignore
+      const apiKey = import.meta.env.VITE_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+      
+      let text = "Hệ thống đang bận, mẹ vui lòng thử lại sau nhé! 😓";
+
+      if (apiKey) {
+          const ai = new GoogleGenAI({ apiKey });
+          const model = "gemini-2.5-flash";
+
+          const prompt = `
+            Bạn là Trợ lý AI thông thái và tận tâm của nền tảng Asking.vn (Cộng đồng Mẹ & Bé).
+            Hãy trả lời câu hỏi sau đây của người dùng với giọng điệu thân thiện, đồng cảm, chuyên nghiệp nhưng gần gũi (xưng hô Mình - Mẹ/Bạn).
+            Sử dụng Emoji phù hợp để cuộc trò chuyện sinh động.
+            
+            Câu hỏi: ${userMsg}
+          `;
+
+          const response = await ai.models.generateContent({
+            model,
+            contents: prompt,
+          });
+          
+          text = response.text || text;
+      } else {
+          text = "Chức năng AI chưa được cấu hình (Thiếu API Key).";
+      }
+
+      setMessages(prev => [...prev, { role: 'model', text }]);
+    } catch (error) {
+      console.error("AI Error:", error);
+      setMessages(prev => [...prev, { role: 'model', text: "Hệ thống đang bận, mẹ vui lòng thử lại sau nhé! 😓" }]);
+    } finally {
+      setIsLoading(false);
+      scrollToBottom();
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-screen bg-[#F0F2F5] fixed inset-0 z-[60]">
+      {/* Header */}
+      <div className="bg-white/90 backdrop-blur-xl border-b border-gray-200 px-4 py-3 flex items-center gap-3 pt-safe-top shadow-sm z-10">
+        <button 
+            onClick={() => navigate(-1)} 
+            className="p-2 -ml-2 rounded-full hover:bg-gray-100 active:scale-95 transition-all text-textDark"
+        >
+            <ArrowLeft size={22} />
+        </button>
+        <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-purple-200">
+            <Bot size={22} />
+        </div>
+        <div>
+            <h1 className="font-bold text-lg text-textDark flex items-center gap-1">
+                Trợ lý AI
+                <SparklesIcon size={14} className="text-yellow-500 fill-yellow-500" />
+            </h1>
+            <p className="text-xs text-green-500 font-bold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                Sẵn sàng hỗ trợ
+            </p>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((msg, idx) => {
+            const isModel = msg.role === 'model';
+            return (
+                <div key={idx} className={`flex items-start gap-3 ${isModel ? '' : 'flex-row-reverse'}`}>
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm ${isModel ? 'bg-white' : 'bg-gray-200'}`}>
+                        {isModel ? <Bot size={18} className="text-purple-600" /> : <User size={18} className="text-gray-600" />}
+                    </div>
+                    <div className={`
+                        max-w-[85%] px-4 py-3 rounded-2xl text-[15px] leading-relaxed shadow-sm whitespace-pre-line
+                        ${isModel 
+                            ? 'bg-white text-textDark rounded-tl-none border border-gray-100' 
+                            : 'bg-gradient-to-br from-primary to-[#26A69A] text-white rounded-tr-none'}
+                    `}>
+                        {msg.text}
+                    </div>
+                </div>
+            )
+        })}
+        {isLoading && (
+            <div className="flex items-start gap-3">
+                 <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
+                    <Sparkles size={18} className="text-purple-600 animate-spin" />
+                 </div>
+                 <div className="bg-white px-4 py-3 rounded-2xl rounded-tl-none border border-gray-100 flex items-center gap-2">
+                    <Loader2 size={16} className="animate-spin text-gray-400" />
+                    <span className="text-sm text-gray-500">Đang suy nghĩ...</span>
+                 </div>
+            </div>
+        )}
+        <div ref={scrollRef} />
+      </div>
+
+      {/* Input */}
+      <div className="bg-white p-3 border-t border-gray-100 pb-safe-bottom">
+        <form onSubmit={handleSend} className="flex items-center gap-2 bg-gray-50 rounded-[1.5rem] p-1.5 border border-gray-200 focus-within:border-purple-300 focus-within:ring-4 focus-within:ring-purple-50 transition-all">
+            <input 
+                ref={inputRef}
+                type="text" 
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Hỏi gì đó (Ví dụ: Bé bị sốt nên làm gì?)..." 
+                className="flex-1 bg-transparent border-none outline-none px-4 py-2 text-sm text-textDark placeholder-gray-400"
+            />
+            <button 
+                type="submit" 
+                disabled={!input.trim() || isLoading}
+                className="w-10 h-10 rounded-full bg-purple-600 text-white flex items-center justify-center shadow-lg shadow-purple-200 disabled:opacity-50 disabled:shadow-none active:scale-90 transition-all"
+            >
+                <Send size={18} className={input.trim() ? "translate-x-0.5" : ""} />
+            </button>
+        </form>
+      </div>
+    </div>
+  );
+};

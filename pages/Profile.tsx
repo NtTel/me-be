@@ -1,264 +1,300 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { User, Question } from '../types';
-import { Settings, ShieldCheck, MapPin, Calendar, Medal, MessageCircle, HelpCircle, Heart, Star, LogOut, Clock, Briefcase, ChevronRight } from 'lucide-react';
+import { Settings, ShieldCheck, MessageCircle, HelpCircle, Heart, Star, Briefcase, Share2, Users, UserPlus, UserCheck, ArrowLeft, Loader2 } from 'lucide-react';
 // @ts-ignore
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { followUser, unfollowUser, sendNotification } from '../services/db';
+import { auth, db } from '../firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface ProfileProps {
-  user: User;
+  user: User; // This is the CURRENT logged-in user
   questions: Question[];
   onLogout: () => void;
   onOpenAuth: () => void;
 }
 
 export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onOpenAuth }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'questions' | 'answers'>('overview');
-
-  // Calculate Stats
-  const userQuestions = questions.filter(q => q.author.id === user.id);
-  const userAnswersCount = questions.reduce((acc, q) => acc + q.answers.filter(a => a.author.id === user.id).length, 0);
-  const bestAnswersCount = questions.reduce((acc, q) => acc + q.answers.filter(a => a.author.id === user.id && a.isBestAnswer).length, 0);
+  const navigate = useNavigate();
+  const { userId } = useParams<{ userId: string }>(); // Get userId from URL if visiting someone else
+  const [activeTab, setActiveTab] = useState<'overview' | 'questions'>('overview');
   
-  // Mock Points Calculation if not present
-  const reputationPoints = user.points || (userQuestions.length * 10) + (userAnswersCount * 20) + (bestAnswersCount * 50);
+  // State for visited user
+  const [viewedUser, setViewedUser] = useState<User | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(false);
+
+  // Determine effective profile user:
+  // 1. If no userId param OR userId matches current logged in user -> Show Current User
+  // 2. If userId param exists -> Show Fetched User
+  const isViewingSelf = !userId || userId === user.id;
+  const profileUser = isViewingSelf ? user : (viewedUser || user); // Fallback to user to prevent crash while loading
+  
+  const isFollowing = (user.following || []).includes(profileUser.id);
+  const [followingState, setFollowingState] = useState(isFollowing);
+
+  // Fetch user if viewing someone else
+  useEffect(() => {
+    const fetchUser = async () => {
+        if (userId && userId !== user.id) {
+            setLoadingProfile(true);
+            try {
+                const docRef = doc(db, 'users', userId);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    // @ts-ignore
+                    setViewedUser({ id: docSnap.id, ...docSnap.data() });
+                }
+            } catch (error) {
+                console.error("Error fetching user profile:", error);
+            } finally {
+                setLoadingProfile(false);
+            }
+        }
+    };
+    fetchUser();
+  }, [userId, user.id]);
+
+  useEffect(() => {
+    setFollowingState((user.following || []).includes(profileUser.id));
+  }, [user.following, profileUser.id]);
+
+  // Stats Logic
+  const userQuestions = questions.filter(q => q.author.id === profileUser.id);
+  const userAnswersCount = questions.reduce((acc, q) => acc + q.answers.filter(a => a.author.id === profileUser.id).length, 0);
+  const bestAnswersCount = questions.reduce((acc, q) => acc + q.answers.filter(a => a.author.id === profileUser.id && a.isBestAnswer).length, 0);
+  const reputationPoints = profileUser.points || (userQuestions.length * 10) + (userAnswersCount * 20) + (bestAnswersCount * 50);
 
   const handleAuthAction = () => {
+    if (user.isGuest) onOpenAuth();
+    else onLogout();
+  };
+
+  const handleFollowToggle = async () => {
     if (user.isGuest) {
-      onOpenAuth();
+        onOpenAuth();
+        return;
+    }
+    // Optimistic Update
+    const newState = !followingState;
+    setFollowingState(newState);
+
+    if (followingState) {
+        await unfollowUser(user.id, profileUser.id);
     } else {
-      onLogout();
+        await followUser(user.id, profileUser);
+        await sendNotification(profileUser.id, user, 'FOLLOW', 'đã bắt đầu theo dõi bạn.', `/profile/${user.id}`);
     }
   };
 
+  const handleMessage = () => {
+      if (user.isGuest) {
+          onOpenAuth();
+          return;
+      }
+      navigate(`/messages/${profileUser.id}`);
+  };
+
+  if (loadingProfile) {
+      return <div className="min-h-screen flex items-center justify-center bg-[#F7F7F5]"><Loader2 className="animate-spin text-primary" size={32} /></div>;
+  }
+
   return (
-    <div className="pb-24 md:pb-10 animate-fade-in">
-      {/* Cover Image */}
-      <div className="h-32 md:h-48 bg-gradient-to-r from-[#2EC4B6] to-[#3B82F6] relative rounded-b-[2rem] md:rounded-3xl shadow-lg shadow-blue-900/10 overflow-hidden">
-         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
-         <button className="absolute top-4 right-4 p-2 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 transition-colors">
-            <Settings size={20} />
-         </button>
+    <div className="pb-24 md:pb-10 animate-fade-in bg-[#F7F7F5] min-h-screen">
+      {/* Immersive Cover Header */}
+      <div className="relative">
+        <div className="h-40 md:h-56 bg-gradient-to-r from-[#2EC4B6] to-[#3B82F6] relative overflow-hidden">
+           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
+           <div className="absolute top-[-50%] left-[-10%] w-[300px] h-[300px] rounded-full bg-white/10 blur-3xl"></div>
+           <div className="absolute bottom-[-50%] right-[-10%] w-[200px] h-[200px] rounded-full bg-yellow-300/20 blur-3xl"></div>
+           
+           <div className="absolute top-safe-top left-4 md:hidden">
+              {!isViewingSelf && (
+                  <button onClick={() => navigate(-1)} className="p-2 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 transition-colors">
+                      <ArrowLeft size={20} />
+                  </button>
+              )}
+           </div>
+
+           <div className="absolute top-safe-top right-4 flex gap-2">
+             <button className="p-2 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 transition-colors active:scale-95">
+                <Share2 size={20} />
+             </button>
+             {isViewingSelf && (
+                <button className="p-2 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 transition-colors active:scale-95">
+                    <Settings size={20} />
+                </button>
+             )}
+           </div>
+        </div>
+
+        {/* Profile Card Overlay */}
+        <div className="px-4 -mt-16 mb-4 relative z-10">
+          <div className="bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 p-6 flex flex-col items-center md:flex-row md:items-end gap-4 border border-white/50">
+            <div className="relative -mt-16 md:-mt-12 group">
+              <div className="p-1.5 bg-white rounded-full shadow-sm">
+                <img 
+                  src={profileUser.avatar} 
+                  alt={profileUser.name} 
+                  className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-2 border-gray-50 bg-gray-100"
+                />
+              </div>
+              {profileUser.isExpert && (
+                <div className="absolute bottom-1 right-1 bg-blue-500 text-white p-1.5 rounded-full border-4 border-white shadow-sm" title="Chuyên gia">
+                  <ShieldCheck size={16} />
+                </div>
+              )}
+            </div>
+            
+            <div className="text-center md:text-left flex-1 space-y-2">
+               <div>
+                    <h1 className="text-2xl font-bold text-textDark flex items-center justify-center md:justify-start gap-2">
+                        {profileUser.name}
+                        {profileUser.isExpert && <Badge text="Chuyên gia" color="blue" />}
+                        {profileUser.isAdmin && <Badge text="Admin" color="red" />}
+                    </h1>
+                    {profileUser.specialty && (
+                        <div className="flex items-center justify-center md:justify-start gap-1.5 mt-1 text-xs text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-lg inline-flex">
+                            <Briefcase size={12} /> {profileUser.specialty}
+                        </div>
+                    )}
+               </div>
+               
+               <p className="text-textGray text-sm max-w-md mx-auto md:mx-0 leading-relaxed">
+                 {profileUser.bio || "Thành viên tích cực của cộng đồng Asking.vn"}
+               </p>
+
+               {/* FOLLOWERS / FOLLOWING STATS */}
+               <div className="flex items-center justify-center md:justify-start gap-4 text-sm">
+                  <div className="flex items-center gap-1 font-medium text-textDark">
+                      <strong className="text-lg">{profileUser.followers?.length || 0}</strong> <span className="text-gray-400">Người theo dõi</span>
+                  </div>
+                  <div className="flex items-center gap-1 font-medium text-textDark">
+                      <strong className="text-lg">{profileUser.following?.length || 0}</strong> <span className="text-gray-400">Đang theo dõi</span>
+                  </div>
+               </div>
+            </div>
+
+            {/* ACTION BUTTONS */}
+            <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
+                {isViewingSelf ? (
+                    <button 
+                    onClick={handleAuthAction}
+                    className={`flex-1 md:flex-none px-6 py-2.5 font-bold rounded-xl transition-all active:scale-95 text-sm ${
+                        user.isGuest 
+                        ? 'bg-primary text-white shadow-lg shadow-primary/30 hover:bg-[#25A99C]' 
+                        : 'bg-gray-100 hover:bg-gray-200 text-textDark'
+                    }`}
+                    >
+                    {user.isGuest ? 'Đăng nhập ngay' : 'Đăng xuất'}
+                    </button>
+                ) : (
+                    <>
+                        <button 
+                            onClick={handleFollowToggle}
+                            className={`flex-1 md:flex-none px-5 py-2.5 font-bold rounded-xl transition-all active:scale-95 text-sm flex items-center justify-center gap-2 shadow-lg ${
+                                followingState 
+                                ? 'bg-white border border-gray-200 text-textDark' 
+                                : 'bg-blue-600 text-white shadow-blue-200'
+                            }`}
+                        >
+                            {followingState ? <UserCheck size={18} /> : <UserPlus size={18} />}
+                            {followingState ? 'Đang theo dõi' : 'Theo dõi'}
+                        </button>
+                        <button 
+                            onClick={handleMessage}
+                            className="flex-1 md:flex-none px-5 py-2.5 bg-gray-100 text-textDark font-bold rounded-xl hover:bg-gray-200 transition-all active:scale-95 text-sm flex items-center justify-center gap-2"
+                        >
+                            <MessageCircle size={18} />
+                            Nhắn tin
+                        </button>
+                    </>
+                )}
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="px-4 max-w-5xl mx-auto">
-        {/* Profile Header Info */}
-        <div className="relative -mt-12 mb-6 flex flex-col md:flex-row items-center md:items-end gap-4">
-          <div className="relative group">
-            <img 
-              src={user.avatar} 
-              alt={user.name} 
-              className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-white shadow-lg object-cover bg-white"
-            />
-            {user.isExpert && (
-              <div className="absolute bottom-1 right-1 bg-blue-500 text-white p-1.5 rounded-full border-2 border-white shadow-sm" title="Chuyên gia">
-                <ShieldCheck size={16} />
-              </div>
-            )}
-          </div>
-          
-          <div className="text-center md:text-left flex-1">
-             <h1 className="text-2xl font-bold text-textDark flex items-center justify-center md:justify-start gap-2">
-               {user.name}
-               {user.isExpert && <Badge text="Chuyên gia" color="blue" />}
-               {user.isAdmin && <Badge text="Admin" color="red" />}
-             </h1>
-             
-             {/* Expert Pending Status Banner */}
-             {user.expertStatus === 'pending' && (
-               <div className="inline-flex items-center gap-1.5 bg-blue-50 text-blue-600 text-xs font-bold px-3 py-1 rounded-full mt-2 border border-blue-100">
-                  <Clock size={12} />
-                  Hồ sơ chuyên gia đang chờ duyệt
-               </div>
-             )}
-
-             <p className="text-textGray text-sm md:text-base mt-2 max-w-md mx-auto md:mx-0">
-               {user.bio || "Mẹ bỉm sữa yêu con, thích chia sẻ và học hỏi kinh nghiệm nuôi dạy trẻ."}
-             </p>
-             
-             {user.specialty && (
-               <div className="flex items-center justify-center md:justify-start gap-2 mt-2 text-sm text-blue-600 font-medium">
-                  <Briefcase size={14} /> {user.specialty} {user.workplace && `tại ${user.workplace}`}
-               </div>
-             )}
-
-             <div className="flex items-center justify-center md:justify-start gap-4 mt-3 text-xs text-textGray font-medium">
-               <span className="flex items-center gap-1"><MapPin size={14} /> TP. HCM</span>
-               <span className="flex items-center gap-1"><Calendar size={14} /> Tham gia T10/2023</span>
-             </div>
-          </div>
-
-          <button 
-            onClick={handleAuthAction}
-            className={`hidden md:flex items-center gap-2 px-6 py-2.5 font-bold rounded-full transition-colors ${
-               user.isGuest 
-               ? 'bg-primary text-white hover:bg-[#25A99C] shadow-md shadow-primary/30' 
-               : 'bg-gray-100 hover:bg-gray-200 text-textDark'
-            }`}
-          >
-             <LogOut size={18} /> {user.isGuest ? 'Đăng nhập' : 'Đăng xuất'}
-          </button>
+      <div className="px-4 max-w-5xl mx-auto space-y-6">
+        
+        {/* Horizontal Scroll Stats */}
+        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 snap-x">
+          <StatCard icon={<Star className="text-yellow-500" size={20} />} value={reputationPoints} label="Điểm uy tín" bg="bg-yellow-50" />
+          <StatCard icon={<HelpCircle className="text-blue-500" size={20} />} value={userQuestions.length} label="Câu hỏi" bg="bg-blue-50" />
+          <StatCard icon={<MessageCircle className="text-green-500" size={20} />} value={userAnswersCount} label="Trả lời" bg="bg-green-50" />
+          <StatCard icon={<Users className="text-purple-500" size={20} />} value={profileUser.followers?.length || 0} label="Followers" bg="bg-purple-50" />
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8">
-          <StatCard 
-            icon={<Star className="text-yellow-500" size={24} />} 
-            value={reputationPoints} 
-            label="Uy tín" 
-            bg="bg-yellow-50"
-          />
-          <StatCard 
-            icon={<HelpCircle className="text-blue-500" size={24} />} 
-            value={userQuestions.length} 
-            label="Câu hỏi" 
-            bg="bg-blue-50"
-          />
-          <StatCard 
-            icon={<MessageCircle className="text-green-500" size={24} />} 
-            value={userAnswersCount} 
-            label="Trả lời" 
-            bg="bg-green-50"
-          />
-          <StatCard 
-            icon={<Medal className="text-purple-500" size={24} />} 
-            value={bestAnswersCount} 
-            label="Câu hay nhất" 
-            bg="bg-purple-50"
-          />
-        </div>
-
-        {/* Expert Registration Invite for Non-Experts */}
-        {!user.isExpert && user.expertStatus !== 'pending' && !user.isGuest && (
-           <div className="mb-8 animate-pop-in">
-              <Link to="/expert-register" className="block group">
-                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-6 flex items-center justify-between hover:shadow-md transition-all">
-                    <div className="flex items-center gap-4">
-                       <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-blue-500 shadow-sm group-hover:scale-110 transition-transform">
-                          <ShieldCheck size={24} />
-                       </div>
-                       <div>
-                          <h3 className="font-bold text-textDark text-lg">Trở thành Chuyên gia</h3>
-                          <p className="text-sm text-textGray">Xác thực hồ sơ để nhận tích xanh và xây dựng uy tín</p>
-                       </div>
-                    </div>
-                    <div className="bg-white p-2 rounded-full text-blue-500 shadow-sm group-hover:translate-x-1 transition-transform">
-                       <ChevronRight size={20} />
-                    </div>
-                 </div>
-              </Link>
-           </div>
-        )}
-
-        {/* Tabs - Sticky & Scrollable */}
-        <div className="sticky top-0 z-30 bg-[#F7F7F5]/95 backdrop-blur-sm -mx-4 px-4 md:mx-0 md:px-0 mb-6 border-b border-gray-100 md:border-none pt-2">
-           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-3 after:content-[''] after:w-4 after:shrink-0">
+        {/* Sticky Tabs */}
+        <div className="sticky top-[60px] md:top-0 z-20 bg-[#F7F7F5]/95 backdrop-blur-sm -mx-4 px-4 pt-2 pb-2">
+           <div className="bg-white p-1 rounded-2xl shadow-sm border border-gray-100 flex">
              <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} label="Tổng quan" />
-             <TabButton active={activeTab === 'questions'} onClick={() => setActiveTab('questions')} label="Câu hỏi của tôi" />
-             <TabButton active={activeTab === 'answers'} onClick={() => setActiveTab('answers')} label="Đã trả lời" />
+             <TabButton active={activeTab === 'questions'} onClick={() => setActiveTab('questions')} label="Bài viết" />
            </div>
         </div>
 
-        {/* Content Area */}
-        <div className="animate-fade-in min-h-[300px]">
+        {/* Tab Content */}
+        <div className="min-h-[300px]">
            {activeTab === 'overview' && (
-             <div className="space-y-6">
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                  <h3 className="font-bold text-textDark mb-4 flex items-center gap-2">
+             <div className="space-y-6 animate-fade-in">
+                <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-textDark mb-4 flex items-center gap-2 text-lg">
                     <Heart size={20} className="text-red-500" fill="currentColor" /> Chủ đề quan tâm
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {['Dinh dưỡng', 'Giáo dục sớm', '0-1 tuổi'].map(tag => (
-                      <span key={tag} className="px-3 py-1.5 bg-gray-50 text-textGray rounded-lg text-sm font-medium border border-gray-100">
+                    {['Dinh dưỡng', 'Giáo dục sớm', '0-1 tuổi', 'Ăn dặm'].map(tag => (
+                      <span key={tag} className="px-4 py-2 bg-gray-50 text-textDark font-medium rounded-xl text-sm border border-transparent hover:border-gray-200 transition-all">
                         {tag}
                       </span>
                     ))}
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-bold text-textDark mb-4 ml-1">Hoạt động gần đây</h3>
-                  <div className="space-y-4">
-                     {/* Mock Activity Feed */}
-                     <ActivityItem 
-                       action="đã hỏi về" 
-                       target="Bé 2 tuổi biếng ăn phải làm sao?" 
-                       time="2 giờ trước"
-                       type="question"
-                     />
-                     <ActivityItem 
-                       action="đã trả lời trong" 
-                       target="Cách tắm nắng cho trẻ sơ sinh" 
-                       time="5 giờ trước"
-                       type="answer"
-                     />
-                     <ActivityItem 
-                       action="đã thích bài viết" 
-                       target="Review bỉm Merries nội địa Nhật" 
-                       time="1 ngày trước"
-                       type="like"
-                     />
                   </div>
                 </div>
              </div>
            )}
 
            {activeTab === 'questions' && (
-             <div className="space-y-4">
+             <div className="space-y-4 animate-fade-in">
                {userQuestions.length > 0 ? (
                  userQuestions.map(q => (
-                   <div key={q.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+                   <Link to={`/question/${q.id}`} key={q.id} className="block bg-white p-5 rounded-[1.5rem] shadow-sm border border-gray-100 active:scale-[0.99] transition-transform">
                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-xs font-bold text-primary bg-secondary/20 px-2 py-1 rounded-md">{q.category}</span>
-                        <span className="text-xs text-textGray">{new Date(q.createdAt).toLocaleDateString('vi-VN')}</span>
+                        <span className="text-[10px] font-bold text-primary bg-secondary/20 px-2 py-1 rounded-md uppercase tracking-wide">{q.category}</span>
+                        <span className="text-[10px] text-textGray">{new Date(q.createdAt).toLocaleDateString('vi-VN')}</span>
                      </div>
-                     <h3 className="font-bold text-textDark text-lg mb-2">{q.title}</h3>
-                     <div className="flex items-center gap-4 text-sm text-textGray">
+                     <h3 className="font-bold text-textDark text-[16px] mb-3 leading-snug line-clamp-2">{q.title}</h3>
+                     <div className="flex items-center gap-4 text-xs font-bold text-gray-400">
                         <span className="flex items-center gap-1"><Heart size={14} /> {q.likes}</span>
                         <span className="flex items-center gap-1"><MessageCircle size={14} /> {q.answers.length}</span>
                      </div>
-                   </div>
+                   </Link>
                  ))
                ) : (
-                 <EmptyState message="Bạn chưa đặt câu hỏi nào." />
+                 <div className="py-16 text-center bg-white rounded-[2rem] border border-dashed border-gray-200">
+                    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-300">
+                      <HelpCircle size={32} />
+                    </div>
+                    <p className="text-textGray font-medium">Chưa có bài viết nào.</p>
+                 </div>
                )}
              </div>
            )}
-
-           {activeTab === 'answers' && (
-             <div className="text-center py-10 bg-white rounded-2xl border-2 border-dashed border-gray-100">
-                <p className="text-textGray">Chức năng đang cập nhật...</p>
-             </div>
-           )}
-        </div>
-        
-        {/* Mobile Logout Button */}
-        <div className="md:hidden mt-8 mb-4">
-          <button 
-            onClick={handleAuthAction}
-            className={`w-full py-3 font-bold rounded-xl flex items-center justify-center gap-2 transition-colors ${
-               user.isGuest 
-               ? 'bg-primary text-white shadow-lg hover:bg-[#25A99C]' 
-               : 'bg-red-50 text-red-500 hover:bg-red-100'
-            }`}
-          >
-            <LogOut size={20} /> {user.isGuest ? 'Đăng nhập' : 'Đăng xuất'}
-          </button>
         </div>
       </div>
     </div>
   );
 };
 
-// Sub-components for Profile
-const Badge: React.FC<{ text: string; color: 'blue' | 'red' }> = ({ text, color }) => {
-  const styles = color === 'blue' ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600';
-  return <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md align-middle ml-2 ${styles}`}>{text}</span>;
-};
+// Components
+const Badge: React.FC<{ text: string; color: 'blue' | 'red' }> = ({ text, color }) => (
+  <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded-md align-middle ${color === 'blue' ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'}`}>
+    {text}
+  </span>
+);
 
 const StatCard: React.FC<{ icon: React.ReactNode; value: number; label: string; bg: string }> = ({ icon, value, label, bg }) => (
-  <div className={`p-4 rounded-2xl ${bg} border border-transparent hover:border-black/5 transition-all flex flex-col items-center justify-center text-center shadow-sm`}>
-    <div className="mb-2 p-2 bg-white rounded-full shadow-sm">{icon}</div>
-    <span className="text-xl font-bold text-textDark">{value}</span>
+  <div className={`min-w-[100px] md:min-w-0 flex-1 p-4 rounded-2xl bg-white border border-gray-100 flex flex-col items-center justify-center text-center shadow-sm snap-start`}>
+    <div className={`mb-2 p-2 rounded-full ${bg}`}>{icon}</div>
+    <span className="text-lg font-bold text-textDark">{value}</span>
     <span className="text-xs text-textGray font-medium">{label}</span>
   </div>
 );
@@ -266,37 +302,10 @@ const StatCard: React.FC<{ icon: React.ReactNode; value: number; label: string; 
 const TabButton: React.FC<{ active: boolean; onClick: () => void; label: string }> = ({ active, onClick, label }) => (
   <button 
     onClick={onClick}
-    className={`px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all flex-shrink-0 ${
-      active 
-      ? 'bg-textDark text-white shadow-md' 
-      : 'bg-white text-textGray border border-gray-100 hover:bg-gray-50'
+    className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
+      active ? 'bg-white shadow-sm text-textDark ring-1 ring-black/5' : 'text-textGray hover:text-textDark'
     }`}
   >
     {label}
   </button>
-);
-
-const ActivityItem: React.FC<{ action: string; target: string; time: string; type: 'question' | 'answer' | 'like' }> = ({ action, target, time, type }) => {
-  const icon = type === 'question' ? <HelpCircle size={16} className="text-blue-500" /> : type === 'answer' ? <MessageCircle size={16} className="text-green-500" /> : <Heart size={16} className="text-red-500" />;
-  
-  return (
-    <div className="flex items-start gap-3 bg-white p-4 rounded-xl shadow-sm border border-gray-50">
-      <div className="mt-1 bg-gray-50 p-2 rounded-full">{icon}</div>
-      <div>
-        <p className="text-sm text-textDark">
-          <span className="text-textGray">{action}</span> <span className="font-semibold">"{target}"</span>
-        </p>
-        <span className="text-xs text-textGray mt-1 block">{time}</span>
-      </div>
-    </div>
-  );
-};
-
-const EmptyState: React.FC<{ message: string }> = ({ message }) => (
-  <div className="py-12 text-center bg-white rounded-2xl border border-gray-100">
-    <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3 text-gray-300">
-      <HelpCircle size={32} />
-    </div>
-    <p className="text-textGray font-medium">{message}</p>
-  </div>
 );

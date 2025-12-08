@@ -5,13 +5,11 @@
 
 ---
 
-## 🛠 QUAN TRỌNG: Hướng dẫn Khắc phục Lỗi "Missing permissions"
+## 🛠 QUAN TRỌNG: Sửa lỗi "Missing permissions" (Permission denied)
 
-Nếu bạn gặp lỗi khi **Đăng câu hỏi có ảnh** hoặc **Gửi câu trả lời**, nguyên nhân là do Security Rules trên Firebase chưa khớp với code.
+Để các tính năng **Thông báo**, **Tin nhắn**, **Đăng ảnh** hoạt động cho cả Khách và Thành viên, bạn **BẮT BUỘC** phải cập nhật Firestore Rules trên Firebase Console.
 
-Hãy làm theo các bước sau để cập nhật Rules:
-
-### 1. Cập nhật Firestore Rules (Database)
+### 1. Cập nhật Firestore Rules (Quan trọng nhất)
 Truy cập [Firebase Console](https://console.firebase.google.com/) -> **Firestore Database** -> **Rules**.
 Copy và thay thế toàn bộ bằng đoạn mã sau:
 
@@ -19,33 +17,49 @@ Copy và thay thế toàn bộ bằng đoạn mã sau:
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper Functions
+    // 1. Hàm kiểm tra đăng nhập (Bao gồm cả Khách ẩn danh)
     function isSignedIn() { return request.auth != null; }
-    function isAdmin() { return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true; }
+    
+    // 2. Hàm kiểm tra chính chủ
     function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
 
-    // Users Collection
+    // --- Users Collection ---
     match /users/{userId} {
       allow read: if true;
-      allow create: if isOwner(userId);
-      // Cho phép User tự update thông tin nhưng cấm sửa trường admin/expert/points
-      allow update: if isAdmin() || (isOwner(userId) && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['isAdmin', 'isExpert', 'points'])));
+      allow create: if isOwner(userId); // Cho phép Khách tạo user ẩn danh
+      allow update: if isSignedIn(); // Cho phép update thông tin (follow,...)
     }
 
-    // Questions Collection
+    // --- Questions Collection ---
     match /questions/{questionId} {
       allow read: if true;
       allow create: if isSignedIn();
+      // Cho phép update (like, comment) cho tất cả user đã đăng nhập
+      allow update: if isSignedIn();
+      allow delete: if isOwner(resource.data.author.id);
+    }
+
+    // --- Notifications Collection (Mới) ---
+    match /notifications/{notificationId} {
+      // Chỉ chủ sở hữu mới đọc được thông báo của mình
+      allow read: if isOwner(resource.data.userId);
+      // Cho phép bất kỳ ai đã đăng nhập gửi thông báo (khi like/comment)
+      allow create: if isSignedIn();
+      // Cho phép đánh dấu đã đọc
+      allow update: if isOwner(resource.data.userId);
+    }
+
+    // --- Chats Collection (Mới) ---
+    match /chats/{chatId} {
+      // Chỉ người trong cuộc mới đọc được chat
+      allow read: if isSignedIn() && request.auth.uid in resource.data.participants;
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() && request.auth.uid in resource.data.participants;
       
-      // Cho phép Update nếu:
-      // 1. Admin
-      // 2. Tác giả (sửa nội dung)
-      // 3. Người dùng khác (Thêm câu trả lời vào mảng 'answers', thả tim 'likes')
-      allow update: if isAdmin() 
-                    || (isSignedIn() && resource.data.author.id == request.auth.uid)
-                    || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answers', 'likes', 'views']));
-                    
-      allow delete: if isAdmin() || (isSignedIn() && resource.data.author.id == request.auth.uid);
+      match /messages/{messageId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn();
+      }
     }
   }
 }
@@ -68,7 +82,7 @@ service firebase.storage {
                    && request.resource.size < 5 * 1024 * 1024;
     }
     
-    // Hồ sơ chuyên gia (Bảo mật hơn)
+    // Hồ sơ chuyên gia
     match /expert_docs/{userId}/{allPaths=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
@@ -96,11 +110,3 @@ service firebase.storage {
     ```bash
     npm run dev
     ```
-
-## ☁️ Deploy lên Vercel
-1.  Push code lên GitHub.
-2.  Import vào Vercel.
-3.  Cấu hình **Environment Variables** (VITE_API_KEY, VITE_FIREBASE_...).
-4.  Deploy!
-
-Nếu gặp lỗi trắng trang, hãy kiểm tra file `index.html` đã xóa thẻ `importmap` chưa.

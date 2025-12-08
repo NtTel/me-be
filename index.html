@@ -9,14 +9,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#ffffff" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Asking.vn" />
+    <meta name="format-detection" content="telephone=no" />
     <link rel="manifest" href="./manifest.json" />
     <link rel="apple-touch-icon" href="https://picsum.photos/192/192" />
     
     <title>Asking.vn - Cộng đồng Mẹ & Bé</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
       tailwind.config = {
         theme: {
@@ -29,8 +30,8 @@
               secondary: '#CBF3F0', // Light Teal
               cream: '#F7F7F5', // Warm Cream
               accent: '#FFBF69', // Soft Orange/Yellow
-              textDark: '#2F3542',
-              textGray: '#747D8C',
+              textDark: '#1F2937', // Darker gray for better contrast
+              textGray: '#6B7280',
             },
             spacing: {
               'safe-top': 'env(safe-area-inset-top)',
@@ -39,18 +40,23 @@
               'safe-right': 'env(safe-area-inset-right)',
             },
             animation: {
-              'fade-in': 'fadeIn 0.5s ease-out',
+              'fade-in': 'fadeIn 0.4s ease-out',
               'pop-in': 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+              'slide-up': 'slideUp 0.3s ease-out',
               'bounce-small': 'bounceSmall 1s infinite',
             },
             keyframes: {
               fadeIn: {
-                '0%': { opacity: '0', transform: 'translateY(10px)' },
-                '100%': { opacity: '1', transform: 'translateY(0)' },
+                '0%': { opacity: '0' },
+                '100%': { opacity: '1' },
               },
               popIn: {
                 '0%': { opacity: '0', transform: 'scale(0.95)' },
                 '100%': { opacity: '1', transform: 'scale(1)' },
+              },
+              slideUp: {
+                '0%': { transform: 'translateY(100%)' },
+                '100%': { transform: 'translateY(0)' },
               },
               bounceSmall: {
                 '0%, 100%': { transform: 'translateY(-5%)' },
@@ -63,30 +69,39 @@
     </script>
     <style>
       /* Native App Feel Global Styles */
+      :root {
+        --sat: env(safe-area-inset-top);
+        --sab: env(safe-area-inset-bottom);
+      }
+      
       html {
-        -webkit-tap-highlight-color: transparent; /* Remove gray highlight on tap */
+        -webkit-tap-highlight-color: transparent;
         scroll-behavior: smooth;
         height: 100%;
+        background-color: #F7F7F5;
       }
+      
       body {
         background-color: #F7F7F5;
-        color: #2F3542;
-        overscroll-behavior-y: none; /* Prevent pull-to-refresh on entire page */
+        color: #1F2937;
+        overscroll-behavior-y: none;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         height: 100%;
         width: 100%;
-        position: fixed; /* Fix body to allow internal scrolling */
+        position: fixed;
         overflow: hidden;
       }
       
       #root {
         height: 100%;
-        overflow-y: auto; /* Internal scrolling for app-like feel */
+        overflow-y: auto;
         -webkit-overflow-scrolling: touch;
+        /* Padding bottom to ensure content isn't hidden behind bottom nav */
+        padding-bottom: env(safe-area-inset-bottom);
       }
 
-      /* Utilities */
+      /* Hide scrollbar but keep functionality */
       .no-scrollbar::-webkit-scrollbar {
         display: none;
       }
@@ -102,12 +117,16 @@
       }
       
       /* Safe area padding utilities fallback */
-      .pb-safe {
+      .pb-safe-bottom {
         padding-bottom: env(safe-area-inset-bottom, 20px);
       }
-      .pt-safe {
+      .pt-safe-top {
         padding-top: env(safe-area-inset-top, 20px);
       }
+
+      /* Animations helper */
+      .animate-delay-100 { animation-delay: 100ms; }
+      .animate-delay-200 { animation-delay: 200ms; }
     </style>
 <script type="importmap">
 {

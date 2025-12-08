@@ -1,22 +1,45 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 // @ts-ignore
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, ArrowLeft, RefreshCw, Lightbulb, Plus, X, Image as ImageIcon, UploadCloud, Loader2 } from 'lucide-react';
+import { 
+  Sparkles, X, Image as ImageIcon, Loader2, ChevronDown, Check, 
+  Tag, Baby, Heart, Utensils, Brain, BookOpen, Users, Stethoscope, Smile, Plus
+} from 'lucide-react';
 import { Question, User } from '../types';
 import { suggestTitles } from '../services/gemini';
 import { AuthModal } from '../components/AuthModal';
 import { uploadMultipleFiles } from '../services/storage';
+import { loginAnonymously } from '../services/auth';
 
 interface AskProps {
   onAddQuestion: (q: Question) => Promise<void>;
   currentUser: User;
   categories: string[];
   onAddCategory: (category: string) => void;
-  // Auth Functions
   onLogin: (email: string, pass: string) => Promise<User>;
   onRegister: (email: string, pass: string, name: string) => Promise<User>;
   onGoogleLogin: () => Promise<User>;
 }
+
+// Map categories to icons for visual appeal
+const getCategoryIcon = (cat: string) => {
+  if (cat.includes("Mang thai")) return <Baby size={24} />;
+  if (cat.includes("Dinh dưỡng")) return <Utensils size={24} />;
+  if (cat.includes("Sức khỏe")) return <Stethoscope size={24} />;
+  if (cat.includes("0-1") || cat.includes("1-3")) return <Smile size={24} />;
+  if (cat.includes("Tâm lý")) return <Brain size={24} />;
+  if (cat.includes("Giáo dục")) return <BookOpen size={24} />;
+  if (cat.includes("Gia đình")) return <Users size={24} />;
+  return <Tag size={24} />;
+};
+
+const getCategoryColor = (cat: string) => {
+  if (cat.includes("Mang thai")) return "bg-pink-100 text-pink-600";
+  if (cat.includes("Dinh dưỡng")) return "bg-green-100 text-green-600";
+  if (cat.includes("Sức khỏe")) return "bg-blue-100 text-blue-600";
+  return "bg-orange-100 text-orange-600";
+};
 
 export const Ask: React.FC<AskProps> = ({ 
   onAddQuestion, 
@@ -33,38 +56,30 @@ export const Ask: React.FC<AskProps> = ({
   const [category, setCategory] = useState(categories[0]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isSuggesting, setIsSuggesting] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  
+  // Custom Category State
+  const [customCategory, setCustomCategory] = useState('');
   
   // Image State
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   
-  // Custom Category State
-  const [isAddingCategory, setIsAddingCategory] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const newCategoryInputRef = useRef<HTMLInputElement>(null);
-
-  // Auth Modal State
+  // UI States
+  const [showCategorySheet, setShowCategorySheet] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadingText, setLoadingText] = useState('');
 
-  // Function to fetch suggestions
-  const fetchSuggestions = async (currentTitle: string, currentContent: string) => {
-    if (currentTitle.length < 5) return;
-    setIsSuggesting(true);
-    const results = await suggestTitles(currentTitle, currentContent);
-    setSuggestions(results);
-    setIsSuggesting(false);
-  };
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // Auto-resize textarea
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (title.length > 5) {
-        fetchSuggestions(title, content);
-      }
-    }, 800);
-    return () => clearTimeout(timer);
-  }, [title]); 
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  }, [content]);
   
   useEffect(() => {
     return () => {
@@ -72,35 +87,28 @@ export const Ask: React.FC<AskProps> = ({
     };
   }, [previewUrls]);
 
-  useEffect(() => {
-    if (isAddingCategory && newCategoryInputRef.current) {
-      newCategoryInputRef.current.focus();
+  const handleAiSuggest = async () => {
+    if (title.length < 5) {
+      alert("Mẹ ơi, hãy viết một chút tiêu đề để AI hiểu ý mẹ nhé!");
+      return;
     }
-  }, [isAddingCategory]);
-
-  const handleAddNewCategory = () => {
-    if (newCategoryName.trim()) {
-      onAddCategory(newCategoryName.trim());
-      setCategory(newCategoryName.trim());
-      setNewCategoryName('');
-      setIsAddingCategory(false);
-    }
+    setIsSuggesting(true);
+    setShowSuggestions(true);
+    const results = await suggestTitles(title, content);
+    setSuggestions(results);
+    setIsSuggesting(false);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const filesArray = Array.from(e.target.files);
       const totalImages = selectedImages.length + filesArray.length;
-      
       if (totalImages > 3) {
         alert("Mẹ chỉ được đăng tối đa 3 ảnh thôi nhé!");
         return;
       }
-
       const newImages = [...selectedImages, ...filesArray];
       setSelectedImages(newImages);
-
-      // Generate previews
       const newPreviews = filesArray.map(file => URL.createObjectURL(file as Blob));
       setPreviewUrls([...previewUrls, ...newPreviews]);
     }
@@ -110,27 +118,34 @@ export const Ask: React.FC<AskProps> = ({
     const newImages = [...selectedImages];
     newImages.splice(index, 1);
     setSelectedImages(newImages);
-
     const newPreviews = [...previewUrls];
     URL.revokeObjectURL(newPreviews[index]); 
     newPreviews.splice(index, 1);
     setPreviewUrls(newPreviews);
   };
 
+  const handleAddCustomCategory = () => {
+    if (customCategory.trim()) {
+      onAddCategory(customCategory.trim());
+      setCategory(customCategory.trim());
+      setCustomCategory('');
+      setShowCategorySheet(false);
+    }
+  };
+
   const finalizeSubmission = async (user: User) => {
     if (!title || !content) return;
     setIsSubmitting(true);
-    setLoadingText('Đang xử lý...');
+    setLoadingText('Đang đăng bài...');
 
     try {
-      // 1. Upload Images First (if any)
       let imageUrls: string[] = [];
       if (selectedImages.length > 0) {
         setLoadingText('Đang tải ảnh lên...');
+        // Ensure user is authenticated before uploading (anonymous or not)
         imageUrls = await uploadMultipleFiles(selectedImages, 'question_images');
       }
 
-      // 2. Create Question Object
       const newQuestion: Question = {
         id: Date.now().toString(),
         title,
@@ -141,56 +156,60 @@ export const Ask: React.FC<AskProps> = ({
         likes: 0,
         views: 0,
         createdAt: new Date().toISOString(),
-        images: imageUrls // Use real Cloud URLs, not blob URLs
+        images: imageUrls
       };
 
-      // 3. Save to Firestore
-      setLoadingText('Đang lưu câu hỏi...');
       await onAddQuestion(newQuestion);
-      
       setIsSubmitting(false);
       navigate('/');
-    } catch (error) {
-      console.error("Failed to submit question", error);
+    } catch (error: any) {
+      console.error("Failed to submit", error);
       setIsSubmitting(false);
-      alert("Có lỗi xảy ra khi gửi câu hỏi. Mẹ thử lại nhé!");
+      if (error.code === 'permission-denied' || error.message?.includes('permission')) {
+         alert("Lỗi quyền truy cập. Vui lòng thử lại hoặc đăng nhập.");
+         setShowAuthModal(true);
+      } else {
+         alert("Có lỗi xảy ra. Mẹ thử lại nhé!");
+      }
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (!title || !content) return;
 
+    // Check if user is Guest (fake guest in app state)
+    // We must convert them to Anonymous Firebase User to pass security rules
     if (currentUser.isGuest) {
-      setShowAuthModal(true);
+        try {
+            setIsSubmitting(true);
+            setLoadingText('Đang xác thực...');
+            const anonymousUser = await loginAnonymously();
+            // Proceed with the new anonymous user
+            await finalizeSubmission(anonymousUser);
+        } catch (error: any) {
+            console.error("Guest login failed:", error);
+            setIsSubmitting(false);
+            // Fallback to Auth Modal for any error (including ANONYMOUS_DISABLED)
+            // This ensures user can login manually if anonymous is disabled
+            setShowAuthModal(true);
+        }
     } else {
-      finalizeSubmission(currentUser);
+        finalizeSubmission(currentUser);
     }
   };
 
   // Auth Wrappers
-  const handleEmailLogin = async (email: string, pass: string) => {
-    const user = await onLogin(email, pass);
-    finalizeSubmission(user);
-  };
-
-  const handleRegister = async (email: string, pass: string, name: string) => {
-    const user = await onRegister(email, pass, name);
-    finalizeSubmission(user);
-  };
-
-  const handleGoogleAuth = async () => {
-    const user = await onGoogleLogin();
-    finalizeSubmission(user);
-  };
-
-  const handleGuestContinue = () => {
-    setShowAuthModal(false);
-    finalizeSubmission(currentUser); 
+  const handleEmailLogin = async (e: string, p: string) => { const u = await onLogin(e, p); finalizeSubmission(u); };
+  const handleRegister = async (e: string, p: string, n: string) => { const u = await onRegister(e, p, n); finalizeSubmission(u); };
+  const handleGoogleAuth = async () => { const u = await onGoogleLogin(); finalizeSubmission(u); };
+  const handleGuestContinue = async () => { 
+      setShowAuthModal(false); 
+      // User stays as guest, if they click submit again, loop repeats.
+      // This enforces login if anonymous is broken/disabled.
   };
 
   return (
-    <div className="px-4 pb-10 max-w-3xl mx-auto">
+    <div className="fixed inset-0 bg-white z-50 flex flex-col overflow-hidden animate-slide-up">
       <AuthModal 
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
@@ -200,198 +219,205 @@ export const Ask: React.FC<AskProps> = ({
         onGuestContinue={handleGuestContinue}
       />
 
-      <button onClick={() => navigate(-1)} className="mb-4 flex items-center text-textGray hover:text-primary transition-colors">
-        <ArrowLeft size={20} className="mr-1" /> Quay lại
-      </button>
+      {/* --- 1. HEADER --- */}
+      <header className="px-4 py-3 border-b border-gray-100 flex justify-between items-center bg-white/80 backdrop-blur-md pt-safe-top z-10">
+        <button onClick={() => navigate(-1)} className="w-10 h-10 -ml-2 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors text-gray-500">
+          <X size={24} />
+        </button>
+        <span className="font-bold text-lg text-textDark">Tạo câu hỏi</span>
+        <div className="w-10"></div> {/* Spacer for center alignment */}
+      </header>
 
-      <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8 animate-fade-in">
-        <h1 className="text-2xl font-bold text-primary mb-6 flex items-center gap-2">
-          <Sparkles className="text-accent" />
-          Đặt câu hỏi mới
-        </h1>
+      {/* --- 2. MAIN CONTENT AREA (Scrollable) --- */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-5 pb-40">
+        
+        {/* User Info */}
+        <div className="flex items-center gap-3 mb-6 animate-fade-in">
+           <img src={currentUser.avatar} className="w-10 h-10 rounded-full border border-gray-100 object-cover" />
+           <div className="flex flex-col">
+              <span className="font-bold text-sm text-textDark">{currentUser.name} {currentUser.isGuest && "(Khách)"}</span>
+              <span className="text-xs text-textGray">Đang soạn thảo...</span>
+           </div>
+        </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-2">
-            <label className="block text-sm font-bold text-textDark">Tiêu đề câu hỏi</label>
-            <div className="relative">
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Ví dụ: Bé 6 tháng tuổi bị sốt mọc răng..."
-                className="w-full p-4 pr-12 rounded-xl border-2 border-gray-100 focus:border-secondary focus:ring-4 focus:ring-secondary/20 focus:outline-none transition-all"
-                required
-              />
-              {isSuggesting && (
-                <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                  <RefreshCw className="animate-spin text-primary" size={20} />
-                </div>
-              )}
-            </div>
-            
-            {(suggestions.length > 0 || isSuggesting) && (
-              <div className="mt-3 bg-gradient-to-br from-cream to-white p-4 rounded-xl border border-secondary/30 shadow-sm animate-pop-in">
-                <div className="flex justify-between items-center mb-2">
-                  <p className="text-xs text-primary font-bold flex items-center gap-1">
-                     <Lightbulb size={14} className="text-accent" />
-                     Gợi ý từ Asking AI:
-                  </p>
-                  {!isSuggesting && (
-                    <button 
-                      type="button" 
-                      onClick={() => fetchSuggestions(title, content)}
-                      className="text-[10px] text-textGray hover:text-primary flex items-center gap-1"
-                    >
-                      <RefreshCw size={10} /> Làm mới
-                    </button>
-                  )}
-                </div>
-                
-                {isSuggesting ? (
-                  <div className="space-y-2 opacity-50">
-                    <div className="h-8 bg-gray-200 rounded-lg w-3/4 animate-pulse"></div>
-                    <div className="h-8 bg-gray-200 rounded-lg w-1/2 animate-pulse"></div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {suggestions.map((s, idx) => (
-                      <button 
-                        key={idx}
-                        type="button"
-                        onClick={() => setTitle(s)}
-                        className="text-sm bg-white text-textDark px-4 py-2 rounded-lg border border-gray-100 hover:border-primary hover:text-primary hover:shadow-md transition-all text-left flex items-center group"
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-gray-300 group-hover:bg-primary mr-2 transition-colors"></span>
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                )}
+        {/* INPUTS */}
+        <div className="space-y-4">
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Tiêu đề: Mẹ đang băn khoăn điều gì?..."
+            className="w-full text-xl font-bold text-textDark placeholder-gray-300 border-none p-0 focus:ring-0 bg-transparent leading-tight"
+            autoFocus
+          />
+          
+          <textarea
+            ref={textareaRef}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Viết chi tiết nội dung để các chuyên gia và mẹ khác dễ dàng tư vấn hơn nhé..."
+            className="w-full text-base text-textDark/90 placeholder-gray-400 border-none p-0 focus:ring-0 bg-transparent resize-none leading-relaxed min-h-[150px]"
+          />
+        </div>
+
+        {/* Image Preview Grid */}
+        {previewUrls.length > 0 && (
+          <div className="grid grid-cols-3 gap-3 mt-6 animate-fade-in">
+            {previewUrls.map((url, index) => (
+              <div key={index} className="relative aspect-square rounded-2xl overflow-hidden shadow-sm border border-gray-100 group">
+                <img src={url} className="w-full h-full object-cover" />
+                <button
+                  onClick={() => removeImage(index)}
+                  className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1 backdrop-blur-sm active:scale-90 transition-transform"
+                >
+                  <X size={14} />
+                </button>
               </div>
+            ))}
+            {previewUrls.length < 3 && (
+                <label className="aspect-square rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center text-gray-400 bg-gray-50 active:bg-gray-100 transition-colors cursor-pointer">
+                    <ImageIcon size={24} />
+                    <span className="text-xs font-bold mt-1">Thêm ảnh</span>
+                    <input type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" />
+                </label>
             )}
           </div>
+        )}
 
-          <div>
-            <label className="block text-sm font-bold text-textDark mb-2">Chủ đề</label>
-            <div className="flex flex-wrap gap-2">
+        {/* AI Suggestions Panel */}
+        {showSuggestions && (
+          <div className="mt-6 bg-orange-50 rounded-2xl p-4 border border-orange-100 animate-pop-in">
+             <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                   <div className="p-1.5 bg-orange-100 rounded-lg text-orange-500"><Sparkles size={16} fill="currentColor" /></div>
+                   <span className="text-sm font-bold text-orange-700">Gợi ý tiêu đề hay</span>
+                </div>
+                <button onClick={() => setShowSuggestions(false)} className="text-gray-400 hover:text-gray-600"><X size={16}/></button>
+             </div>
+             
+             {isSuggesting ? (
+                <div className="flex items-center gap-2 text-sm text-orange-600 py-2">
+                   <Loader2 size={16} className="animate-spin" /> Đang suy nghĩ...
+                </div>
+             ) : (
+                <div className="space-y-2">
+                   {suggestions.map((s, idx) => (
+                      <button 
+                        key={idx}
+                        onClick={() => { setTitle(s); setShowSuggestions(false); }}
+                        className="w-full text-left p-3 bg-white rounded-xl text-sm font-medium text-textDark border border-orange-100 shadow-sm active:scale-[0.99] transition-transform"
+                      >
+                        {s}
+                      </button>
+                   ))}
+                </div>
+             )}
+          </div>
+        )}
+      </div>
+
+      {/* --- 3. BOTTOM CONTROL CENTER (Sticky) --- */}
+      <div className="border-t border-gray-100 bg-white px-5 py-4 pb-safe-bottom shadow-[0_-10px_40px_rgba(0,0,0,0.06)] z-20 flex flex-col gap-4">
+         
+         {/* Tools Row */}
+         <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+               {/* Category Selector */}
+               <button 
+                  onClick={() => setShowCategorySheet(true)}
+                  className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl text-textDark text-sm font-bold border border-gray-100 active:scale-95 transition-transform"
+               >
+                  {getCategoryIcon(category)}
+                  <span className="max-w-[100px] truncate">{category}</span>
+                  <ChevronDown size={14} className="text-gray-400" />
+               </button>
+
+               {/* Image Button */}
+               <label className="p-2 rounded-xl bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-primary transition-colors active:scale-90 cursor-pointer border border-gray-100">
+                  <ImageIcon size={20} />
+                  <input type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" />
+               </label>
+            </div>
+
+            {/* AI Magic Button */}
+            <button 
+               onClick={handleAiSuggest}
+               className="p-2 rounded-xl bg-gradient-to-r from-orange-100 to-pink-100 text-orange-600 active:scale-95 transition-transform border border-orange-200"
+            >
+               <Sparkles size={20} />
+            </button>
+         </div>
+
+         {/* BIG POST BUTTON */}
+         <button 
+            onClick={handleSubmit} 
+            disabled={!title || !content || isSubmitting}
+            className="w-full bg-gradient-to-r from-primary to-[#26A69A] text-white py-3.5 rounded-2xl font-bold text-[16px] shadow-lg shadow-primary/30 disabled:opacity-50 disabled:shadow-none transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+         >
+            {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : "Đăng câu hỏi ngay"}
+         </button>
+      </div>
+
+      {/* --- 4. CATEGORY BOTTOM SHEET --- */}
+      {showCategorySheet && (
+        <div className="fixed inset-0 z-[60] flex flex-col justify-end">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setShowCategorySheet(false)}></div>
+          <div className="bg-white rounded-t-[2rem] p-6 pb-safe-bottom relative z-10 animate-slide-up shadow-2xl max-h-[80vh] overflow-y-auto">
+            <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div>
+            <h3 className="font-bold text-lg text-textDark mb-4 text-center">Chọn chủ đề</h3>
+            
+            {/* Custom Category Input */}
+            <div className="flex gap-2 mb-6">
+                <input 
+                  type="text" 
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  placeholder="Nhập chủ đề mới (nếu không có sẵn)..."
+                  className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary/20 outline-none text-sm"
+                />
+                <button 
+                  onClick={handleAddCustomCategory}
+                  disabled={!customCategory.trim()}
+                  className="bg-textDark text-white px-4 rounded-xl font-bold disabled:opacity-50 active:scale-95 transition-transform"
+                >
+                  <Plus size={20} />
+                </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
               {categories.map(cat => (
                 <button
                   key={cat}
-                  type="button"
-                  onClick={() => setCategory(cat)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${category === cat ? 'bg-primary text-white shadow-md transform scale-105' : 'bg-gray-50 text-textGray hover:bg-gray-100'}`}
+                  onClick={() => { setCategory(cat); setShowCategorySheet(false); }}
+                  className={`
+                    p-4 rounded-2xl border text-left transition-all active:scale-[0.98] flex items-center gap-3
+                    ${category === cat 
+                      ? 'border-primary bg-primary/5 shadow-inner' 
+                      : 'border-gray-100 bg-white shadow-sm'
+                    }
+                  `}
                 >
-                  {cat}
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${getCategoryColor(cat)}`}>
+                     {getCategoryIcon(cat)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                     <span className={`block font-bold text-sm truncate ${category === cat ? 'text-primary' : 'text-textDark'}`}>{cat}</span>
+                     {category === cat && <span className="text-[10px] text-primary font-medium flex items-center gap-1"><Check size={10} /> Đang chọn</span>}
+                  </div>
                 </button>
               ))}
-              
-              {isAddingCategory ? (
-                <div className="flex items-center gap-1 bg-white border-2 border-primary rounded-lg px-2 overflow-hidden">
-                   <input 
-                      ref={newCategoryInputRef}
-                      type="text" 
-                      value={newCategoryName}
-                      onChange={(e) => setNewCategoryName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleAddNewCategory();
-                        }
-                        if (e.key === 'Escape') setIsAddingCategory(false);
-                      }}
-                      onBlur={() => {
-                        setTimeout(() => {
-                           if(newCategoryName) handleAddNewCategory();
-                           else setIsAddingCategory(false);
-                        }, 200);
-                      }}
-                      className="w-24 text-sm py-2 outline-none text-primary font-medium"
-                      placeholder="Chủ đề..."
-                   />
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsAddingCategory(true)}
-                  className="px-4 py-2 rounded-lg text-sm font-medium bg-white border border-dashed border-gray-300 text-textGray hover:border-primary hover:text-primary transition-colors flex items-center gap-1"
-                >
-                  <Plus size={16} /> Khác
-                </button>
-              )}
             </div>
           </div>
+        </div>
+      )}
 
-          <div>
-            <label className="block text-sm font-bold text-textDark mb-2 flex items-center justify-between">
-               <span>Hình ảnh minh họa</span>
-               <span className="text-xs font-normal text-textGray">Tối đa 3 ảnh</span>
-            </label>
-            
-            <div className="flex items-center gap-3 overflow-x-auto pb-2">
-               {previewUrls.map((url, index) => (
-                 <div key={index} className="relative w-24 h-24 flex-shrink-0 animate-pop-in group">
-                    <img src={url} alt="Preview" className="w-full h-full object-cover rounded-xl border border-gray-200" />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="absolute -top-2 -right-2 bg-white text-red-500 rounded-full p-1 shadow-md hover:bg-red-50 transition-colors border border-gray-100"
-                    >
-                      <X size={14} />
-                    </button>
-                 </div>
-               ))}
-
-               {previewUrls.length < 3 && (
-                 <label className="w-24 h-24 flex-shrink-0 flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-primary hover:bg-blue-50/50 transition-all text-textGray hover:text-primary">
-                    <div className="bg-gray-100 p-2 rounded-full mb-1 group-hover:bg-white">
-                       <ImageIcon size={20} />
-                    </div>
-                    <span className="text-[10px] font-bold">Thêm ảnh</span>
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      multiple
-                      onChange={handleImageChange}
-                      className="hidden"
-                    />
-                 </label>
-               )}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-bold text-textDark mb-2">Chi tiết</label>
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              onBlur={() => {
-                if (title.length > 5) fetchSuggestions(title, content);
-              }}
-              placeholder="Mô tả chi tiết hơn về vấn đề của mẹ để nhận được câu trả lời chính xác nhất..."
-              className="w-full p-4 rounded-xl border-2 border-gray-100 focus:border-secondary focus:ring-4 focus:ring-secondary/20 focus:outline-none h-40 resize-none transition-all"
-              required
-            />
-          </div>
-
-          <button 
-            type="submit" 
-            disabled={isSubmitting}
-            className="w-full bg-primary text-white font-bold text-lg py-4 rounded-full shadow-lg hover:bg-[#25A99C] hover:shadow-xl transition-all active:scale-98 flex items-center justify-center gap-2 disabled:bg-gray-300"
-          >
-            {isSubmitting ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="animate-spin" size={20} />
-                {loadingText}
-              </span>
-            ) : (
-              <>
-                <span>Gửi câu hỏi</span>
-                <ArrowLeft className="rotate-180" size={20} />
-              </>
-            )}
-          </button>
-        </form>
-      </div>
+      {/* Loading Overlay */}
+      {isSubmitting && (
+         <div className="absolute inset-0 z-[70] bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center animate-fade-in">
+             <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
+             <p className="font-bold text-primary animate-pulse">{loadingText}</p>
+         </div>
+      )}
     </div>
   );
 };

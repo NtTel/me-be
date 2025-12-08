@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Mail, ShieldCheck, Bell, User, Lock, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { X, Mail, User, Lock, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -43,12 +43,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error(err);
+      // Detailed Error Mapping
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
         setError('Email hoặc mật khẩu không chính xác.');
       } else if (err.code === 'auth/email-already-in-use') {
-        setError('Email này đã được đăng ký.');
+        setError('Email này đã được đăng ký. Mẹ hãy chuyển sang Đăng nhập nhé.');
       } else if (err.code === 'auth/weak-password') {
-        setError('Mật khẩu cần ít nhất 6 ký tự.');
+        setError('Mật khẩu cần ít nhất 6 ký tự để bảo mật.');
+      } else if (err.code === 'auth/network-request-failed') {
+        setError('Lỗi kết nối mạng. Mẹ kiểm tra lại WiFi/4G nhé.');
       } else {
         setError(err.message || 'Có lỗi xảy ra, vui lòng thử lại.');
       }
@@ -65,7 +68,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error(err);
-      setError('Đăng nhập Google thất bại (Vui lòng kiểm tra Config).');
+      if (err.code === 'auth/popup-closed-by-user') {
+        setError('Đã hủy đăng nhập Google.');
+      } else {
+        setError('Đăng nhập Google thất bại. Vui lòng thử lại.');
+      }
     } finally {
       setLoading(false);
     }
@@ -75,25 +82,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-fade-in">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       ></div>
 
       {/* Modal Content */}
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md relative overflow-hidden animate-pop-in">
+      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md relative overflow-hidden animate-pop-in border border-white/20">
         <button 
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors z-10"
+          className="absolute top-4 right-4 p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-600 transition-colors z-10 active:scale-95"
         >
           <X size={20} />
         </button>
 
-        <div className="p-8">
+        <div className="p-6 md:p-8">
           <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-textDark mb-1">
+            <h2 className="text-2xl font-bold text-textDark mb-1 tracking-tight">
               {mode === 'login' ? 'Chào mẹ trở lại!' : 'Tham gia Asking.vn'}
             </h2>
-            <p className="text-textGray text-sm">
+            <p className="text-textGray text-sm font-medium">
               {mode === 'login' 
                 ? 'Đăng nhập để kết nối với cộng đồng.' 
                 : 'Tạo tài khoản miễn phí chỉ trong 1 phút.'}
@@ -105,7 +112,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               type="button"
               onClick={handleGoogleClick}
               disabled={loading}
-              className="w-full py-3 rounded-xl border border-gray-200 flex items-center justify-center gap-3 font-bold text-textDark hover:bg-gray-50 hover:border-gray-300 transition-all group bg-white"
+              className="w-full py-3.5 rounded-2xl border border-gray-200 flex items-center justify-center gap-3 font-bold text-textDark hover:bg-gray-50 hover:border-gray-300 transition-all group bg-white active:scale-[0.98]"
             >
               {loading ? <Loader2 className="animate-spin" size={20} /> : (
                 <>
@@ -117,51 +124,52 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             <div className="relative flex py-2 items-center">
                 <div className="flex-grow border-t border-gray-100"></div>
-                <span className="flex-shrink-0 mx-4 text-gray-300 text-xs">Hoặc dùng Email</span>
+                <span className="flex-shrink-0 mx-4 text-gray-300 text-xs font-bold uppercase tracking-wider">Hoặc</span>
                 <div className="flex-grow border-t border-gray-100"></div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
-                <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm flex items-center gap-2">
-                   <AlertCircle size={16} /> {error}
+                <div className="bg-red-50 text-red-500 p-3 rounded-xl text-sm flex items-start gap-2 animate-shake border border-red-100">
+                   <AlertCircle size={16} className="shrink-0 mt-0.5" /> 
+                   <span className="leading-tight font-medium">{error}</span>
                 </div>
               )}
 
               {mode === 'register' && (
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <div className="relative group">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" size={20} />
                   <input 
                     type="text" 
                     placeholder="Tên hiển thị (vd: Mẹ Bắp)"
                     value={name}
                     onChange={e => setName(e.target.value)}
-                    className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-transparent focus:bg-white focus:border-primary rounded-xl outline-none transition-all"
+                    className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-transparent focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-2xl outline-none transition-all font-medium text-textDark"
                     required
                   />
                 </div>
               )}
 
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" size={20} />
                 <input 
                   type="email" 
                   placeholder="Email của mẹ"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-transparent focus:bg-white focus:border-primary rounded-xl outline-none transition-all"
+                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-transparent focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-2xl outline-none transition-all font-medium text-textDark"
                   required
                 />
               </div>
 
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <div className="relative group">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" size={20} />
                 <input 
                   type="password" 
-                  placeholder="Mật khẩu (ít nhất 6 ký tự)"
+                  placeholder="Mật khẩu (6+ ký tự)"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 bg-gray-50 border border-transparent focus:bg-white focus:border-primary rounded-xl outline-none transition-all"
+                  className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-transparent focus:bg-white focus:border-primary focus:ring-4 focus:ring-primary/10 rounded-2xl outline-none transition-all font-medium text-textDark"
                   required
                 />
               </div>
@@ -169,12 +177,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <button 
                 type="submit" 
                 disabled={loading}
-                className="w-full py-3.5 rounded-xl bg-primary text-white flex items-center justify-center gap-2 font-bold shadow-lg shadow-primary/30 hover:bg-[#25A99C] transition-all disabled:opacity-70"
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-primary to-[#26A69A] text-white flex items-center justify-center gap-2 font-bold shadow-lg shadow-primary/30 hover:shadow-primary/40 transition-all disabled:opacity-70 active:scale-[0.98]"
               >
                 {loading ? 'Đang xử lý...' : (
                   <>
                     {mode === 'login' ? 'Đăng nhập' : 'Đăng ký ngay'}
-                    <ArrowRight size={18} />
+                    <ArrowRight size={20} />
                   </>
                 )}
               </button>
@@ -183,16 +191,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
           <div className="text-center text-sm">
              {mode === 'login' ? (
-                <p className="text-textGray">
+                <p className="text-textGray font-medium">
                    Chưa có tài khoản?{' '}
-                   <button onClick={() => setMode('register')} className="text-primary font-bold hover:underline">
+                   <button onClick={() => { setMode('register'); setError(''); }} className="text-primary font-bold hover:underline">
                       Đăng ký miễn phí
                    </button>
                 </p>
              ) : (
-                <p className="text-textGray">
+                <p className="text-textGray font-medium">
                    Đã có tài khoản?{' '}
-                   <button onClick={() => setMode('login')} className="text-primary font-bold hover:underline">
+                   <button onClick={() => { setMode('login'); setError(''); }} className="text-primary font-bold hover:underline">
                       Đăng nhập
                    </button>
                 </p>
@@ -200,8 +208,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
 
           <div className="mt-6 pt-4 border-t border-gray-50 text-center">
-            <button onClick={onGuestContinue} className="text-xs text-gray-400 hover:text-textGray transition-colors">
-              Tiếp tục với tư cách Khách
+            <button onClick={onGuestContinue} className="text-xs text-gray-400 hover:text-textGray transition-colors font-bold uppercase tracking-wide">
+              Tiếp tục xem với tư cách Khách
             </button>
           </div>
         </div>
