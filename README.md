@@ -52,9 +52,14 @@ service cloud.firestore {
     // --- Chats Collection (Mới) ---
     match /chats/{chatId} {
       // Cho phép đọc/ghi nếu user là người tham gia (participants array)
-      allow read: if isSignedIn() && request.auth.uid in resource.data.participants;
+      allow read: if isSignedIn() && (request.auth.uid in resource.data.participants);
+      
+      // Cho phép tạo chat mới
       allow create: if isSignedIn();
-      allow update: if isSignedIn() && request.auth.uid in resource.data.participants;
+      
+      // Cho phép update chat (gửi tin nhắn mới làm thay đổi lastMessage)
+      // Lưu ý: Dùng request.resource.data để kiểm tra dữ liệu MỚI gửi lên
+      allow update: if isSignedIn() && (request.auth.uid in request.resource.data.participants);
       
       match /messages/{messageId} {
         allow read: if isSignedIn();

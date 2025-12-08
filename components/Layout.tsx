@@ -23,32 +23,37 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             // @ts-ignore
             setCurrentUserAvatar(user.photoURL || "https://cdn-icons-png.flaticon.com/512/3177/3177440.png");
             
-            // Subscribe Notifications
+            // Subscribe Notifications (Safe call)
             const unsubNotif = subscribeToNotifications(user.uid, (notifs) => {
-                const unread = notifs.filter(n => !n.isRead).length;
-                setUnreadNotifCount(unread);
+                if (notifs) {
+                    const unread = notifs.filter(n => !n.isRead).length;
+                    setUnreadNotifCount(unread);
+                }
             });
 
-            // Subscribe Chats for Badge
+            // Subscribe Chats for Badge (Safe call)
             const unsubChats = subscribeToChats(user.uid, (chats) => {
                 let count = 0;
-                chats.forEach(c => {
-                   // @ts-ignore
-                   if (c.unreadCount && c.unreadCount[user.uid]) {
+                if (chats) {
+                    chats.forEach(c => {
                        // @ts-ignore
-                       count += c.unreadCount[user.uid];
-                   }
-                });
+                       if (c.unreadCount && c.unreadCount[user.uid]) {
+                           // @ts-ignore
+                           count += c.unreadCount[user.uid];
+                       }
+                    });
+                }
                 setUnreadMsgCount(count);
             });
 
             return () => {
-                unsubNotif();
-                unsubChats();
+                if (unsubNotif) unsubNotif();
+                if (unsubChats) unsubChats();
             }
         } else {
             setUnreadNotifCount(0);
             setUnreadMsgCount(0);
+            setCurrentUserAvatar("https://cdn-icons-png.flaticon.com/512/3177/3177440.png");
         }
     });
     return () => unsubscribeAuth();

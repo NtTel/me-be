@@ -42,19 +42,20 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ currentUser, onOpenAuth 
 
     // Subscribe to Messages
     useEffect(() => {
-        if (!currentUser || !userId) return;
-        // Use currentUser.id even if guest (initially 'guest', but will change after anonymous login)
-        // If guest, we might not have a valid chat ID yet until they login.
-        // But for viewing, we try to subscribe if possible.
-        if (currentUser.isGuest) return; 
-
+        // Wait until target user is loaded and we have a valid current user id (or session)
+        if (!currentUser || !userId || !targetUser) return;
+        
+        // Don't subscribe if currentUser is purely Guest UI state (not connected to firebase auth yet)
+        // Unless they have logged in anonymously, in which case isGuest might still be true in UI but auth is ready
+        // But simply, we rely on the DB service to handle subscription errors gracefully.
+        
         const chatId = getChatId(currentUser.id, userId);
         const unsubscribe = subscribeToMessages(chatId, (msgs) => {
             setMessages(msgs);
             setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
         });
         return () => unsubscribe();
-    }, [currentUser, userId]);
+    }, [currentUser.id, userId, targetUser]);
 
     const ensureAuth = async (): Promise<User> => {
         if (currentUser.isGuest) {
@@ -79,16 +80,15 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ currentUser, onOpenAuth 
         try {
             const user = await ensureAuth();
             await sendMessage(user, targetUser, content);
-            // Refresh logic if needed, but subscription handles it.
         } catch (error) {
-            console.error("Failed to send message", error);
+            // Error is handled in ensureAuth or db service
         }
     };
 
     if (!targetUser) return <div className="p-10 text-center"><div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto"></div></div>;
 
     return (
-        <div className="flex flex-col h-[100dvh] bg-gray-50 fixed inset-0 z-50">
+        <div className="flex flex-col h-[100dvh] bg-gray-50 fixed inset-0 z-50 overflow-hidden">
             {/* Header */}
             <div className="bg-white px-4 py-3 flex items-center justify-between border-b border-gray-100 shadow-sm pt-safe-top shrink-0">
                 <div className="flex items-center gap-3">
@@ -113,8 +113,8 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ currentUser, onOpenAuth 
                 </div>
             </div>
 
-            {/* Messages Area - min-h-0 is crucial for flex overflow */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#E5DDD5]/10 min-h-0">
+            {/* Messages Area - min-h-0 and flex-1 allows standard scrolling behavior */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#E5DDD5]/10 min-h-0 w-full">
                 {(messages.length === 0 && currentUser.isGuest) && (
                      <div className="text-center py-10 opacity-70">
                         <p className="text-sm font-medium text-primary">Bạn đang chat với tư cách Khách.</p>
@@ -150,7 +150,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ currentUser, onOpenAuth 
             </div>
 
             {/* Input Area */}
-            <div className="bg-white p-3 pb-safe-bottom border-t border-gray-100 shrink-0">
+            <div className="bg-white p-3 pb-safe-bottom border-t border-gray-100 shrink-0 w-full">
                 <form onSubmit={handleSend} className="flex items-center gap-2">
                     <button type="button" className="text-primary p-2 hover:bg-gray-50 rounded-full">
                         <ImageIcon size={24} />
