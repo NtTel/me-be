@@ -77,7 +77,21 @@ export enum GameType {
   NUMBERS = 'NUMBERS',
   COLORS = 'COLORS',
   ANIMALS = 'ANIMALS',
-  EMOTIONS = 'EMOTIONS'
+  ALPHABET = 'ALPHABET',
+  SHAPES = 'SHAPES',
+  FRUITS = 'FRUITS',
+  VEHICLES = 'VEHICLES',
+  BODY = 'BODY',
+  FAMILY = 'FAMILY',
+  VEGETABLES = 'VEGETABLES',
+  CLOTHES = 'CLOTHES',
+  SCHOOL = 'SCHOOL',
+  NATURE = 'NATURE',
+  JOBS = 'JOBS',
+  MUSIC = 'MUSIC',
+  SPORTS = 'SPORTS',
+  HOUSE = 'HOUSE',
+  FOOD = 'FOOD'
 }
 
 export interface GameItem {
