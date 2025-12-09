@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Volume2, Star, Trophy, Sparkles, Play, Loader2, BookOpen, Music, Palette, Calculator, Languages, BrainCircuit, Gamepad2, Smartphone, RotateCcw } from 'lucide-react';
-import { Game, GameQuestion, GameCategory, GAME_CATEGORIES } from '../types';
-import { fetchAllGames, fetchGameQuestions } from '../services/game';
+import { Game, GameQuestion, GameCategory, CategoryDef } from '../types';
+import { fetchAllGames, fetchGameQuestions, fetchCategories } from '../services/game';
 import { generateStory } from '../services/gemini';
 
 export const GameZone: React.FC = () => {
   const [games, setGames] = useState<Game[]>([]);
+  const [categories, setCategories] = useState<CategoryDef[]>([]);
   const [activeCategory, setActiveCategory] = useState<GameCategory | null>(null);
   const [activeGame, setActiveGame] = useState<Game | null>(null);
   const [loading, setLoading] = useState(true);
@@ -17,8 +18,12 @@ export const GameZone: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const data = await fetchAllGames(true); // only active
-      setGames(data);
+      const [gamesData, catsData] = await Promise.all([
+          fetchAllGames(true),
+          fetchCategories()
+      ]);
+      setGames(gamesData);
+      setCategories(catsData);
       setLoading(false);
     };
     load();
@@ -79,7 +84,7 @@ export const GameZone: React.FC = () => {
                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20"></div>
                 </button>
 
-                {GAME_CATEGORIES.map(cat => (
+                {categories.map(cat => (
                     <button 
                         key={cat.id}
                         onClick={() => setActiveCategory(cat.id)}
@@ -95,8 +100,8 @@ export const GameZone: React.FC = () => {
         // GAMES LIST IN CATEGORY
         <div className="px-4 pb-32 animate-slide-up w-full max-w-lg mx-auto">
             <div className="flex items-center gap-2 mb-4 px-2">
-                <span className="text-2xl">{GAME_CATEGORIES.find(c => c.id === activeCategory)?.icon}</span>
-                <h2 className="text-xl font-bold text-blue-800">{GAME_CATEGORIES.find(c => c.id === activeCategory)?.label}</h2>
+                <span className="text-2xl">{categories.find(c => c.id === activeCategory)?.icon}</span>
+                <h2 className="text-xl font-bold text-blue-800">{categories.find(c => c.id === activeCategory)?.label}</h2>
             </div>
 
             <div className="grid grid-cols-1 gap-4">

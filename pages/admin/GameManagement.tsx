@@ -1,8 +1,8 @@
 
 import React, { useEffect, useState } from 'react';
-import { Game, GAME_CATEGORIES, GameCategory, GameType, GameOrientation } from '../../types';
-import { fetchAllGames, createGame, deleteGame, updateGame } from '../../services/game';
-import { Plus, Trash2, ToggleRight, ToggleLeft, Loader2, ArrowRight, X, Sparkles, RefreshCw, Palette, Smile, Eye, Grid, Smartphone, Monitor, Edit2, Filter, Check } from 'lucide-react';
+import { Game, GameCategory, GameType, GameOrientation, CategoryDef } from '../../types';
+import { fetchAllGames, createGame, deleteGame, updateGame, fetchCategories, addCategory, deleteCategory } from '../../services/game';
+import { Plus, Trash2, ToggleRight, ToggleLeft, Loader2, ArrowRight, X, Sparkles, RefreshCw, Palette, Smile, Eye, Grid, Smartphone, Monitor, Edit2, Filter, Check, List } from 'lucide-react';
 // @ts-ignore
 import { useNavigate } from 'react-router-dom';
 
@@ -25,8 +25,10 @@ const COLOR_OPTIONS = [
 
 export const GameManagement: React.FC = () => {
   const [games, setGames] = useState<Game[]>([]);
+  const [categories, setCategories] = useState<CategoryDef[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
   const navigate = useNavigate();
 
   // Filter State
@@ -44,14 +46,20 @@ export const GameManagement: React.FC = () => {
   const [maxAge, setMaxAge] = useState(6);
   const [order, setOrder] = useState(1);
 
+  // Category Form State
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatIcon, setNewCatIcon] = useState('🎮');
+  const [newCatColor, setNewCatColor] = useState('bg-blue-400');
+
   useEffect(() => {
-    loadGames();
+    loadData();
   }, []);
 
-  const loadGames = async () => {
+  const loadData = async () => {
     setLoading(true);
-    const data = await fetchAllGames();
-    setGames(data);
+    const [gData, cData] = await Promise.all([fetchAllGames(), fetchCategories()]);
+    setGames(gData);
+    setCategories(cData);
     setLoading(false);
   };
 
@@ -96,8 +104,31 @@ export const GameManagement: React.FC = () => {
     }
 
     setShowModal(false);
-    loadGames();
+    loadData();
     resetForm();
+  };
+
+  const handleAddCategory = async () => {
+      if (!newCatName) return;
+      const id = newCatName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+      
+      const newCat: CategoryDef = {
+          id,
+          label: newCatName,
+          icon: newCatIcon,
+          color: newCatColor,
+          isDefault: false
+      };
+      
+      await addCategory(newCat);
+      setNewCatName('');
+      loadData();
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+      if (!confirm("Xóa danh mục này?")) return;
+      await deleteCategory(id);
+      loadData();
   };
 
   const resetForm = () => {
@@ -113,13 +144,13 @@ export const GameManagement: React.FC = () => {
 
   const handleToggleActive = async (game: Game) => {
     await updateGame(game.id, { isActive: !game.isActive });
-    loadGames();
+    loadData();
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Bạn có chắc muốn xóa game này?")) return;
     await deleteGame(id);
-    loadGames();
+    loadData();
   };
 
   // Filter Logic
@@ -132,13 +163,19 @@ export const GameManagement: React.FC = () => {
            <h1 className="text-2xl font-bold text-gray-900">Quản lý Trò chơi</h1>
            <p className="text-gray-500 text-sm mt-1">Trung tâm Edu-tainment: Quiz, HTML5, Truyện kể...</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2">
             <button 
-                onClick={loadGames} 
+                onClick={loadData} 
                 className="p-2.5 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-colors"
                 title="Làm mới"
             >
                 <RefreshCw size={20} className={loading ? 'animate-spin' : ''} />
+            </button>
+            <button 
+                onClick={() => setShowCategoryModal(true)} 
+                className="bg-purple-50 text-purple-700 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-purple-100 transition-all border border-purple-100"
+            >
+                <List size={20} /> Quản lý Danh mục
             </button>
             <button 
             onClick={() => { resetForm(); setShowModal(true); }}
@@ -157,7 +194,7 @@ export const GameManagement: React.FC = () => {
           >
               Tất cả
           </button>
-          {GAME_CATEGORIES.map(cat => (
+          {categories.map(cat => (
               <button
                 key={cat.id}
                 onClick={() => setFilterCategory(cat.id)}
@@ -194,7 +231,7 @@ export const GameManagement: React.FC = () => {
                    <div>
                       <h3 className="font-bold text-lg text-gray-900 leading-tight mb-1 line-clamp-1">{game.title}</h3>
                       <div className="flex flex-wrap gap-2 text-xs">
-                          <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-bold">{GAME_CATEGORIES.find(c => c.id === game.category)?.label || game.category}</span>
+                          <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-md font-bold">{categories.find(c => c.id === game.category)?.label || game.category}</span>
                           <span className="text-gray-400 font-mono">#{game.order}</span>
                       </div>
                    </div>
@@ -303,7 +340,7 @@ export const GameManagement: React.FC = () => {
                      <div>
                         <label className="block text-sm font-bold text-gray-700 mb-2">Chủ đề</label>
                         <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto scrollbar-thin">
-                            {GAME_CATEGORIES.map(cat => (
+                            {categories.map(cat => (
                                 <button
                                     key={cat.id}
                                     type="button"
@@ -424,7 +461,7 @@ export const GameManagement: React.FC = () => {
                           </div>
                           <div className="flex justify-between">
                               <span className="text-gray-400">Chủ đề:</span>
-                              <span className="font-bold text-gray-700">{GAME_CATEGORIES.find(c => c.id === category)?.label}</span>
+                              <span className="font-bold text-gray-700">{categories.find(c => c.id === category)?.label}</span>
                           </div>
                           <div className="flex justify-between">
                               <span className="text-gray-400">Màn hình:</span>
@@ -435,6 +472,80 @@ export const GameManagement: React.FC = () => {
               </div>
            </div>
         </div>
+      )}
+
+      {/* CATEGORY MANAGER MODAL */}
+      {showCategoryModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-[2rem] w-full max-w-lg animate-pop-in shadow-2xl relative overflow-hidden">
+                  <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-purple-50">
+                      <h2 className="text-xl font-bold text-purple-800 flex items-center gap-2">
+                          <List size={24} /> Quản lý Danh mục
+                      </h2>
+                      <button onClick={() => setShowCategoryModal(false)} className="p-2 hover:bg-purple-100 rounded-full text-purple-600 transition-colors">
+                          <X size={20} />
+                      </button>
+                  </div>
+                  
+                  <div className="p-6 space-y-6">
+                      {/* Add Form */}
+                      <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">
+                          <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase">Thêm danh mục mới</h3>
+                          <div className="space-y-3">
+                              <input 
+                                value={newCatName} 
+                                onChange={e => setNewCatName(e.target.value)} 
+                                placeholder="Tên danh mục (Ví dụ: Khoa học vui)..."
+                                className="w-full p-3 rounded-xl border border-gray-200 focus:border-purple-500 outline-none text-sm"
+                              />
+                              <div className="flex gap-2">
+                                  <div className="flex-1">
+                                      <label className="text-xs font-bold text-gray-400 block mb-1">Icon</label>
+                                      <div className="grid grid-cols-5 gap-1 h-20 overflow-y-auto border rounded-xl p-2 bg-white">
+                                          {EMOJI_OPTIONS.slice(0, 15).map(e => (
+                                              <button key={e} onClick={() => setNewCatIcon(e)} className={`text-xl p-1 rounded hover:bg-gray-100 ${newCatIcon === e ? 'bg-purple-100' : ''}`}>{e}</button>
+                                          ))}
+                                      </div>
+                                  </div>
+                                  <div className="flex-1">
+                                      <label className="text-xs font-bold text-gray-400 block mb-1">Màu</label>
+                                      <div className="grid grid-cols-4 gap-1">
+                                          {COLOR_OPTIONS.slice(0, 8).map(c => (
+                                              <button key={c} onClick={() => setNewCatColor(c)} className={`w-6 h-6 rounded-full ${c} border-2 ${newCatColor === c ? 'border-gray-500' : 'border-transparent'}`}></button>
+                                          ))}
+                                      </div>
+                                  </div>
+                              </div>
+                              <button 
+                                onClick={handleAddCategory}
+                                disabled={!newCatName}
+                                className="w-full py-2 bg-purple-600 text-white font-bold rounded-xl text-sm hover:bg-purple-700 disabled:opacity-50"
+                              >
+                                  Thêm ngay
+                              </button>
+                          </div>
+                      </div>
+
+                      {/* List */}
+                      <div className="max-h-[300px] overflow-y-auto space-y-2">
+                          {categories.map(cat => (
+                              <div key={cat.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 hover:bg-gray-50">
+                                  <div className="flex items-center gap-3">
+                                      <span className={`w-8 h-8 flex items-center justify-center rounded-lg text-lg ${cat.color} text-white`}>{cat.icon}</span>
+                                      <span className="font-bold text-sm text-gray-700">{cat.label}</span>
+                                      {cat.isDefault && <span className="text-[10px] bg-gray-200 px-2 py-0.5 rounded text-gray-500">Mặc định</span>}
+                                  </div>
+                                  {!cat.isDefault && (
+                                      <button onClick={() => handleDeleteCategory(cat.id)} className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg">
+                                          <Trash2 size={16} />
+                                      </button>
+                                  )}
+                              </div>
+                          ))}
+                      </div>
+                  </div>
+              </div>
+          </div>
       )}
     </div>
   );

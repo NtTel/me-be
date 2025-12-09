@@ -2,8 +2,8 @@
 import React, { useEffect, useState } from 'react';
 // @ts-ignore
 import { useParams, useNavigate } from 'react-router-dom';
-import { Game, GameQuestion } from '../../types';
-import { getGameById, fetchGameQuestions, createGameQuestion, deleteGameQuestion, updateGameQuestion, importQuestionsBatch, updateGame } from '../../services/game';
+import { Game, GameQuestion, CategoryDef } from '../../types';
+import { getGameById, fetchGameQuestions, createGameQuestion, deleteGameQuestion, updateGameQuestion, importQuestionsBatch, updateGame, fetchCategories } from '../../services/game';
 import { generateGameContent, generateStory } from '../../services/gemini';
 import { ArrowLeft, Sparkles, Plus, Trash2, Eye, EyeOff, Save, Loader2, Bot, FileJson, Copy, Check, AlertTriangle, X, Code, Link as LinkIcon, BookOpen } from 'lucide-react';
 
@@ -14,6 +14,7 @@ export const GameDetail: React.FC = () => {
   const [game, setGame] = useState<Game | null>(null);
   const [questions, setQuestions] = useState<GameQuestion[]>([]);
   const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState<CategoryDef[]>([]);
 
   // Manual Form State
   const [newQ, setNewQ] = useState('');
@@ -45,6 +46,11 @@ export const GameDetail: React.FC = () => {
   const loadData = async () => {
     if (!gameId) return;
     setLoading(true);
+    
+    // Load Categories for label lookup
+    const cats = await fetchCategories();
+    setCategories(cats);
+
     const g = await getGameById(gameId);
     setGame(g);
     if (g) {
@@ -58,6 +64,12 @@ export const GameDetail: React.FC = () => {
         setQuestions(qs);
     }
     setLoading(false);
+  };
+
+  const getCategoryLabel = (catId?: string) => {
+      if (!catId) return 'Chưa phân loại';
+      const cat = categories.find(c => c.id === catId);
+      return cat ? cat.label : catId;
   };
 
   const handleSaveSettings = async () => {
@@ -209,6 +221,7 @@ export const GameDetail: React.FC = () => {
                 </div>
                 <div className="flex gap-2 mt-2">
                     <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs font-bold uppercase">{game.gameType}</span>
+                    <span className="bg-blue-50 text-blue-600 px-2 py-0.5 rounded text-xs font-bold">{getCategoryLabel(game.category)}</span>
                     {game.gameType === 'quiz' && <span className="text-gray-500 font-medium text-xs self-center">({questions.length} câu hỏi)</span>}
                 </div>
              </div>

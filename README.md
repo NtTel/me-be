@@ -117,6 +117,12 @@ service cloud.firestore {
         allow write: if isAdmin();
       }
     }
+
+    // --- Game Categories ---
+    match /game_categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }
 ```

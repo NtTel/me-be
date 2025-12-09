@@ -1,11 +1,61 @@
 
 import { 
-  collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, getDoc, writeBatch 
+  collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, getDoc, writeBatch, setDoc 
 } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-import { Game, GameQuestion } from '../types';
+import { Game, GameQuestion, CategoryDef, DEFAULT_GAME_CATEGORIES } from '../types';
 
 const GAMES_COLLECTION = 'games';
+const CATEGORIES_COLLECTION = 'game_categories';
+
+// --- CATEGORY MANAGEMENT ---
+
+export const fetchCategories = async (): Promise<CategoryDef[]> => {
+  if (!db) return DEFAULT_GAME_CATEGORIES;
+  try {
+    const colRef = collection(db, CATEGORIES_COLLECTION);
+    const snapshot = await getDocs(colRef);
+    if (snapshot.empty) {
+        // If no custom categories, return default list (optionally seed them here if needed)
+        return DEFAULT_GAME_CATEGORIES;
+    }
+    const dbCategories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as CategoryDef));
+    
+    // Merge or just return DB categories? 
+    // If we assume DB is the source of truth, we should eventually migrate defaults to DB.
+    // For hybrid approach: combine unique IDs.
+    const allCats = [...DEFAULT_GAME_CATEGORIES];
+    dbCategories.forEach(dbCat => {
+        if (!allCats.find(c => c.id === dbCat.id)) {
+            allCats.push(dbCat);
+        }
+    });
+    return allCats;
+  } catch (error) {
+    console.warn("Error fetching categories, using defaults:", error);
+    return DEFAULT_GAME_CATEGORIES;
+  }
+};
+
+export const addCategory = async (cat: CategoryDef) => {
+    if (!db) return;
+    try {
+        await setDoc(doc(db, CATEGORIES_COLLECTION, cat.id), cat);
+    } catch (e) {
+        console.error("Error adding category:", e);
+        throw e;
+    }
+};
+
+export const deleteCategory = async (id: string) => {
+    if (!db) return;
+    try {
+        await deleteDoc(doc(db, CATEGORIES_COLLECTION, id));
+    } catch (e) {
+        console.error("Error deleting category:", e);
+        throw e;
+    }
+};
 
 // --- GAME MANAGEMENT ---
 
