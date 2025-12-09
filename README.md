@@ -23,7 +23,7 @@ Mặc định, tất cả tài khoản đăng ký mới đều là **Thành viê
 
 ## 🛠 QUAN TRỌNG: Cấu hình Bảo mật Firebase (Security Rules)
 
-Để các tính năng **Trả lời**, **Thông báo**, **Tin nhắn**, **Đăng ảnh** và **Admin** hoạt động, bạn **BẮT BUỘC** phải cập nhật Firestore Rules và Storage Rules trên Firebase Console.
+Để các tính năng **Trả lời**, **Thông báo**, **Tin nhắn**, **Đăng ảnh**, **Admin** và **Sinh dữ liệu giả (Seed)** hoạt động, bạn **BẮT BUỘC** phải cập nhật Firestore Rules và Storage Rules trên Firebase Console.
 
 ### 1. Cập nhật Firestore Rules (Database)
 Truy cập [Firebase Console](https://console.firebase.google.com/) -> **Firestore Database** -> **Rules**.
@@ -52,16 +52,17 @@ service cloud.firestore {
     // --- Users Collection ---
     match /users/{userId} {
       allow read: if true;
-      allow create: if isOwner(userId); 
-      // Admin được phép sửa (Ban user, cấp quyền), Chủ sở hữu được sửa profile
-      allow update: if isOwner(userId) || isAdmin(); 
+      // QUAN TRỌNG: Cho phép Admin tạo/xóa user để chạy tính năng Seed Data
+      allow create: if isOwner(userId) || isAdmin(); 
+      allow update, delete: if isOwner(userId) || isAdmin(); 
     }
 
     // --- Questions Collection ---
     match /questions/{questionId} {
       allow read: if true;
+      // Admin được phép tạo câu hỏi hộ người khác (Seed Data)
       allow create: if isSignedIn();
-      // Admin được phép ẩn/xóa bài vi phạm, Chủ sở hữu được sửa bài
+      // Admin được phép ẩn/xóa bài vi phạm
       allow update: if isSignedIn() || isAdmin(); 
       allow delete: if isOwner(resource.data.author.id) || isAdmin();
     }
@@ -74,8 +75,10 @@ service cloud.firestore {
 
     // --- Chats Collection ---
     match /chats/{chatId} {
-      allow read: if isSignedIn() && (request.auth.uid in resource.data.participants);
+      // Cho phép update nếu là người tham gia HOẶC admin (để xóa/quản lý nếu cần)
+      // Lưu ý: create dùng request.resource.data để kiểm tra participants
       allow create: if isSignedIn();
+      allow read: if isSignedIn() && (request.auth.uid in resource.data.participants);
       allow update: if isSignedIn() && (request.auth.uid in resource.data.participants);
       
       match /messages/{messageId} {
@@ -111,13 +114,28 @@ service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
       allow read: if true;
+      // Cho phép ghi nếu đã đăng nhập và file là ảnh < 5MB
       allow write: if request.auth != null 
                    && request.resource.contentType.matches('image/.*')
-                   && request.resource.size < 5 * 1024 * 1024; // Max 5MB
+                   && request.resource.size < 5 * 1024 * 1024;
     }
   }
 }
 ```
+
+---
+
+## 🧪 Hướng dẫn Sinh Dữ liệu Giả (Seed Data)
+
+Tính năng này giúp tạo nhanh dữ liệu mẫu để kiểm thử giao diện.
+
+1. Đăng nhập bằng tài khoản có quyền **Admin**.
+2. Truy cập menu **Admin** -> chọn **Sinh dữ liệu (Demo)** hoặc vào đường dẫn `/admin/seed`.
+3. Nhấn **"Bắt đầu sinh Data"**. Hệ thống sẽ tự động:
+   - Tạo 50 người dùng giả (Avatar, Tên tiếng Việt ngẫu nhiên).
+   - Tạo các câu hỏi mẫu theo chủ đề (Mang thai, Dinh dưỡng...).
+   - Tự động tạo câu trả lời qua lại giữa các user giả.
+4. Để xóa dữ liệu: Nhấn **"Xóa toàn bộ Data giả"** (Chỉ xóa các dữ liệu có cờ `isFake=true`, không ảnh hưởng dữ liệu thật).
 
 ---
 

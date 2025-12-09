@@ -33,7 +33,11 @@ export const processExpertApplication = async (appId: string, userId: string, st
   
   // 1. Update Application Status
   const appRef = doc(db, 'expert_applications', appId);
-  batch.update(appRef, { status, rejectionReason: reason || null });
+  batch.update(appRef, { 
+    status, 
+    rejectionReason: reason || null,
+    reviewedAt: new Date().toISOString() // Add timestamp for history
+  });
 
   // 2. Update User Profile if Approved
   if (status === 'approved') {
