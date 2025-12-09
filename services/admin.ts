@@ -1,3 +1,4 @@
+
 import { 
   collection, getDocs, doc, updateDoc, query, orderBy, where, deleteDoc, getDoc, writeBatch 
 } from 'firebase/firestore';
@@ -7,9 +8,11 @@ import { User, Question, ExpertApplication, Report } from '../types';
 // --- USERS ---
 export const fetchAllUsers = async (): Promise<User[]> => {
   if (!db) return [];
-  const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+  // Remove orderBy to prevent index errors. Sort client-side.
+  const q = query(collection(db, 'users'));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as User));
+  const users = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as User));
+  return users.sort((a, b) => new Date(b.joinedAt || '').getTime() - new Date(a.joinedAt || '').getTime());
 };
 
 export const updateUserRole = async (userId: string, updates: { isExpert?: boolean; isAdmin?: boolean; isBanned?: boolean }) => {
@@ -21,9 +24,12 @@ export const updateUserRole = async (userId: string, updates: { isExpert?: boole
 // --- EXPERT APPLICATIONS ---
 export const fetchExpertApplications = async (): Promise<ExpertApplication[]> => {
   if (!db) return [];
-  const q = query(collection(db, 'expert_applications'), orderBy('createdAt', 'desc'));
+  // FIX: Removed orderBy('createdAt') to avoid "Missing Index" error causing empty list
+  const q = query(collection(db, 'expert_applications'));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ExpertApplication));
+  const apps = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ExpertApplication));
+  // Client-side sort
+  return apps.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 };
 
 export const processExpertApplication = async (appId: string, userId: string, status: 'approved' | 'rejected', reason?: string, specialty?: string) => {
@@ -59,10 +65,11 @@ export const processExpertApplication = async (appId: string, userId: string, st
 // --- QUESTIONS ---
 export const fetchAllQuestionsAdmin = async (): Promise<Question[]> => {
   if (!db) return [];
-  // Fetch all without limit for admin management (in real app, use pagination)
-  const q = query(collection(db, 'questions'), orderBy('createdAt', 'desc'));
+  // Remove orderBy to prevent index errors
+  const q = query(collection(db, 'questions'));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Question));
+  const questions = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Question));
+  return questions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 };
 
 export const bulkUpdateQuestions = async (ids: string[], updates: { isHidden?: boolean }) => {
@@ -85,8 +92,7 @@ export const bulkDeleteQuestions = async (ids: string[]) => {
   await batch.commit();
 };
 
-// --- REPORTS (MOCK - Since we don't have full report logic yet, this is a placeholder) ---
+// --- REPORTS (MOCK) ---
 export const fetchReports = async (): Promise<Report[]> => {
-    // In a real implementation, fetch from 'reports' collection
     return []; 
 };

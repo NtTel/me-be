@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, Question } from '../types';
-import { Settings, ShieldCheck, MessageCircle, HelpCircle, Heart, Star, Briefcase, Share2, Users, UserPlus, UserCheck, ArrowLeft, Loader2 } from 'lucide-react';
+import { Settings, ShieldCheck, MessageCircle, HelpCircle, Heart, Star, Briefcase, Share2, Users, UserPlus, UserCheck, ArrowLeft, Loader2, Database } from 'lucide-react';
 // @ts-ignore
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { followUser, unfollowUser, sendNotification } from '../services/db';
+import { updateUserRole } from '../services/admin';
 import { auth, db } from '../firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -25,12 +26,9 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
   const [loadingProfile, setLoadingProfile] = useState(false);
 
   // Determine effective profile user:
-  // 1. If no userId param OR userId matches current logged in user -> Show Current User
-  // 2. If userId param exists -> Show Fetched User
   const isViewingSelf = !userId || userId === user.id;
-  const profileUser = isViewingSelf ? user : (viewedUser || user); // Fallback to user to prevent crash while loading
+  const profileUser = isViewingSelf ? user : (viewedUser || user); 
   
-  // Safe array access
   const isFollowing = (user.following || []).includes(profileUser.id);
   const [followingState, setFollowingState] = useState(isFollowing);
 
@@ -76,7 +74,6 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
         onOpenAuth();
         return;
     }
-    // Optimistic Update
     const newState = !followingState;
     setFollowingState(newState);
 
@@ -94,6 +91,13 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
           return;
       }
       navigate(`/messages/${profileUser.id}`);
+  };
+
+  const handleDevPromoteAdmin = async () => {
+      if (!confirm("BẠN CÓ CHẮC KHÔNG? Hành động này sẽ cấp quyền Admin cho tài khoản hiện tại để test.")) return;
+      await updateUserRole(user.id, { isAdmin: true });
+      alert("Đã cấp quyền Admin! Hãy reload trang và vào /admin");
+      window.location.reload();
   };
 
   if (loadingProfile) {
@@ -165,7 +169,6 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
                  {profileUser.bio || "Thành viên tích cực của cộng đồng Asking.vn"}
                </p>
 
-               {/* FOLLOWERS / FOLLOWING STATS */}
                <div className="flex items-center justify-center md:justify-start gap-4 text-sm">
                   <div className="flex items-center gap-1 font-medium text-textDark">
                       <strong className="text-lg">{profileUser.followers?.length || 0}</strong> <span className="text-gray-400">Người theo dõi</span>
@@ -176,7 +179,6 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
                </div>
             </div>
 
-            {/* ACTION BUTTONS */}
             <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
                 {isViewingSelf ? (
                     <button 
@@ -218,7 +220,19 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
 
       <div className="px-4 max-w-5xl mx-auto space-y-6">
         
-        {/* Horizontal Scroll Stats */}
+        {/* DEV ONLY BUTTON - FOR TESTING ADMIN */}
+        {isViewingSelf && !user.isGuest && !user.isAdmin && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between">
+                <div>
+                    <h4 className="font-bold text-red-700 flex items-center gap-2"><Database size={16}/> Developer Mode</h4>
+                    <p className="text-xs text-red-600">Bạn đang ở môi trường Test? Tự cấp quyền Admin để truy cập dashboard.</p>
+                </div>
+                <button onClick={handleDevPromoteAdmin} className="bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-red-700">
+                    Kích hoạt Admin
+                </button>
+            </div>
+        )}
+
         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 snap-x">
           <StatCard icon={<Star className="text-yellow-500" size={20} />} value={reputationPoints} label="Điểm uy tín" bg="bg-yellow-50" />
           <StatCard icon={<HelpCircle className="text-blue-500" size={20} />} value={userQuestions.length} label="Câu hỏi" bg="bg-blue-50" />
@@ -226,7 +240,6 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
           <StatCard icon={<Users className="text-purple-500" size={20} />} value={profileUser.followers?.length || 0} label="Followers" bg="bg-purple-50" />
         </div>
 
-        {/* Sticky Tabs */}
         <div className="sticky top-[60px] md:top-0 z-20 bg-[#F7F7F5]/95 backdrop-blur-sm -mx-4 px-4 pt-2 pb-2">
            <div className="bg-white p-1 rounded-2xl shadow-sm border border-gray-100 flex">
              <TabButton active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} label="Tổng quan" />
@@ -234,7 +247,6 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
            </div>
         </div>
 
-        {/* Tab Content */}
         <div className="min-h-[300px]">
            {activeTab === 'overview' && (
              <div className="space-y-6 animate-fade-in">
@@ -285,7 +297,6 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
   );
 };
 
-// Components
 const Badge: React.FC<{ text: string; color: 'blue' | 'red' }> = ({ text, color }) => (
   <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded-md align-middle ${color === 'blue' ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'}`}>
     {text}

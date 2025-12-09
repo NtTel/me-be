@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { ExpertApplication } from '../../types';
 import { fetchExpertApplications, processExpertApplication } from '../../services/admin';
-import { Check, X, FileText, Clock, ExternalLink, Filter, ZoomIn, AlertTriangle } from 'lucide-react';
+import { Check, X, FileText, Clock, ExternalLink, Filter, ZoomIn, AlertTriangle, RefreshCw } from 'lucide-react';
 
 export const ExpertApprovals: React.FC = () => {
   const [apps, setApps] = useState<ExpertApplication[]>([]);
@@ -21,9 +21,14 @@ export const ExpertApprovals: React.FC = () => {
 
   const loadApps = async () => {
     setLoading(true);
-    const data = await fetchExpertApplications();
-    setApps(data);
-    setLoading(false);
+    try {
+        const data = await fetchExpertApplications();
+        setApps(data);
+    } catch (e) {
+        console.error("Failed to load apps", e);
+    } finally {
+        setLoading(false);
+    }
   };
 
   const handleApprove = async () => {
@@ -37,7 +42,7 @@ export const ExpertApprovals: React.FC = () => {
         undefined,
         selectedApp.specialty
     );
-    // Refresh local state roughly or reload
+    
     setApps(apps.map(a => a.id === selectedApp.id ? { ...a, status: 'approved' } : a));
     setSelectedApp({ ...selectedApp, status: 'approved' });
   };
@@ -66,7 +71,14 @@ export const ExpertApprovals: React.FC = () => {
   return (
     <div className="flex flex-col h-[calc(100vh-100px)]">
        {/* Toolbar */}
-       <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-4 flex gap-2 overflow-x-auto shrink-0">
+       <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-4 flex gap-2 overflow-x-auto shrink-0 items-center">
+          <button 
+             onClick={loadApps}
+             className="mr-2 p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 active:scale-95 transition-all"
+             title="Làm mới dữ liệu"
+          >
+             <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
+          </button>
           <div className="flex items-center gap-2 mr-4 text-gray-500 font-bold text-sm uppercase tracking-wide">
              <Filter size={16} /> Bộ lọc:
           </div>
@@ -92,7 +104,7 @@ export const ExpertApprovals: React.FC = () => {
           {/* List Column */}
           <div className="lg:col-span-1 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
              <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                {loading ? <div className="text-center p-4 text-gray-500">Đang tải...</div> : filteredApps.length === 0 ? (
+                {loading ? <div className="text-center p-4 text-gray-500">Đang tải dữ liệu...</div> : filteredApps.length === 0 ? (
                     <div className="text-center py-10 text-gray-400">Không có hồ sơ nào</div>
                 ) : filteredApps.map(app => (
                    <button 
