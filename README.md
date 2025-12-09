@@ -18,6 +18,7 @@ Mặc định, tất cả tài khoản đăng ký mới đều là **Thành viê
    - Type: `boolean`
    - Value: `true`
 5. Quay lại ứng dụng và truy cập đường dẫn `/admin`.
+   *(Hoặc sử dụng nút "Kích hoạt Admin" ở chế độ Dev trong trang Cá nhân)*
 
 ---
 
@@ -39,11 +40,12 @@ service cloud.firestore {
       return request.auth != null; 
     }
     
+    // Kiểm tra chính chủ
     function isOwner(userId) { 
       return isSignedIn() && request.auth.uid == userId; 
     }
     
-    // Kiểm tra quyền Admin bằng cách đọc document user hiện tại
+    // Kiểm tra quyền Admin (đọc từ doc user hiện tại)
     function isAdmin() {
       return isSignedIn() && 
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
@@ -52,9 +54,8 @@ service cloud.firestore {
     // --- Users Collection ---
     match /users/{userId} {
       allow read: if true;
-      // QUAN TRỌNG: Cho phép Admin tạo/xóa user để chạy tính năng Seed Data
-      allow create: if isOwner(userId) || isAdmin(); 
-      allow update, delete: if isOwner(userId) || isAdmin(); 
+      // QUAN TRỌNG: Cho phép Admin tạo/update user khác để chạy Seed Data & Ban user
+      allow create, update, delete: if isOwner(userId) || isAdmin(); 
     }
 
     // --- Questions Collection ---
@@ -62,23 +63,27 @@ service cloud.firestore {
       allow read: if true;
       // Admin được phép tạo câu hỏi hộ người khác (Seed Data)
       allow create: if isSignedIn();
-      // Admin được phép ẩn/xóa bài vi phạm
+      // Admin được phép ẩn/xóa bài vi phạm hoặc cập nhật câu trả lời hay nhất
       allow update: if isSignedIn() || isAdmin(); 
       allow delete: if isOwner(resource.data.author.id) || isAdmin();
     }
 
     // --- Notifications Collection ---
     match /notifications/{notificationId} {
+      // Người nhận xem, người gửi tạo
       allow read, update: if isOwner(resource.data.userId);
       allow create: if isSignedIn();
     }
 
     // --- Chats Collection ---
     match /chats/{chatId} {
-      // Cho phép update nếu là người tham gia HOẶC admin (để xóa/quản lý nếu cần)
-      // Lưu ý: create dùng request.resource.data để kiểm tra participants
+      // Cho phép tạo chat mới
       allow create: if isSignedIn();
+      
+      // Chỉ người trong cuộc mới được xem/sửa
       allow read: if isSignedIn() && (request.auth.uid in resource.data.participants);
+      
+      // Update (gửi tin nhắn mới làm thay đổi lastMessage)
       allow update: if isSignedIn() && (request.auth.uid in resource.data.participants);
       
       match /messages/{messageId} {
@@ -114,10 +119,12 @@ service firebase.storage {
   match /b/{bucket}/o {
     match /{allPaths=**} {
       allow read: if true;
-      // Cho phép ghi nếu đã đăng nhập và file là ảnh < 5MB
+      // Cho phép ghi nếu đã đăng nhập
+      // Chấp nhận ảnh và PDF (cho hồ sơ chuyên gia)
+      // Giới hạn kích thước < 10MB
       allow write: if request.auth != null 
-                   && request.resource.contentType.matches('image/.*')
-                   && request.resource.size < 5 * 1024 * 1024;
+                   && (request.resource.contentType.matches('image/.*') || request.resource.contentType == 'application/pdf')
+                   && request.resource.size < 10 * 1024 * 1024;
     }
   }
 }
@@ -147,16 +154,7 @@ Tính năng này giúp tạo nhanh dữ liệu mẫu để kiểm thử giao di�
     ```
 
 2.  **Cấu hình `.env`**:
-    Tạo file `.env` ở thư mục gốc và điền thông tin:
-    ```env
-    VITE_API_KEY=AIzaSy... (Gemini API Key)
-    VITE_FIREBASE_API_KEY=AIzaSy... (Firebase API Key)
-    VITE_FIREBASE_AUTH_DOMAIN=...
-    VITE_FIREBASE_PROJECT_ID=...
-    VITE_FIREBASE_STORAGE_BUCKET=...
-    VITE_FIREBASE_MESSAGING_SENDER_ID=...
-    VITE_FIREBASE_APP_ID=...
-    ```
+    Tạo file `.env` ở thư mục gốc và điền thông tin Firebase của bạn.
 
 3.  **Chạy dự án**:
     ```bash
