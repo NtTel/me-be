@@ -122,6 +122,39 @@ export const suggestTitles = async (
 };
 
 /**
+ * AI Viết nội dung chi tiết cho câu hỏi
+ */
+export const generateQuestionContent = async (title: string): Promise<string> => {
+  if (!ai) return "";
+
+  try {
+    const model = "gemini-2.5-flash";
+    const prompt = `
+      Bạn là một người mẹ đang tham gia diễn đàn Asking.vn. Bạn đang có thắc mắc về vấn đề: "${title}".
+      
+      Hãy giúp tôi viết một đoạn nội dung chi tiết (khoảng 100-150 từ) để đăng kèm câu hỏi này.
+      
+      Yêu cầu:
+      1. Giọng văn: Tự nhiên, gần gũi, chân thành (như lời tâm sự của mẹ bỉm sữa).
+      2. Nội dung: Mô tả rõ hơn về tình huống, bối cảnh hoặc các triệu chứng liên quan đến tiêu đề.
+      3. Kết thúc: Một lời nhờ vả hoặc mong nhận được lời khuyên từ các mẹ khác.
+      4. KHÔNG dùng các câu chào máy móc kiểu "Chào mọi người, tôi là AI...". Hãy viết như người thật.
+    `;
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+    });
+
+    const text = (response as any).text ?? (response as any).response?.text?.();
+    return text || "";
+  } catch (error) {
+    console.error("Generate Question Content Error:", error);
+    return "";
+  }
+};
+
+/**
  * Sinh bản nháp câu trả lời cho mẹ chỉnh sửa
  */
 export const generateDraftAnswer = async (

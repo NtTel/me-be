@@ -5,10 +5,10 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Sparkles, X, Image as ImageIcon, Loader2, ChevronDown, Check, 
   Tag, Baby, Heart, Utensils, Brain, BookOpen, Users, Stethoscope, Smile, Plus,
-  Link as LinkIcon
+  Link as LinkIcon, PenTool
 } from 'lucide-react';
 import { Question, User } from '../types';
-import { suggestTitles } from '../services/gemini';
+import { suggestTitles, generateQuestionContent } from '../services/gemini';
 import { AuthModal } from '../components/AuthModal';
 import { uploadMultipleFiles } from '../services/storage';
 import { loginAnonymously } from '../services/auth';
@@ -67,6 +67,7 @@ export const Ask: React.FC<AskProps> = ({
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [isGeneratingContent, setIsGeneratingContent] = useState(false);
   
   // Custom Category State
   const [customCategory, setCustomCategory] = useState('');
@@ -112,6 +113,22 @@ export const Ask: React.FC<AskProps> = ({
     const results = await suggestTitles(title, content);
     setSuggestions(results);
     setIsSuggesting(false);
+  };
+
+  const handleAiContent = async () => {
+    if (!title || title.length < 5) {
+      alert("Mẹ ơi, hãy nhập tiêu đề rõ ràng trước (ít nhất 5 ký tự) để AI hiểu ý mẹ và viết nội dung nhé!");
+      return;
+    }
+    
+    if (content.length > 50) {
+        if (!confirm("Ô nội dung đang có dữ liệu. Mẹ có muốn AI viết đè lên không?")) return;
+    }
+
+    setIsGeneratingContent(true);
+    const aiContent = await generateQuestionContent(title);
+    setContent(aiContent);
+    setIsGeneratingContent(false);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -295,13 +312,33 @@ export const Ask: React.FC<AskProps> = ({
             autoFocus
           />
           
-          <textarea
-            ref={textareaRef}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Viết chi tiết nội dung để các chuyên gia và mẹ khác dễ dàng tư vấn hơn nhé..."
-            className="w-full text-base text-textDark/90 placeholder-gray-400 border-none p-0 focus:ring-0 bg-transparent resize-none leading-relaxed min-h-[150px]"
-          />
+          <div className="relative">
+              {/* AI Auto-Write Button */}
+              {title.length > 5 && !content && !isGeneratingContent && (
+                  <button 
+                    onClick={handleAiContent}
+                    className="absolute right-0 -top-8 text-xs font-bold text-purple-600 bg-purple-50 px-3 py-1.5 rounded-full flex items-center gap-1.5 hover:bg-purple-100 transition-all border border-purple-100 shadow-sm animate-pop-in z-20"
+                  >
+                      <Sparkles size={14} /> AI Viết hộ nội dung
+                  </button>
+              )}
+              
+              {isGeneratingContent && (
+                  <div className="absolute inset-0 bg-white/80 z-20 flex items-center justify-center rounded-lg backdrop-blur-[1px]">
+                      <div className="flex items-center gap-2 text-purple-600 font-bold text-sm">
+                          <Loader2 size={18} className="animate-spin" /> AI đang viết...
+                      </div>
+                  </div>
+              )}
+
+              <textarea
+                ref={textareaRef}
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder="Viết chi tiết nội dung để các chuyên gia và mẹ khác dễ dàng tư vấn hơn nhé..."
+                className="w-full text-base text-textDark/90 placeholder-gray-400 border-none p-0 focus:ring-0 bg-transparent resize-none leading-relaxed min-h-[150px]"
+              />
+          </div>
         </div>
 
         {/* Image Preview Grid */}
@@ -415,12 +452,13 @@ export const Ask: React.FC<AskProps> = ({
                </button>
             </div>
 
-            {/* AI Magic Button */}
+            {/* AI Magic Button (Suggest Title) */}
             <button 
                onClick={handleAiSuggest}
-               className="p-2 rounded-xl bg-gradient-to-r from-orange-100 to-pink-100 text-orange-600 active:scale-95 transition-transform border border-orange-200 shrink-0"
+               className="p-2 rounded-xl bg-gradient-to-r from-orange-100 to-pink-100 text-orange-600 active:scale-95 transition-transform border border-orange-200 shrink-0 flex items-center gap-1"
+               title="AI Gợi ý tiêu đề"
             >
-               <Sparkles size={20} />
+               <PenTool size={18} />
             </button>
          </div>
 
