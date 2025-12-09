@@ -89,8 +89,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   // Hide Top Bar on Chat Detail/AI/Question Detail to allow custom headers
   const hideTopBar = isChatDetail || isAiChat || isQuestionDetail; 
   
-  // Hide Bottom Bar only on specific immersion pages, BUT SHOW on QuestionDetail now
-  const hideBottomBar = isAskPage || isGameZone || isChatDetail || isAiChat;
+  // REMOVED isGameZone from hideBottomBar to allow navigation in Game Hub
+  const hideBottomBar = isAskPage || isChatDetail || isAiChat;
 
   return (
     <div className="min-h-screen font-sans text-textDark bg-[#F7F7F5] flex flex-col overflow-x-hidden selection:bg-primary/20">
@@ -187,7 +187,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       )}
 
       {/* --- DESKTOP FOOTER --- */}
-      {!hideBottomBar && !isNotificationPage && !isExpertReg && !isAiChat && !isQuestionDetail && (
+      {!hideBottomBar && !isNotificationPage && !isExpertReg && !isAiChat && !isQuestionDetail && !isGameZone && (
         <footer className={`bg-white border-t border-gray-100 py-10 px-4 md:px-0 mt-auto hidden md:block`}>
           <div className="max-w-5xl mx-auto">
              <div className="flex flex-col items-center justify-center text-center">

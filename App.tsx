@@ -25,6 +25,7 @@ import { QuestionManagement } from './pages/admin/QuestionManagement';
 import { SeedData } from './pages/admin/SeedData';
 import { GameManagement } from './pages/admin/GameManagement';
 import { GameDetail } from './pages/admin/GameDetail';
+import { ReportManagement } from './pages/admin/ReportManagement'; // NEW
 
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { AuthModal } from './components/AuthModal';
@@ -201,7 +202,7 @@ export default function App() {
             <Route path="questions" element={<QuestionManagement />} />
             <Route path="games" element={<GameManagement />} />
             <Route path="games/:gameId" element={<GameDetail />} />
-            <Route path="reports" element={<div className="p-10 text-center text-gray-500">Report Management (Coming Soon)</div>} />
+            <Route path="reports" element={<ReportManagement />} />
             <Route path="seed" element={<SeedData />} />
         </Route>
 

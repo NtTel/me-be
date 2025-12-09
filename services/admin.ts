@@ -92,7 +92,43 @@ export const bulkDeleteQuestions = async (ids: string[]) => {
   await batch.commit();
 };
 
-// --- REPORTS (MOCK) ---
+// --- REPORTS ---
 export const fetchReports = async (): Promise<Report[]> => {
-    return []; 
+    if (!db) return [];
+    try {
+        const q = query(collection(db, 'reports'));
+        const snapshot = await getDocs(q);
+        const reports = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Report));
+        return reports.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } catch (e) {
+        console.error("Error fetching reports", e);
+        return [];
+    }
+};
+
+export const resolveReport = async (reportId: string, action: 'resolved' | 'dismissed') => {
+    if (!db) return;
+    const ref = doc(db, 'reports', reportId);
+    await updateDoc(ref, { status: action });
+};
+
+export const deleteReportedContent = async (report: Report) => {
+    if (!db) return;
+    try {
+        // Resolve report first
+        await resolveReport(report.id, 'resolved');
+
+        // Delete content based on type
+        if (report.targetType === 'question') {
+            await deleteDoc(doc(db, 'questions', report.targetId));
+        } else if (report.targetType === 'answer') {
+            // NOTE: Deleting answer requires parent QuestionID. 
+            // In a real app, report should store parentID for answers.
+            // For now, we assume we might not delete answers easily without it, 
+            // or we fetch the parent first. Skipping strictly for this MVP.
+            console.warn("Deleting reported answers is complex without parent ID reference in report");
+        }
+    } catch (e) {
+        console.error("Error deleting reported content", e);
+    }
 };

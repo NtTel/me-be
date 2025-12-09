@@ -228,3 +228,57 @@ export const generateGameContent = async (
     throw error;
   }
 };
+
+/**
+ * Sinh truyện kể cho bé (Storytelling)
+ */
+export const generateStory = async (
+  topic: string,
+  moralLesson: string = ""
+): Promise<{ title: string; content: string }> => {
+  if (!ai) return { title: "Lỗi AI", content: "Chưa cấu hình API Key." };
+
+  const model = "gemini-2.5-flash";
+  const prompt = `
+    Hãy sáng tác một câu chuyện cổ tích ngắn hoặc truyện ngụ ngôn cho trẻ em (3-6 tuổi).
+    - Chủ đề/Nhân vật chính: "${topic}"
+    ${moralLesson ? `- Bài học giáo dục: "${moralLesson}"` : ""}
+    
+    Yêu cầu:
+    1. Ngôn ngữ Tiếng Việt trong sáng, dễ hiểu, đáng yêu.
+    2. Độ dài khoảng 300-500 từ.
+    3. Có tính giáo dục cao.
+    
+    Trả về định dạng JSON:
+    {
+      "title": "Tên câu chuyện",
+      "content": "Nội dung câu chuyện..."
+    }
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            content: { type: Type.STRING }
+          },
+          required: ["title", "content"]
+        }
+      }
+    });
+
+    const text = (response as any).text ?? (response as any).response?.text?.();
+    if (!text) return { title: "", content: "" };
+    
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Generate Story Error:", error);
+    throw error;
+  }
+};

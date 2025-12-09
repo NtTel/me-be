@@ -85,12 +85,23 @@ export interface ChatSession {
 
 // --- GAME TYPES ---
 
+export type GameCategory = 'general' | 'math' | 'english' | 'vietnamese' | 'logic' | 'story' | 'music' | 'art';
+export type GameType = 'quiz' | 'html5' | 'story' | 'ai-story';
+export type GameOrientation = 'portrait' | 'landscape' | 'auto';
+
 export interface Game {
   id: string;
   title: string;
   icon: string; // Emoji or URL
   color: string; // Tailwind class like 'bg-blue-400'
-  gameType: 'quiz'; // Extensible for future types
+  gameType: GameType;
+  category: GameCategory;
+  orientation?: GameOrientation; // New field for screen orientation
+  
+  // Specific fields based on type
+  gameUrl?: string; // For HTML5 games
+  storyContent?: string; // For Stories
+  
   minAge: number;
   maxAge: number;
   isActive: boolean;
@@ -122,6 +133,7 @@ export interface ExpertApplication {
   createdAt: string;
   reviewedBy?: string;
   rejectionReason?: string;
+  reviewedAt?: string;
 }
 
 export interface Report {
@@ -143,4 +155,15 @@ export const CATEGORIES = [
   "Tâm lý",
   "Giáo dục sớm",
   "Gia đình"
+];
+
+export const GAME_CATEGORIES: {id: GameCategory, label: string, icon: string, color: string}[] = [
+  { id: 'general', label: 'Tổng hợp', icon: '🎮', color: 'bg-indigo-400' },
+  { id: 'math', label: 'Toán học', icon: '🔢', color: 'bg-blue-500' },
+  { id: 'vietnamese', label: 'Tiếng Việt', icon: 'abc', color: 'bg-red-400' },
+  { id: 'english', label: 'Tiếng Anh', icon: '🔤', color: 'bg-purple-500' },
+  { id: 'logic', label: 'Tư duy', icon: '🧠', color: 'bg-yellow-400' },
+  { id: 'story', label: 'Truyện kể', icon: '📖', color: 'bg-pink-400' },
+  { id: 'art', label: 'Mỹ thuật', icon: '🎨', color: 'bg-rose-400' },
+  { id: 'music', label: 'Âm nhạc', icon: '🎵', color: 'bg-teal-400' },
 ];

@@ -355,7 +355,8 @@ export const subscribeToMessages = (chatId: string, callback: (msgs: Message[]) 
 export const subscribeToQuestions = (callback: (questions: Question[]) => void) => {
   if (!db) return () => {};
   try {
-    const q = query(collection(db, QUESTIONS_COLLECTION));
+    // FIX: Add LIMIT to improve performance and reduce initial load cost
+    const q = query(collection(db, QUESTIONS_COLLECTION), limit(100));
     return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
         const questions = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Question[];
         // Client side sort for safety
