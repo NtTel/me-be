@@ -82,34 +82,31 @@ export interface ChatSession {
   unreadCount: { [uid: string]: number };
 }
 
-export enum GameType {
-  NUMBERS = 'NUMBERS',
-  COLORS = 'COLORS',
-  ANIMALS = 'ANIMALS',
-  ALPHABET = 'ALPHABET',
-  SHAPES = 'SHAPES',
-  FRUITS = 'FRUITS',
-  VEHICLES = 'VEHICLES',
-  BODY = 'BODY',
-  FAMILY = 'FAMILY',
-  VEGETABLES = 'VEGETABLES',
-  CLOTHES = 'CLOTHES',
-  SCHOOL = 'SCHOOL',
-  NATURE = 'NATURE',
-  JOBS = 'JOBS',
-  MUSIC = 'MUSIC',
-  SPORTS = 'SPORTS',
-  HOUSE = 'HOUSE',
-  FOOD = 'FOOD'
+// --- GAME TYPES ---
+
+export interface Game {
+  id: string;
+  title: string;
+  icon: string; // Emoji or URL
+  color: string; // Tailwind class like 'bg-blue-400'
+  gameType: 'quiz'; // Extensible for future types
+  minAge: number;
+  maxAge: number;
+  isActive: boolean;
+  order: number;
+  createdAt: string;
+  questionCount?: number; // Optional, for UI display
 }
 
-export interface GameItem {
+export interface GameQuestion {
   id: string;
-  question: string;
-  value: string;
-  display: string;
-  options: string[];
-  audio: string;
+  q: string; // Question text
+  opts: string[]; // Options
+  a: string; // Correct answer
+  displayType: 'text' | 'emoji' | 'color';
+  order: number;
+  isActive: boolean;
+  createdAt: string;
 }
 
 export interface ExpertApplication {

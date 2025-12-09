@@ -24,7 +24,7 @@ Mặc định, tất cả tài khoản đăng ký mới đều là **Thành viê
 
 ## 🛠 QUAN TRỌNG: Cấu hình Bảo mật Firebase (Security Rules)
 
-Để các tính năng **Trả lời**, **Thông báo**, **Tin nhắn**, **Đăng ảnh**, **Admin** và **Sinh dữ liệu giả (Seed)** hoạt động, bạn **BẮT BUỘC** phải cập nhật Firestore Rules và Storage Rules trên Firebase Console.
+Để các tính năng **Trả lời**, **Thông báo**, **Tin nhắn**, **Đăng ảnh**, **Admin**, **Sinh dữ liệu giả (Seed)** và **Game Data** hoạt động, bạn **BẮT BUỘC** phải cập nhật Firestore Rules và Storage Rules trên Firebase Console.
 
 ### 1. Cập nhật Firestore Rules (Database)
 Truy cập [Firebase Console](https://console.firebase.google.com/) -> **Firestore Database** -> **Rules**.
@@ -105,6 +105,17 @@ service cloud.firestore {
     match /reports/{reportId} {
       allow create: if isSignedIn();
       allow read, update: if isAdmin();
+    }
+
+    // --- Games Collection (Data Driven) ---
+    match /games/{gameId} {
+      allow read: if true; // Ai cũng xem được game
+      allow write: if isAdmin(); // Chỉ Admin sửa game
+      
+      match /questions/{questionId} {
+        allow read: if true;
+        allow write: if isAdmin();
+      }
     }
   }
 }

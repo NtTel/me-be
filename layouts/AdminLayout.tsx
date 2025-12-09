@@ -2,7 +2,7 @@
 import React from 'react';
 // @ts-ignore
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { User, LayoutDashboard, Users, FileQuestion, GraduationCap, Flag, LogOut, Menu, X, ArrowLeft, Database } from 'lucide-react';
+import { User, LayoutDashboard, Users, FileQuestion, GraduationCap, Flag, LogOut, Menu, X, ArrowLeft, Database, Gamepad2 } from 'lucide-react';
 import { User as UserType } from '../types';
 
 interface AdminLayoutProps {
@@ -38,6 +38,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ currentUser, onLogout 
     { path: '/admin/users', label: 'Người dùng', icon: <Users size={20} /> },
     { path: '/admin/experts', label: 'Chuyên gia', icon: <GraduationCap size={20} /> },
     { path: '/admin/questions', label: 'Câu hỏi', icon: <FileQuestion size={20} /> },
+    { path: '/admin/games', label: 'Quản lý Game', icon: <Gamepad2 size={20} /> },
     { path: '/admin/reports', label: 'Báo cáo', icon: <Flag size={20} /> },
     { path: '/admin/seed', label: 'Sinh dữ liệu (Demo)', icon: <Database size={20} /> },
   ];
@@ -55,7 +56,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ currentUser, onLogout 
 
         <nav className="p-4 space-y-1">
           {navItems.map(item => {
-            const isActive = location.pathname === item.path;
+            const isActive = location.pathname === item.path || (item.path !== '/admin' && location.pathname.startsWith(item.path));
             return (
               <Link 
                 key={item.path} 
@@ -99,7 +100,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ currentUser, onLogout 
                   {isSidebarOpen ? <X /> : <Menu />}
                </button>
                <h2 className="text-lg font-bold text-gray-800">
-                 {navItems.find(i => i.path === location.pathname)?.label || 'Dashboard'}
+                 Dashboard
                </h2>
             </div>
             <Link to="/" className="hidden md:flex items-center gap-2 text-sm font-medium text-gray-500 hover:text-blue-600">

@@ -158,3 +158,73 @@ export const generateDraftAnswer = async (
     return "";
   }
 };
+
+/**
+ * Sinh dữ liệu câu hỏi Game cho trẻ em (JSON)
+ */
+export const generateGameContent = async (
+  topic: string,
+  ageRange: string,
+  count: number,
+  displayType: 'emoji' | 'text' | 'color'
+): Promise<any[]> => {
+  if (!ai) throw new Error("AI not initialized");
+
+  const model = "gemini-2.5-flash";
+  const prompt = `
+    Tạo dữ liệu cho trò chơi giáo dục trẻ em (Quiz).
+    - Chủ đề: "${topic}"
+    - Độ tuổi: ${ageRange}
+    - Số lượng: ${count} câu hỏi
+    - Kiểu hiển thị đáp án: ${displayType}
+
+    Yêu cầu JSON output strict:
+    [
+      {
+        "q": "Câu hỏi ngắn gọn cho bé (Ví dụ: Quả táo là quả nào?)",
+        "opts": ["Lựa chọn 1", "Lựa chọn 2", "Lựa chọn 3"],
+        "a": "Đáp án đúng (phải nằm trong opts)",
+        "displayType": "${displayType}"
+      }
+    ]
+
+    Quy tắc:
+    1. Nếu displayType là 'emoji', opts phải là các emoji.
+    2. Nếu displayType là 'color', opts phải là mã màu HEX hoặc tên tiếng Anh chuẩn.
+    3. Ngôn ngữ câu hỏi: Tiếng Việt, dễ hiểu cho bé.
+    4. opts không được trùng nhau.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        // Using Type.ARRAY directly from import
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              q: { type: Type.STRING },
+              opts: { type: Type.ARRAY, items: { type: Type.STRING } },
+              a: { type: Type.STRING },
+              displayType: { type: Type.STRING }
+            },
+            required: ["q", "opts", "a", "displayType"]
+          }
+        },
+        temperature: 0.7,
+      },
+    });
+
+    const text = (response as any).text ?? (response as any).response?.text?.();
+    if (!text) return [];
+    
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Generate Game Error:", error);
+    throw error;
+  }
+};

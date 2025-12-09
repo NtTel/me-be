@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 // @ts-ignore
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -22,6 +23,8 @@ import { UserManagement } from './pages/admin/UserManagement';
 import { ExpertApprovals } from './pages/admin/ExpertApprovals';
 import { QuestionManagement } from './pages/admin/QuestionManagement';
 import { SeedData } from './pages/admin/SeedData';
+import { GameManagement } from './pages/admin/GameManagement';
+import { GameDetail } from './pages/admin/GameDetail';
 
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { AuthModal } from './components/AuthModal';
@@ -196,6 +199,8 @@ export default function App() {
             <Route path="users" element={<UserManagement />} />
             <Route path="experts" element={<ExpertApprovals />} />
             <Route path="questions" element={<QuestionManagement />} />
+            <Route path="games" element={<GameManagement />} />
+            <Route path="games/:gameId" element={<GameDetail />} />
             <Route path="reports" element={<div className="p-10 text-center text-gray-500">Report Management (Coming Soon)</div>} />
             <Route path="seed" element={<SeedData />} />
         </Route>

@@ -1,143 +1,26 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Volume2, Star, Trophy, Sparkles, Grid, Play } from 'lucide-react';
-import { GameType } from '../types';
-
-// Mock Data - Massive Expansion
-const GAME_DATA = {
-  [GameType.NUMBERS]: [
-    { q: "Số 1 ở đâu?", a: "1", opts: ["1", "5", "3"], color: "bg-blue-400" },
-    { q: "Tìm số 5 nào?", a: "5", opts: ["2", "5", "8"], color: "bg-blue-500" },
-    { q: "Số 10 màu gì?", a: "10", opts: ["10", "4", "6"], color: "bg-blue-600" },
-    { q: "Số 2 giống con vịt?", a: "2", opts: ["1", "2", "7"], color: "bg-blue-400" },
-    { q: "Số 0 tròn trĩnh?", a: "0", opts: ["0", "8", "9"], color: "bg-blue-500" },
-  ],
-  [GameType.COLORS]: [
-    { q: "Màu Đỏ đâu nhỉ?", a: "#EF4444", opts: ["#EF4444", "#3B82F6", "#10B981"], type: 'color' },
-    { q: "Màu Xanh Dương?", a: "#3B82F6", opts: ["#F59E0B", "#3B82F6", "#8B5CF6"], type: 'color' },
-    { q: "Màu Vàng tươi?", a: "#FCD34D", opts: ["#FCD34D", "#EF4444", "#000000"], type: 'color' },
-    { q: "Màu Tím mộng mơ?", a: "#8B5CF6", opts: ["#EF4444", "#8B5CF6", "#10B981"], type: 'color' },
-    { q: "Màu Hồng nữ tính?", a: "#EC4899", opts: ["#EC4899", "#000000", "#FCD34D"], type: 'color' },
-  ],
-  [GameType.ANIMALS]: [
-    { q: "Con Mèo kêu meo meo?", a: "🐱", opts: ["🐱", "🐶", "🐮"], type: 'emoji' },
-    { q: "Con Chó sủa gâu gâu?", a: "🐶", opts: ["🐷", "🐶", "🐸"], type: 'emoji' },
-    { q: "Hổ dũng mãnh?", a: "🐯", opts: ["🐯", "🐰", "🐼"], type: 'emoji' },
-    { q: "Con Lợn ủn ỉn?", a: "🐷", opts: ["🐵", "🐷", "🐔"], type: 'emoji' },
-    { q: "Con Gà trống gáy?", a: "🐓", opts: ["🐓", "🦆", "🦉"], type: 'emoji' },
-  ],
-  [GameType.ALPHABET]: [
-    { q: "Chữ A cái ca?", a: "A", opts: ["A", "B", "C"], color: "bg-pink-400" },
-    { q: "Chữ B con bò?", a: "B", opts: ["A", "B", "D"], color: "bg-pink-500" },
-    { q: "Chữ C con cá?", a: "C", opts: ["E", "F", "C"], color: "bg-pink-400" },
-    { q: "Chữ O tròn vo?", a: "O", opts: ["O", "Ô", "Ơ"], color: "bg-pink-500" },
-    { q: "Chữ E em bé?", a: "E", opts: ["Ê", "E", "A"], color: "bg-pink-600" },
-  ],
-  [GameType.SHAPES]: [
-    { q: "Hình Tròn?", a: "🔴", opts: ["🔴", "🟥", "🔺"], type: 'emoji' },
-    { q: "Hình Vuông?", a: "🟥", opts: ["🔴", "🟥", "⭐"], type: 'emoji' },
-    { q: "Hình Tam Giác?", a: "🔺", opts: ["🔺", "🟥", "🔷"], type: 'emoji' },
-    { q: "Ngôi Sao lấp lánh?", a: "⭐", opts: ["⭐", "🌙", "☀️"], type: 'emoji' },
-    { q: "Trái Tim yêu thương?", a: "❤️", opts: ["❤️", "🔷", "⚫"], type: 'emoji' },
-  ],
-  [GameType.FRUITS]: [
-    { q: "Quả Táo đỏ?", a: "🍎", opts: ["🍎", "🍌", "🍇"], type: 'emoji' },
-    { q: "Quả Chuối vàng?", a: "🍌", opts: ["🍉", "🍌", "🍓"], type: 'emoji' },
-    { q: "Chùm Nho tím?", a: "🍇", opts: ["🍇", "🍊", "🍍"], type: 'emoji' },
-    { q: "Quả Dưa Hấu?", a: "🍉", opts: ["🍉", "🥝", "🍑"], type: 'emoji' },
-    { q: "Quả Cam?", a: "🍊", opts: ["🍊", "🍎", "🍐"], type: 'emoji' },
-  ],
-  [GameType.VEHICLES]: [
-    { q: "Xe Ô tô?", a: "🚗", opts: ["🚗", "🚌", "🚲"], type: 'emoji' },
-    { q: "Máy Bay bay cao?", a: "✈️", opts: ["✈️", "🚀", "🚁"], type: 'emoji' },
-    { q: "Xe Cứu Hỏa?", a: "🚒", opts: ["🚒", "🚑", "🚓"], type: 'emoji' },
-    { q: "Tàu Hỏa xình xịch?", a: "🚂", opts: ["🚂", "🚢", "🛵"], type: 'emoji' },
-    { q: "Xe Cảnh Sát?", a: "🚓", opts: ["🚓", "🚕", "🚛"], type: 'emoji' },
-  ],
-  [GameType.BODY]: [
-    { q: "Đôi Mắt để nhìn?", a: "👀", opts: ["👀", "👃", "👂"], type: 'emoji' },
-    { q: "Cái Mũi để ngửi?", a: "👃", opts: ["👃", "👄", "👋"], type: 'emoji' },
-    { q: "Cái Miệng để ăn?", a: "👄", opts: ["👄", "👀", "👣"], type: 'emoji' },
-    { q: "Cái Tai để nghe?", a: "👂", opts: ["👂", "👃", "💪"], type: 'emoji' },
-    { q: "Bàn Tay cầm nắm?", a: "👋", opts: ["👋", "🦶", "🧠"], type: 'emoji' },
-  ],
-  [GameType.FAMILY]: [
-    { q: "Em Bé đáng yêu?", a: "👶", opts: ["👶", "👨", "👵"], type: 'emoji' },
-    { q: "Ông Nội/Ngoại?", a: "👴", opts: ["👴", "👩", "👧"], type: 'emoji' },
-    { q: "Bà Nội/Ngoại?", a: "👵", opts: ["👵", "👨", "👦"], type: 'emoji' },
-    { q: "Bố/Ba?", a: "👨", opts: ["👨", "👩", "👶"], type: 'emoji' },
-    { q: "Mẹ/Má?", a: "👩", opts: ["👩", "👨", "👴"], type: 'emoji' },
-  ],
-  [GameType.VEGETABLES]: [
-    { q: "Củ Cà Rốt?", a: "🥕", opts: ["🥕", "🌽", "🥦"], type: 'emoji' },
-    { q: "Bắp Ngô?", a: "🌽", opts: ["🌽", "🍆", "🍅"], type: 'emoji' },
-    { q: "Quả Cà Chua?", a: "🍅", opts: ["🍅", "🥔", "🥒"], type: 'emoji' },
-    { q: "Súp Lơ Xanh?", a: "🥦", opts: ["🥦", "🍄", "🧅"], type: 'emoji' },
-    { q: "Quả Ớt cay?", a: "🌶️", opts: ["🌶️", "🧄", "🥬"], type: 'emoji' },
-  ],
-  [GameType.CLOTHES]: [
-    { q: "Cái Áo phông?", a: "👕", opts: ["👕", "👖", "👗"], type: 'emoji' },
-    { q: "Cái Váy đẹp?", a: "👗", opts: ["👗", "👚", "👙"], type: 'emoji' },
-    { q: "Đôi Giày?", a: "👟", opts: ["👟", "👒", "👓"], type: 'emoji' },
-    { q: "Cái Mũ?", a: "🧢", opts: ["🧢", "🧣", "🧤"], type: 'emoji' },
-    { q: "Cái Quần?", a: "👖", opts: ["👖", "🧦", "🧥"], type: 'emoji' },
-  ],
-  [GameType.SCHOOL]: [
-    { q: "Quyển Sách?", a: "📖", opts: ["📖", "✏️", "🎒"], type: 'emoji' },
-    { q: "Cái Bút chì?", a: "✏️", opts: ["✏️", "✂️", "📏"], type: 'emoji' },
-    { q: "Cái Cặp sách?", a: "🎒", opts: ["🎒", "🎓", "🖌️"], type: 'emoji' },
-    { q: "Cái Kéo?", a: "✂️", opts: ["✂️", "📎", "📌"], type: 'emoji' },
-    { q: "Cây Thước kẻ?", a: "📏", opts: ["📏", "📖", "🖍️"], type: 'emoji' },
-  ],
-  [GameType.NATURE]: [
-    { q: "Ông Mặt Trời?", a: "☀️", opts: ["☀️", "🌙", "☁️"], type: 'emoji' },
-    { q: "Mặt Trăng?", a: "🌙", opts: ["🌙", "⭐", "⛈️"], type: 'emoji' },
-    { q: "Đám Mây?", a: "☁️", opts: ["☁️", "❄️", "🌈"], type: 'emoji' },
-    { q: "Cầu Vồng?", a: "🌈", opts: ["🌈", "🌪️", "🌊"], type: 'emoji' },
-    { q: "Bông Hoa?", a: "🌺", opts: ["🌺", "🌲", "🌵"], type: 'emoji' },
-  ],
-  [GameType.JOBS]: [
-    { q: "Chú Cảnh Sát?", a: "👮", opts: ["👮", "👨‍⚕️", "👨‍🚒"], type: 'emoji' },
-    { q: "Bác Sĩ?", a: "👨‍⚕️", opts: ["👨‍⚕️", "👩‍🏫", "👨‍🍳"], type: 'emoji' },
-    { q: "Lính Cứu Hỏa?", a: "👨‍🚒", opts: ["👨‍🚒", "👷", "👨‍✈️"], type: 'emoji' },
-    { q: "Đầu Bếp?", a: "👨‍🍳", opts: ["👨‍🍳", "👨‍🎨", "🕵️"], type: 'emoji' },
-    { q: "Cô Giáo?", a: "👩‍🏫", opts: ["👩‍🏫", "👩‍🎤", "👨‍🔧"], type: 'emoji' },
-  ],
-  [GameType.MUSIC]: [
-    { q: "Đàn Guitar?", a: "🎸", opts: ["🎸", "🎹", "🥁"], type: 'emoji' },
-    { q: "Đàn Piano?", a: "🎹", opts: ["🎹", "🎻", "🎺"], type: 'emoji' },
-    { q: "Cái Trống?", a: "🥁", opts: ["🥁", "🎷", "🎤"], type: 'emoji' },
-    { q: "Micro hát?", a: "🎤", opts: ["🎤", "🎧", "🎼"], type: 'emoji' },
-    { q: "Tai Nghe?", a: "🎧", opts: ["🎧", "🎷", "🪕"], type: 'emoji' },
-  ],
-  [GameType.SPORTS]: [
-    { q: "Quả Bóng Đá?", a: "⚽", opts: ["⚽", "🏀", "🎾"], type: 'emoji' },
-    { q: "Bóng Rổ?", a: "🏀", opts: ["🏀", "🏐", "🏈"], type: 'emoji' },
-    { q: "Bơi Lội?", a: "🏊", opts: ["🏊", "🚴", "🏋️"], type: 'emoji' },
-    { q: "Xe Đạp?", a: "🚲", opts: ["🚲", "🛹", "🛴"], type: 'emoji' },
-    { q: "Huy Chương Vàng?", a: "🥇", opts: ["🥇", "🏆", "🎫"], type: 'emoji' },
-  ],
-  [GameType.HOUSE]: [
-    { q: "Cái Giường ngủ?", a: "🛏️", opts: ["🛏️", "🪑", "🛋️"], type: 'emoji' },
-    { q: "Cái Ghế?", a: "🪑", opts: ["🪑", "🚪", "🚽"], type: 'emoji' },
-    { q: "Cái Tivi?", a: "📺", opts: ["📺", "💻", "📱"], type: 'emoji' },
-    { q: "Cái Đèn?", a: "💡", opts: ["💡", "🕯️", "🔦"], type: 'emoji' },
-    { q: "Cửa Ra Vào?", a: "🚪", opts: ["🚪", "🪟", "🔑"], type: 'emoji' },
-  ],
-  [GameType.FOOD]: [
-    { q: "Bánh Mì?", a: "🥖", opts: ["🥖", "🥐", "🥯"], type: 'emoji' },
-    { q: "Cơm nắm?", a: "🍙", opts: ["🍙", "🍚", "🍛"], type: 'emoji' },
-    { q: "Mì Ý?", a: "🍝", opts: ["🍝", "🍜", "🍲"], type: 'emoji' },
-    { q: "Bánh Kem?", a: "🎂", opts: ["🎂", "🍰", "🧁"], type: 'emoji' },
-    { q: "Kẹo Mút?", a: "🍭", opts: ["🍭", "🍫", "🍩"], type: 'emoji' },
-  ]
-};
+import { ArrowLeft, Volume2, Star, Trophy, Sparkles, Play, Loader2 } from 'lucide-react';
+import { Game, GameQuestion } from '../types';
+import { fetchAllGames, fetchGameQuestions } from '../services/game';
 
 export const GameZone: React.FC = () => {
-  const [activeGame, setActiveGame] = useState<GameType | null>(null);
+  const [games, setGames] = useState<Game[]>([]);
+  const [activeGame, setActiveGame] = useState<Game | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const data = await fetchAllGames(true); // only active
+      setGames(data);
+      setLoading(false);
+    };
+    load();
+  }, []);
 
   if (activeGame) {
-    return <GameEngine type={activeGame} onBack={() => setActiveGame(null)} />;
+    return <GameEngine game={activeGame} onBack={() => setActiveGame(null)} />;
   }
 
   return (
@@ -146,36 +29,33 @@ export const GameZone: React.FC = () => {
         <h1 className="text-3xl font-black text-orange-500 mb-1 flex items-center justify-center gap-2 drop-shadow-sm">
           <span className="animate-bounce-small">🎮</span> Góc Bé Chơi
         </h1>
-        <p className="text-orange-800 text-sm font-medium opacity-80">18 trò chơi phát triển trí tuệ cho bé!</p>
+        <p className="text-orange-800 text-sm font-medium opacity-80">
+          {loading ? 'Đang tải trò chơi...' : `${games.length} trò chơi phát triển trí tuệ!`}
+        </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 w-full max-w-lg mx-auto pb-10">
-        <GameCard type={GameType.NUMBERS} title="Đếm Số" icon="123" color="bg-blue-400" setActive={setActiveGame} />
-        <GameCard type={GameType.ALPHABET} title="Chữ Cái" icon="ABC" color="bg-pink-400" setActive={setActiveGame} />
-        <GameCard type={GameType.COLORS} title="Màu Sắc" icon="🎨" color="bg-purple-400" setActive={setActiveGame} />
-        <GameCard type={GameType.SHAPES} title="Hình Khối" icon="🔶" color="bg-indigo-400" setActive={setActiveGame} />
-        <GameCard type={GameType.ANIMALS} title="Con Vật" icon="🦁" color="bg-green-400" setActive={setActiveGame} />
-        <GameCard type={GameType.FRUITS} title="Trái Cây" icon="🍎" color="bg-red-400" setActive={setActiveGame} />
-        <GameCard type={GameType.VEGETABLES} title="Rau Củ" icon="🥦" color="bg-emerald-500" setActive={setActiveGame} />
-        <GameCard type={GameType.VEHICLES} title="Xe Cộ" icon="🚗" color="bg-orange-400" setActive={setActiveGame} />
-        <GameCard type={GameType.BODY} title="Cơ Thể" icon="👂" color="bg-rose-400" setActive={setActiveGame} />
-        <GameCard type={GameType.FAMILY} title="Gia Đình" icon="👨‍👩‍👧" color="bg-teal-400" setActive={setActiveGame} />
-        <GameCard type={GameType.CLOTHES} title="Quần Áo" icon="👗" color="bg-violet-400" setActive={setActiveGame} />
-        <GameCard type={GameType.SCHOOL} title="Trường Lớp" icon="🎒" color="bg-cyan-500" setActive={setActiveGame} />
-        <GameCard type={GameType.NATURE} title="Thiên Nhiên" icon="🌈" color="bg-sky-400" setActive={setActiveGame} />
-        <GameCard type={GameType.JOBS} title="Nghề Nghiệp" icon="👮" color="bg-slate-500" setActive={setActiveGame} />
-        <GameCard type={GameType.MUSIC} title="Âm Nhạc" icon="🎸" color="bg-fuchsia-400" setActive={setActiveGame} />
-        <GameCard type={GameType.SPORTS} title="Thể Thao" icon="⚽" color="bg-lime-500" setActive={setActiveGame} />
-        <GameCard type={GameType.HOUSE} title="Đồ Vật" icon="🪑" color="bg-amber-500" setActive={setActiveGame} />
-        <GameCard type={GameType.FOOD} title="Đồ Ăn" icon="🍰" color="bg-yellow-500" setActive={setActiveGame} />
-      </div>
+      {loading ? (
+         <div className="flex justify-center py-20"><Loader2 className="animate-spin text-orange-500" size={40} /></div>
+      ) : (
+        <div className="grid grid-cols-2 gap-4 w-full max-w-lg mx-auto pb-10">
+           {games.map(game => (
+             <GameCard 
+                key={game.id} 
+                title={game.title} 
+                icon={game.icon} 
+                color={game.color} 
+                onClick={() => setActiveGame(game)} 
+             />
+           ))}
+        </div>
+      )}
     </div>
   );
 };
 
-const GameCard: React.FC<{ type: GameType; title: string; icon: string; color: string; setActive: (t: GameType) => void }> = ({ type, title, icon, color, setActive }) => (
+const GameCard: React.FC<{ title: string; icon: string; color: string; onClick: () => void }> = ({ title, icon, color, onClick }) => (
   <button 
-    onClick={() => setActive(type)}
+    onClick={onClick}
     className={`relative overflow-hidden rounded-[1.5rem] p-4 text-white text-left transition-all active:scale-95 ${color} shadow-lg border-b-4 border-black/10 flex flex-col items-center justify-center gap-2 aspect-[4/3]`}
   >
     <div className="text-4xl drop-shadow-md">{icon}</div>
@@ -184,14 +64,23 @@ const GameCard: React.FC<{ type: GameType; title: string; icon: string; color: s
   </button>
 );
 
-const GameEngine: React.FC<{ type: GameType; onBack: () => void }> = ({ type, onBack }) => {
+const GameEngine: React.FC<{ game: Game; onBack: () => void }> = ({ game, onBack }) => {
+  const [questions, setQuestions] = useState<GameQuestion[]>([]);
   const [level, setLevel] = useState(0);
   const [score, setScore] = useState(0);
   const [showCelebration, setShowCelebration] = useState(false);
-  const [hasStarted, setHasStarted] = useState(false); // New state to unlock audio context
+  const [hasStarted, setHasStarted] = useState(false);
+  const [loadingQ, setLoadingQ] = useState(true);
 
-  // @ts-ignore
-  const questions: any[] = GAME_DATA[type] || [];
+  useEffect(() => {
+    const loadQ = async () => {
+       const qs = await fetchGameQuestions(game.id, true);
+       setQuestions(qs);
+       setLoadingQ(false);
+    };
+    loadQ();
+  }, [game.id]);
+
   const currentQ = questions[level];
 
   const playSound = (text: string) => {
@@ -204,17 +93,14 @@ const GameEngine: React.FC<{ type: GameType; onBack: () => void }> = ({ type, on
     }
   };
 
-  // Initial Sound Play - ONLY if started
   useEffect(() => {
     if (hasStarted && currentQ) {
-        // Small delay to ensure render
         const timer = setTimeout(() => playSound(currentQ.q), 500);
         return () => clearTimeout(timer);
     }
   }, [hasStarted, currentQ]);
 
   const handleStart = () => {
-    // Play a silent sound or short sound to unlock AudioContext on iOS
     playSound("Bắt đầu nào");
     setHasStarted(true);
   };
@@ -236,17 +122,26 @@ const GameEngine: React.FC<{ type: GameType; onBack: () => void }> = ({ type, on
     }
   };
 
+  if (loadingQ) return <div className="fixed inset-0 flex items-center justify-center bg-[#E0F7FA] z-50"><Loader2 className="animate-spin text-blue-500" size={40} /></div>;
+
+  if (questions.length === 0) return (
+     <div className="fixed inset-0 flex flex-col items-center justify-center bg-[#E0F7FA] z-50 text-center p-6">
+        <h2 className="text-xl font-bold mb-4">Trò chơi này đang được cập nhật</h2>
+        <button onClick={onBack} className="bg-gray-500 text-white px-6 py-3 rounded-full font-bold">Quay lại</button>
+     </div>
+  );
+
   if (!hasStarted) {
       return (
         <div className="flex flex-col items-center justify-center h-screen bg-black/80 fixed inset-0 z-50 text-white p-6 text-center animate-fade-in">
             <div className="w-24 h-24 bg-white/20 rounded-full flex items-center justify-center mb-6 animate-pulse">
                 <Play size={48} fill="white" />
             </div>
-            <h2 className="text-2xl font-bold mb-4">Sẵn sàng chơi chưa?</h2>
+            <h2 className="text-2xl font-bold mb-4">Sẵn sàng chơi "{game.title}" chưa?</h2>
             <p className="mb-8 opacity-80">Bé hãy bật âm lượng lên nhé!</p>
             <button 
                 onClick={handleStart}
-                className="bg-orange-500 text-white text-xl font-bold px-12 py-4 rounded-full shadow-xl hover:bg-orange-600 active:scale-95 transition-transform"
+                className={`${game.color.replace('bg-', 'bg-')} text-white text-xl font-bold px-12 py-4 rounded-full shadow-xl brightness-110 hover:brightness-125 active:scale-95 transition-transform`}
             >
                 Bắt đầu
             </button>
@@ -278,9 +173,9 @@ const GameEngine: React.FC<{ type: GameType; onBack: () => void }> = ({ type, on
         <button onClick={onBack} className="bg-white p-2.5 rounded-full shadow-md text-gray-700 hover:bg-gray-50 active:scale-90 transition-transform">
           <ArrowLeft size={24} />
         </button>
-        <div className="flex gap-1 bg-white px-3 py-1.5 rounded-full shadow-sm">
+        <div className="flex gap-1 bg-white px-3 py-1.5 rounded-full shadow-sm max-w-[200px] overflow-x-auto no-scrollbar">
           {[...Array(questions.length)].map((_, i) => (
-             <Star key={i} size={20} className={i < score ? "text-yellow-400 fill-yellow-400 drop-shadow-sm transition-all" : "text-gray-200 transition-all"} />
+             <Star key={i} size={16} className={i < score ? "text-yellow-400 fill-yellow-400 drop-shadow-sm transition-all shrink-0" : "text-gray-200 transition-all shrink-0"} />
           ))}
         </div>
       </div>
@@ -306,12 +201,12 @@ const GameEngine: React.FC<{ type: GameType; onBack: () => void }> = ({ type, on
               onClick={() => handleAnswer(opt)}
               className={`
                 aspect-square rounded-[2rem] shadow-lg transition-transform active:scale-90 flex items-center justify-center text-5xl font-bold border-b-8
-                ${currentQ.type === 'color' ? '' : 'bg-white border-gray-100 text-textDark'}
+                ${currentQ.displayType === 'color' ? '' : 'bg-white border-gray-100 text-textDark'}
                 ${(idx === 2 && currentQ.opts.length === 3) ? 'col-span-2 aspect-auto py-6' : ''} 
               `}
-              style={currentQ.type === 'color' ? { backgroundColor: opt, borderColor: 'rgba(0,0,0,0.1)' } : {}}
+              style={currentQ.displayType === 'color' ? { backgroundColor: opt, borderColor: 'rgba(0,0,0,0.1)' } : {}}
             >
-              {currentQ.type !== 'color' && opt}
+              {currentQ.displayType !== 'color' && opt}
             </button>
           ))}
         </div>
