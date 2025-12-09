@@ -1,8 +1,7 @@
-
 import React, { useEffect, useState } from 'react';
-import { Report } from '../../types';
+import { Report, toSlug } from '../../types';
 import { fetchReports, resolveReport, deleteReportedContent } from '../../services/admin';
-import { Flag, CheckCircle, XCircle, Trash2, ExternalLink, Loader2, RefreshCw } from 'lucide-react';
+import { Flag, CheckCircle, XCircle, Trash2, ExternalLink, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 // @ts-ignore
 import { Link } from 'react-router-dom';
 
@@ -46,7 +45,7 @@ export const ReportManagement: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20">
        <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
           <div>
              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -110,37 +109,59 @@ export const ReportManagement: React.FC = () => {
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${report.targetType === 'question' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'}`}>
                                 {report.targetType === 'question' ? 'Câu hỏi' : 'Câu trả lời'}
                                 </span>
-                                <div className="mt-1 text-xs text-gray-400 font-mono truncate max-w-[150px]">{report.targetId}</div>
+                                <div className="mt-1 text-xs text-gray-400 font-mono">ID: {report.targetId}</div>
                                 {report.targetType === 'question' && (
-                                    <Link to={`/question/${report.targetId}`} target="_blank" className="text-xs text-blue-500 hover:underline flex items-center gap-1 mt-1">
+                                    <Link to={`/question/${toSlug("view-reported-content", report.targetId)}`} target="_blank" className="text-xs text-blue-500 hover:underline flex items-center gap-1 mt-1">
                                         Xem nội dung <ExternalLink size={10} />
                                     </Link>
                                 )}
                             </td>
                             <td className="px-6 py-4">
-                                <p className="text-sm font-medium text-red-600 max-w-[200px] break-words">{report.reason}</p>
+                                <span className="font-medium text-gray-900 text-sm">{report.reason}</span>
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-600 truncate max-w-[120px]">
-                                {report.reportedBy}
+                            <td className="px-6 py-4">
+                                <div className="text-sm text-gray-600">User ID: {report.reportedBy}</div>
                             </td>
-                            <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap">
+                            <td className="px-6 py-4 text-sm text-gray-500">
                                 {new Date(report.createdAt).toLocaleDateString('vi-VN')}
                             </td>
                             <td className="px-6 py-4 text-center">
-                                {report.status === 'open' && <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-600">Chờ xử lý</span>}
-                                {report.status === 'resolved' && <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-600">Đã xử lý</span>}
-                                {report.status === 'dismissed' && <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600">Đã bỏ qua</span>}
+                                {report.status === 'open' ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-600">
+                                        <AlertTriangle size={12} /> Chờ xử lý
+                                    </span>
+                                ) : report.status === 'resolved' ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-600">
+                                        <CheckCircle size={12} /> Đã xử lý
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-600">
+                                        <XCircle size={12} /> Đã bỏ qua
+                                    </span>
+                                )}
                             </td>
                             <td className="px-6 py-4 text-right">
                                 {report.status === 'open' && (
                                     <div className="flex items-center justify-end gap-2">
-                                        <button onClick={() => handleDismiss(report.id)} className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors" title="Bỏ qua">
+                                        <button 
+                                            onClick={() => handleDismiss(report.id)}
+                                            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                            title="Bỏ qua báo cáo"
+                                        >
                                             <XCircle size={18} />
                                         </button>
-                                        <button onClick={() => handleResolve(report.id)} className="p-2 text-green-500 hover:bg-green-50 rounded-lg transition-colors" title="Đánh dấu đã xong">
+                                        <button 
+                                            onClick={() => handleResolve(report.id)}
+                                            className="p-2 text-green-500 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors"
+                                            title="Đánh dấu đã xử lý"
+                                        >
                                             <CheckCircle size={18} />
                                         </button>
-                                        <button onClick={() => handleDeleteContent(report)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors" title="Xóa nội dung vi phạm">
+                                        <button 
+                                            onClick={() => handleDeleteContent(report)}
+                                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                            title="Xóa nội dung vi phạm"
+                                        >
                                             <Trash2 size={18} />
                                         </button>
                                     </div>

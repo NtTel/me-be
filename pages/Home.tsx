@@ -3,14 +3,13 @@ import React, { useState, useMemo } from 'react';
 // @ts-ignore
 import { Link } from 'react-router-dom';
 import { Search, MessageCircle, Heart, ChevronDown, ChevronUp, HelpCircle, Clock, Flame, MessageSquareOff, ShieldCheck, ChevronRight, Sparkles, X, Filter, User as UserIcon, CornerDownRight } from 'lucide-react';
-import { Question, User } from '../types';
+import { Question, User, toSlug } from '../types';
 
 interface HomeProps {
   questions: Question[];
   categories: string[];
 }
 
-// Component hiển thị Grid ảnh phong cách Facebook
 const FBImageGrid: React.FC<{ images: string[] }> = ({ images }) => {
   if (!images || images.length === 0) return null;
   const count = images.length;
@@ -44,7 +43,6 @@ const FBImageGrid: React.FC<{ images: string[] }> = ({ images }) => {
     );
   }
 
-  // 4 or more
   return (
     <div className="mt-3 grid grid-cols-2 gap-1 rounded-xl overflow-hidden border border-gray-100 bg-gray-50 h-64">
        <img src={images[0]} className="w-full h-full object-cover" loading="lazy" />
@@ -68,29 +66,22 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
   const [viewFilter, setViewFilter] = useState<'newest' | 'active' | 'unanswered'>('newest');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 1. Filter by Category
   let displayQuestions = activeCategory === 'Tất cả' 
     ? [...questions] 
     : questions.filter(q => q.category === activeCategory);
 
-  // 2. Filter by Search Query (Enhanced)
   if (searchQuery.trim()) {
     const query = searchQuery.toLowerCase().trim();
     displayQuestions = displayQuestions.filter(q => {
-      // Check Title & Content
       const matchMain = q.title.toLowerCase().includes(query) || q.content.toLowerCase().includes(query);
-      // Check Author Name
       const matchAuthor = q.author.name.toLowerCase().includes(query);
-      // Check Answers (Content or Author)
       const matchAnswers = q.answers.some(a => 
         a.content.toLowerCase().includes(query) || a.author.name.toLowerCase().includes(query)
       );
-
       return matchMain || matchAuthor || matchAnswers;
     });
   }
 
-  // 3. Extract Matching Users (For "People" Search Section)
   const matchingUsers = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const query = searchQuery.toLowerCase().trim();
@@ -110,7 +101,6 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
     return Array.from(usersMap.values());
   }, [questions, searchQuery]);
 
-  // 4. Sort Logic
   switch (viewFilter) {
     case 'newest':
       displayQuestions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -130,8 +120,6 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      
-      {/* Mobile Search Bar - Sticky with correct top offset to avoid hiding behind fixed header */}
       <div className="px-4 md:px-0 sticky top-[68px] md:top-20 z-30 py-2 md:pt-0 -mx-4 md:mx-0 bg-[#F7F7F5]/95 md:bg-transparent backdrop-blur-sm transition-all">
         <div className="relative group shadow-[0_4px_20px_rgba(0,0,0,0.05)] rounded-2xl mx-4 md:mx-0">
             <div className="absolute inset-0 bg-white/80 backdrop-blur-xl rounded-2xl"></div>
@@ -155,7 +143,6 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
         </div>
       </div>
 
-      {/* FOUND USERS SECTION */}
       {searchQuery && matchingUsers.length > 0 && (
         <div className="pl-4 md:px-0 animate-slide-up">
            <div className="flex items-center gap-1 mb-2">
@@ -179,7 +166,6 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
         </div>
       )}
 
-      {/* Banner / Hero Section (Hidden when searching) */}
       {!searchQuery && (
         <div className="px-4 md:px-0">
             <div className="bg-gradient-to-br from-primary to-[#26A69A] rounded-3xl p-6 text-white shadow-xl shadow-primary/20 relative overflow-hidden">
@@ -200,7 +186,6 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
         </div>
       )}
 
-      {/* Categories Horizontal Scroll (Hidden when searching) */}
       {!searchQuery && (
         <div className="pl-4 md:px-0">
             <div className="flex items-center gap-1 mb-2">
@@ -214,7 +199,6 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
             >
                 Tất cả
             </button>
-            
             {categories.map(cat => (
                 <button 
                 key={cat}
@@ -228,7 +212,6 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
         </div>
       )}
 
-      {/* Filters */}
       <div className="px-4 md:px-0 flex items-center justify-between">
          <h3 className="font-bold text-lg text-textDark">
              {searchQuery ? `Kết quả tìm kiếm (${displayQuestions.length})` : 'Cộng đồng hỏi đáp'}
@@ -242,7 +225,6 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
          )}
       </div>
 
-      {/* Feed List */}
       <div className="px-4 md:px-0 space-y-4 pb-10">
           {displayQuestions.length === 0 && (
             <div className="text-center py-12">
@@ -256,15 +238,13 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
           )}
 
           {displayQuestions.map(q => {
-             // Logic to highlight if matched by Answer
              const query = searchQuery.toLowerCase().trim();
              const matchedAnswer = searchQuery && q.answers.find(a => a.content.toLowerCase().includes(query) || a.author.name.toLowerCase().includes(query));
              
              return (
-                <Link to={`/question/${q.id}`} key={q.id} className="block group">
+                <Link to={`/question/${toSlug(q.title, q.id)}`} key={q.id} className="block group">
                 <div className="bg-white p-5 rounded-[1.5rem] shadow-[0_2px_15px_rgba(0,0,0,0.03)] border border-gray-100 active:scale-[0.98] transition-all relative overflow-hidden">
                     {q.answers.length === 0 && <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-orange-100 to-transparent rounded-bl-full -mr-8 -mt-8"></div>}
-                    
                     <div className="flex items-start justify-between mb-3 relative z-10">
                     <div className="flex items-center gap-2">
                         <img src={q.author.avatar} className="w-8 h-8 rounded-full border border-gray-100 object-cover" />
@@ -278,13 +258,9 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
                     </div>
                     <span className="bg-gray-50 text-textGray text-[10px] font-bold px-2 py-1 rounded-lg border border-gray-100">{q.category}</span>
                     </div>
-                    
                     <h3 className="text-[16px] font-bold text-textDark mb-2 leading-snug line-clamp-2">{q.title}</h3>
                     <p className="text-textGray text-sm line-clamp-2 mb-3 font-normal">{q.content}</p>
-                    
                     <FBImageGrid images={q.images || []} />
-
-                    {/* Show matched answer preview if search mode */}
                     {matchedAnswer && (
                         <div className="bg-blue-50 rounded-xl p-3 mb-3 flex gap-2 border border-blue-100 mt-3">
                              <CornerDownRight size={16} className="text-blue-400 shrink-0 mt-0.5" />
@@ -294,7 +270,6 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
                              </div>
                         </div>
                     )}
-                    
                     <div className="flex items-center justify-between pt-3 border-t border-gray-50 mt-3">
                     <div className="flex items-center gap-4 text-xs font-bold text-gray-400">
                         <span className="flex items-center gap-1.5"><Heart size={14} className={q.likes > 0 ? "text-red-500 fill-red-500" : ""} /> {q.likes}</span>

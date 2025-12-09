@@ -19,7 +19,7 @@ import {
   documentId
 } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-import { Question, Answer, Notification, User, ChatSession, Message } from '../types';
+import { Question, Answer, Notification, User, ChatSession, Message, toSlug } from '../types';
 import { uploadMultipleFiles } from './storage';
 
 const QUESTIONS_COLLECTION = 'questions';
@@ -37,8 +37,6 @@ export const getUsersByIds = async (userIds: string[]): Promise<User[]> => {
   if (!db || !userIds || userIds.length === 0) return [];
   
   try {
-    // Firestore 'in' query supports up to 10 items. 
-    // For larger lists, we should fetch individually using Promise.all which is simpler for this scale.
     const promises = userIds.map(id => getDoc(doc(db, USERS_COLLECTION, id)));
     const snapshots = await Promise.all(promises);
     
@@ -65,7 +63,7 @@ export const updateUserStatus = async (userId: string, isOnline: boolean) => {
       lastActiveAt: new Date().toISOString()
     });
   } catch (e) {
-    // Ignore presence errors to prevent log noise
+    // Ignore presence errors
   }
 };
 
@@ -92,13 +90,11 @@ export const subscribeToUser = (userId: string, callback: (user: User | null) =>
 export const submitExpertApplication = async (user: User, formData: any) => {
   if (!db) return;
   try {
-    // 1. Upload Proof Images
     let proofImageUrls: string[] = [];
     if (formData.files && formData.files.length > 0) {
        proofImageUrls = await uploadMultipleFiles(formData.files, `expert_proofs/${user.id}`);
     }
 
-    // 2. Create Application Document
     const appData = {
       userId: user.id,
       fullName: formData.fullName,
@@ -112,11 +108,10 @@ export const submitExpertApplication = async (user: User, formData: any) => {
     
     await addDoc(collection(db, EXPERT_APPS_COLLECTION), appData);
 
-    // 3. Update User Status
     const userRef = doc(db, USERS_COLLECTION, user.id);
     await updateDoc(userRef, { 
       expertStatus: 'pending',
-      specialty: formData.specialty, // Optimistic update
+      specialty: formData.specialty,
       workplace: formData.workplace 
     });
 
@@ -149,7 +144,6 @@ export const sendNotification = async (
     };
     await addDoc(collection(db, NOTIFICATIONS_COLLECTION), notifData);
   } catch (e) {
-    // Silently fail for permission errors to avoid alerting user for background tasks
     console.warn("Could not send notification (Permission denied or Network error)", e);
   }
 };
@@ -158,7 +152,6 @@ export const subscribeToNotifications = (userId: string, callback: (notifs: Noti
   if (!db || !userId) return () => {};
   
   try {
-    // FIX: Removed orderBy('createdAt', 'desc') to avoid "Missing Index" error
     const q = query(
         collection(db, NOTIFICATIONS_COLLECTION),
         where('userId', '==', userId),
@@ -166,7 +159,6 @@ export const subscribeToNotifications = (userId: string, callback: (notifs: Noti
     );
     return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
         const notifs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Notification[];
-        // Client-side sort
         notifs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         callback(notifs);
     }, (error) => {
@@ -194,10 +186,7 @@ export const followUser = async (currentUserId: string, targetUser: User) => {
   try {
     const currentUserRef = doc(db, USERS_COLLECTION, currentUserId);
     const targetUserRef = doc(db, USERS_COLLECTION, targetUser.id);
-    
-    // Update Current User (Following)
     await updateDoc(currentUserRef, { following: arrayUnion(targetUser.id) });
-    // Update Target User (Followers)
     await updateDoc(targetUserRef, { followers: arrayUnion(currentUserId) });
   } catch (e) {
     console.error("Follow error:", e);
@@ -210,7 +199,6 @@ export const unfollowUser = async (currentUserId: string, targetUserId: string) 
   try {
     const currentUserRef = doc(db, USERS_COLLECTION, currentUserId);
     const targetUserRef = doc(db, USERS_COLLECTION, targetUserId);
-    
     await updateDoc(currentUserRef, { following: arrayRemove(targetUserId) });
     await updateDoc(targetUserRef, { followers: arrayRemove(currentUserId) });
   } catch (e) {
@@ -233,8 +221,6 @@ export const toggleSaveQuestion = async (userId: string, questionId: string, sho
 };
 
 // --- CHAT SYSTEM ---
-
-// Helper to get consistent Chat ID for 1-on-1 (sort UIDs)
 export const getChatId = (uid1: string, uid2: string) => {
   return [uid1, uid2].sort().join('_');
 };
@@ -246,8 +232,6 @@ export const sendMessage = async (
   type: 'text' | 'image' = 'text'
 ) => {
   if (!db) return;
-  
-  // Guard clause against empty IDs
   if (!sender.id || !recipient.id) {
       console.error("Cannot send message: Missing User IDs");
       return;
@@ -266,13 +250,9 @@ export const sendMessage = async (
   };
 
   try {
-      // 1. Get existing chat to preserve existing participant data if needed, 
-      // or ensure we don't overwrite unexpected fields.
       const chatDoc = await getDoc(chatRef);
-      
       const participantData = chatDoc.exists() ? chatDoc.data().participantData : {};
       
-      // Ensure current info is up to date
       participantData[sender.id] = { name: sender.name, avatar: sender.avatar, isExpert: sender.isExpert || false };
       participantData[recipient.id] = { name: recipient.name, avatar: recipient.avatar, isExpert: recipient.isExpert || false };
 
@@ -285,19 +265,14 @@ export const sendMessage = async (
         updatedAt: new Date().toISOString(),
       };
 
-      // Handle unread count increment
       const currentUnread = chatDoc.exists() ? chatDoc.data().unreadCount || {} : {};
       const newUnread = { ...currentUnread };
-      // Increment for recipient
       newUnread[recipient.id] = (newUnread[recipient.id] || 0) + 1;
-      // Reset for sender (since they just sent a message)
       newUnread[sender.id] = 0;
 
       chatData.unreadCount = newUnread;
 
       await setDoc(chatRef, chatData, { merge: true });
-      
-      // Add Message to Subcollection
       const messagesRef = collection(db, CHATS_COLLECTION, chatId, 'messages');
       await addDoc(messagesRef, messageData);
   } catch (e: any) {
@@ -309,14 +284,12 @@ export const sendMessage = async (
 export const subscribeToChats = (userId: string, callback: (chats: ChatSession[]) => void) => {
   if (!db || !userId) return () => {};
   try {
-    // FIX: Removed orderBy('updatedAt', 'desc') to avoid "Missing Index" error
     const q = query(
         collection(db, CHATS_COLLECTION),
         where('participants', 'array-contains', userId)
     );
     return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
         const chats = snapshot.docs.map(doc => doc.data() as ChatSession);
-        // Client-side sort
         chats.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
         callback(chats);
     }, (error) => {
@@ -331,14 +304,11 @@ export const subscribeToChats = (userId: string, callback: (chats: ChatSession[]
 export const subscribeToMessages = (chatId: string, callback: (msgs: Message[]) => void) => {
   if (!db || !chatId) return () => {};
   try {
-    // Messages usually don't need complex index if just sorting by default, 
-    // but explicit orderBy usually works fine here. Keeping it safe.
     const q = query(
         collection(db, CHATS_COLLECTION, chatId, 'messages')
     );
     return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
         const msgs = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Message));
-        // Client-side sort
         msgs.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
         callback(msgs);
     }, (error) => {
@@ -350,16 +320,13 @@ export const subscribeToMessages = (chatId: string, callback: (msgs: Message[]) 
   }
 };
 
-
-// --- QUESTIONS & ANSWERS (EXISTING) ---
+// --- QUESTIONS & ANSWERS ---
 export const subscribeToQuestions = (callback: (questions: Question[]) => void) => {
   if (!db) return () => {};
   try {
-    // FIX: Add LIMIT to improve performance and reduce initial load cost
     const q = query(collection(db, QUESTIONS_COLLECTION), limit(100));
     return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
         const questions = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Question[];
-        // Client side sort for safety
         questions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         callback(questions);
     }, (error) => { 
@@ -397,7 +364,8 @@ export const toggleQuestionLikeDb = async (question: Question, user: User) => {
   try {
     const newLikes = question.likes + 1; 
     await updateQuestionInDb(question.id, { likes: newLikes });
-    await sendNotification(question.author.id, user, 'LIKE', `đã thích câu hỏi: "${question.title}"`, `/question/${question.id}`);
+    // Updated to use slug in link
+    await sendNotification(question.author.id, user, 'LIKE', `đã thích câu hỏi: "${question.title}"`, `/question/${toSlug(question.title, question.id)}`);
   } catch (e) {
     console.error("Like error", e);
   }
@@ -417,9 +385,9 @@ export const addAnswerToDb = async (question: Question, answer: Answer) => {
   try {
     const docRef = doc(db, QUESTIONS_COLLECTION, question.id);
     await updateDoc(docRef, { answers: arrayUnion(sanitizeData(answer)) });
-    // Use separate try-catch for notification so it doesn't block the answer flow if it fails
     try {
-        await sendNotification(question.author.id, answer.author, 'ANSWER', `đã trả lời câu hỏi: "${question.title}"`, `/question/${question.id}`);
+        // Updated to use slug in link
+        await sendNotification(question.author.id, answer.author, 'ANSWER', `đã trả lời câu hỏi: "${question.title}"`, `/question/${toSlug(question.title, question.id)}`);
     } catch(err) {
         console.warn("Failed to send answer notification", err);
     }
@@ -439,13 +407,13 @@ export const updateAnswerInDb = async (questionId: string, answerId: string, upd
         const updatedAnswers = question.answers.map(a => a.id === answerId ? { ...a, ...sanitizeData(updates) } : a);
         await updateDoc(docRef, { answers: updatedAnswers });
         
-        // Notifications for Verify/Best Answer
         if (updates.isExpertVerified || updates.isBestAnswer) {
             const answer = question.answers.find(a => a.id === answerId);
             if (answer) {
                 const type = updates.isExpertVerified ? 'VERIFY' : 'BEST_ANSWER';
                 const content = updates.isExpertVerified ? 'đã xác thực câu trả lời.' : 'đã chọn câu trả lời hay nhất.';
-                await sendNotification(answer.author.id, { name: 'Admin/Chuyên gia', avatar: 'https://cdn-icons-png.flaticon.com/512/3177/3177440.png' } as User, type as any, content, `/question/${questionId}`);
+                // Updated to use slug in link
+                await sendNotification(answer.author.id, { name: 'Admin/Chuyên gia', avatar: 'https://cdn-icons-png.flaticon.com/512/3177/3177440.png' } as User, type as any, content, `/question/${toSlug(question.title, question.id)}`);
             }
         }
     }

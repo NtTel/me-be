@@ -1,14 +1,13 @@
-
 import React, { useState, useEffect } from 'react';
 // @ts-ignore
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { AdminLayout } from './layouts/AdminLayout';
 
 // User Pages
 import { Home } from './pages/Home';
 import { Ask } from './pages/Ask';
-import { QuestionDetail } from './pages/QuestionDetail';
+import QuestionDetail from './pages/QuestionDetail';
 import { GameZone } from './pages/GameZone';
 import { Profile } from './pages/Profile';
 import { Notifications } from './pages/Notifications';
@@ -180,7 +179,7 @@ export default function App() {
   if (authLoading) return <div className="min-h-screen flex items-center justify-center bg-cream text-primary font-bold">Đang tải dữ liệu...</div>;
 
   return (
-    <HashRouter>
+    <BrowserRouter>
       <PWAInstallPrompt />
       
       <AuthModal 
@@ -224,7 +223,9 @@ export default function App() {
         <Route path="/messages" element={<Layout><Messages currentUser={currentUser} /></Layout>} />
         <Route path="/messages/:userId" element={<Layout><ChatDetail currentUser={currentUser} onOpenAuth={() => setShowGlobalAuthModal(true)} /></Layout>} />
         <Route path="/ai-chat" element={<Layout><AiChat /></Layout>} />
-        <Route path="/question/:id" element={
+        
+        {/* Updated Route to use slug */}
+        <Route path="/question/:slug" element={
           <Layout>
             <QuestionDetail 
               questions={questions} 
@@ -242,6 +243,7 @@ export default function App() {
             />
           </Layout>
         } />
+        
         <Route path="/games" element={<Layout><GameZone /></Layout>} />
         <Route path="/profile" element={<Layout><Profile user={currentUser} questions={questions} onLogout={handleLogout} onOpenAuth={() => setShowGlobalAuthModal(true)} /></Layout>} />
         <Route path="/profile/:userId" element={<Layout><Profile user={currentUser} questions={questions} onLogout={handleLogout} onOpenAuth={() => setShowGlobalAuthModal(true)} /></Layout>} />
@@ -254,6 +256,6 @@ export default function App() {
         
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </HashRouter>
+    </BrowserRouter>
   );
 }
