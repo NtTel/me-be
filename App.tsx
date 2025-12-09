@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 // @ts-ignore
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
-import { AdminLayout } from './layouts/AdminLayout'; // Import Admin Layout
+import { AdminLayout } from './layouts/AdminLayout';
 
 // User Pages
 import { Home } from './pages/Home';
@@ -25,7 +25,7 @@ import { QuestionManagement } from './pages/admin/QuestionManagement';
 import { SeedData } from './pages/admin/SeedData';
 import { GameManagement } from './pages/admin/GameManagement';
 import { GameDetail } from './pages/admin/GameDetail';
-import { ReportManagement } from './pages/admin/ReportManagement'; // NEW
+import { ReportManagement } from './pages/admin/ReportManagement';
 
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { AuthModal } from './components/AuthModal';
@@ -161,7 +161,6 @@ export default function App() {
         }
         await submitExpertApplication(currentUser, data);
         
-        // Update local state to reflect pending status immediately
         setCurrentUser({
             ...currentUser,
             expertStatus: 'pending',
@@ -194,7 +193,7 @@ export default function App() {
       />
 
       <Routes>
-        {/* --- ADMIN ROUTES (Protected) --- */}
+        {/* --- ADMIN ROUTES --- */}
         <Route path="/admin" element={<AdminLayout currentUser={currentUser} onLogout={handleLogout} />}>
             <Route index element={<div className="p-10 text-center text-gray-500">Dashboard Overview (Coming Soon)</div>} />
             <Route path="users" element={<UserManagement />} />
@@ -207,11 +206,7 @@ export default function App() {
         </Route>
 
         {/* --- USER ROUTES --- */}
-        <Route path="/" element={
-          <Layout>
-            <Home questions={questions} categories={categories} />
-          </Layout>
-        } />
+        <Route path="/" element={<Layout><Home questions={questions} categories={categories} /></Layout>} />
         <Route path="/ask" element={
           <Layout>
             <Ask 
@@ -225,29 +220,10 @@ export default function App() {
             />
           </Layout>
         } />
-        <Route path="/notifications" element={
-          <Layout>
-            <Notifications 
-              currentUser={currentUser}
-              onOpenAuth={() => setShowGlobalAuthModal(true)}
-            />
-          </Layout>
-        } />
-        <Route path="/messages" element={
-          <Layout>
-            <Messages currentUser={currentUser} />
-          </Layout>
-        } />
-        <Route path="/messages/:userId" element={
-          <Layout>
-            <ChatDetail currentUser={currentUser} onOpenAuth={() => setShowGlobalAuthModal(true)} />
-          </Layout>
-        } />
-        <Route path="/ai-chat" element={
-          <Layout>
-            <AiChat />
-          </Layout>
-        } />
+        <Route path="/notifications" element={<Layout><Notifications currentUser={currentUser} onOpenAuth={() => setShowGlobalAuthModal(true)} /></Layout>} />
+        <Route path="/messages" element={<Layout><Messages currentUser={currentUser} /></Layout>} />
+        <Route path="/messages/:userId" element={<Layout><ChatDetail currentUser={currentUser} onOpenAuth={() => setShowGlobalAuthModal(true)} /></Layout>} />
+        <Route path="/ai-chat" element={<Layout><AiChat /></Layout>} />
         <Route path="/question/:id" element={
           <Layout>
             <QuestionDetail 
@@ -266,39 +242,10 @@ export default function App() {
             />
           </Layout>
         } />
-        <Route path="/games" element={
-          <Layout>
-            <GameZone />
-          </Layout>
-        } />
-        
-        <Route path="/profile" element={
-          <Layout>
-            <Profile 
-              user={currentUser} 
-              questions={questions} 
-              onLogout={handleLogout}
-              onOpenAuth={() => setShowGlobalAuthModal(true)}
-            />
-          </Layout>
-        } />
-
-        <Route path="/profile/:userId" element={
-          <Layout>
-            <Profile 
-              user={currentUser} 
-              questions={questions} 
-              onLogout={handleLogout}
-              onOpenAuth={() => setShowGlobalAuthModal(true)}
-            />
-          </Layout>
-        } />
-        
-        <Route path="/expert-register" element={
-          <Layout>
-            <ExpertRegistration currentUser={currentUser} onSubmitApplication={handleExpertRegistration} />
-          </Layout>
-        } />
+        <Route path="/games" element={<Layout><GameZone /></Layout>} />
+        <Route path="/profile" element={<Layout><Profile user={currentUser} questions={questions} onLogout={handleLogout} onOpenAuth={() => setShowGlobalAuthModal(true)} /></Layout>} />
+        <Route path="/profile/:userId" element={<Layout><Profile user={currentUser} questions={questions} onLogout={handleLogout} onOpenAuth={() => setShowGlobalAuthModal(true)} /></Layout>} />
+        <Route path="/expert-register" element={<Layout><ExpertRegistration currentUser={currentUser} onSubmitApplication={handleExpertRegistration} /></Layout>} />
         
         <Route path="/about" element={<Layout><About /></Layout>} />
         <Route path="/terms" element={<Layout><Terms /></Layout>} />

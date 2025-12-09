@@ -8,11 +8,16 @@ import { User, Question, ExpertApplication, Report } from '../types';
 // --- USERS ---
 export const fetchAllUsers = async (): Promise<User[]> => {
   if (!db) return [];
-  // Remove orderBy to prevent index errors. Sort client-side.
-  const q = query(collection(db, 'users'));
-  const snapshot = await getDocs(q);
-  const users = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as User));
-  return users.sort((a, b) => new Date(b.joinedAt || '').getTime() - new Date(a.joinedAt || '').getTime());
+  try {
+    const q = query(collection(db, 'users'));
+    const snapshot = await getDocs(q);
+    const users = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as User));
+    // Sort client-side to avoid index issues
+    return users.sort((a, b) => new Date(b.joinedAt || '').getTime() - new Date(a.joinedAt || '').getTime());
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    return [];
+  }
 };
 
 export const updateUserRole = async (userId: string, updates: { isExpert?: boolean; isAdmin?: boolean; isBanned?: boolean }) => {
@@ -24,12 +29,15 @@ export const updateUserRole = async (userId: string, updates: { isExpert?: boole
 // --- EXPERT APPLICATIONS ---
 export const fetchExpertApplications = async (): Promise<ExpertApplication[]> => {
   if (!db) return [];
-  // FIX: Removed orderBy('createdAt') to avoid "Missing Index" error causing empty list
-  const q = query(collection(db, 'expert_applications'));
-  const snapshot = await getDocs(q);
-  const apps = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ExpertApplication));
-  // Client-side sort
-  return apps.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  try {
+    const q = query(collection(db, 'expert_applications'));
+    const snapshot = await getDocs(q);
+    const apps = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ExpertApplication));
+    return apps.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  } catch (error) {
+    console.error("Error fetching expert apps:", error);
+    return [];
+  }
 };
 
 export const processExpertApplication = async (appId: string, userId: string, status: 'approved' | 'rejected', reason?: string, specialty?: string) => {
@@ -41,7 +49,7 @@ export const processExpertApplication = async (appId: string, userId: string, st
   batch.update(appRef, { 
     status, 
     rejectionReason: reason || null,
-    reviewedAt: new Date().toISOString() // Add timestamp for history
+    reviewedAt: new Date().toISOString() 
   });
 
   // 2. Update User Profile if Approved
@@ -65,11 +73,15 @@ export const processExpertApplication = async (appId: string, userId: string, st
 // --- QUESTIONS ---
 export const fetchAllQuestionsAdmin = async (): Promise<Question[]> => {
   if (!db) return [];
-  // Remove orderBy to prevent index errors
-  const q = query(collection(db, 'questions'));
-  const snapshot = await getDocs(q);
-  const questions = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Question));
-  return questions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  try {
+    const q = query(collection(db, 'questions'));
+    const snapshot = await getDocs(q);
+    const questions = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Question));
+    return questions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  } catch (error) {
+    console.error("Error fetching questions:", error);
+    return [];
+  }
 };
 
 export const bulkUpdateQuestions = async (ids: string[], updates: { isHidden?: boolean }) => {
@@ -115,18 +127,16 @@ export const resolveReport = async (reportId: string, action: 'resolved' | 'dism
 export const deleteReportedContent = async (report: Report) => {
     if (!db) return;
     try {
-        // Resolve report first
+        // 1. Mark report as resolved
         await resolveReport(report.id, 'resolved');
 
-        // Delete content based on type
+        // 2. Delete content
         if (report.targetType === 'question') {
             await deleteDoc(doc(db, 'questions', report.targetId));
         } else if (report.targetType === 'answer') {
-            // NOTE: Deleting answer requires parent QuestionID. 
-            // In a real app, report should store parentID for answers.
-            // For now, we assume we might not delete answers easily without it, 
-            // or we fetch the parent first. Skipping strictly for this MVP.
-            console.warn("Deleting reported answers is complex without parent ID reference in report");
+            // Note: Deleting an answer individually is tricky without parentId in the report model.
+            // For MVP, we'll log this limitation. In production, Report should store questionId for answers.
+            console.warn("Deleting answer directly requires parent ID. Please delete manually via Question Manager.");
         }
     } catch (e) {
         console.error("Error deleting reported content", e);
