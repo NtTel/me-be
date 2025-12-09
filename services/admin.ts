@@ -1,4 +1,3 @@
-
 import { 
   collection, getDocs, doc, updateDoc, query, orderBy, where, deleteDoc, getDoc, writeBatch 
 } from 'firebase/firestore';
@@ -42,11 +41,13 @@ export const processExpertApplication = async (appId: string, userId: string, st
   // 2. Update User Profile if Approved
   if (status === 'approved') {
     const userRef = doc(db, 'users', userId);
-    batch.update(userRef, { 
+    const updates: any = { 
       isExpert: true, 
-      expertStatus: 'approved',
-      specialty: specialty 
-    });
+      expertStatus: 'approved' 
+    };
+    if (specialty) updates.specialty = specialty;
+    
+    batch.update(userRef, updates);
   } else if (status === 'rejected') {
      const userRef = doc(db, 'users', userId);
      batch.update(userRef, { expertStatus: 'rejected' });

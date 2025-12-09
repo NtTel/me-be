@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 // @ts-ignore
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -35,7 +34,8 @@ import {
   deleteQuestionFromDb, 
   addAnswerToDb, 
   updateAnswerInDb, 
-  deleteAnswerFromDb 
+  deleteAnswerFromDb,
+  submitExpertApplication 
 } from './services/db';
 
 const GUEST_USER: User = {
@@ -149,13 +149,25 @@ export default function App() {
     await updateQuestionInDb(questionId, { answers: updatedAnswers });
   };
 
-  const handleExpertRegistration = (data: any) => {
-    setCurrentUser({
-      ...currentUser,
-      expertStatus: 'pending',
-      specialty: data.specialty,
-      workplace: data.workplace
-    });
+  const handleExpertRegistration = async (data: any) => {
+    try {
+        if (currentUser.isGuest) {
+            setShowGlobalAuthModal(true);
+            return;
+        }
+        await submitExpertApplication(currentUser, data);
+        
+        // Update local state to reflect pending status immediately
+        setCurrentUser({
+            ...currentUser,
+            expertStatus: 'pending',
+            specialty: data.specialty,
+            workplace: data.workplace
+        });
+    } catch (e) {
+        console.error("Failed to submit application", e);
+        alert("Có lỗi xảy ra khi gửi hồ sơ. Vui lòng thử lại.");
+    }
   };
 
   const handleGlobalLogin = async (email: string, pass: string) => { await loginWithEmail(email, pass); };

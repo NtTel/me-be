@@ -19,11 +19,13 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { Question, Answer, Notification, User, ChatSession, Message } from '../types';
+import { uploadMultipleFiles } from './storage';
 
 const QUESTIONS_COLLECTION = 'questions';
 const NOTIFICATIONS_COLLECTION = 'notifications';
 const USERS_COLLECTION = 'users';
 const CHATS_COLLECTION = 'chats';
+const EXPERT_APPS_COLLECTION = 'expert_applications';
 
 const sanitizeData = <T>(data: T): T => {
   return JSON.parse(JSON.stringify(data));
@@ -82,6 +84,44 @@ export const subscribeToUser = (userId: string, callback: (user: User | null) =>
   } catch (e) {
     console.warn("Error subscribing to user", e);
     return () => {};
+  }
+};
+
+// --- EXPERT REGISTRATION ---
+export const submitExpertApplication = async (user: User, formData: any) => {
+  if (!db) return;
+  try {
+    // 1. Upload Proof Images
+    let proofImageUrls: string[] = [];
+    if (formData.files && formData.files.length > 0) {
+       proofImageUrls = await uploadMultipleFiles(formData.files, `expert_proofs/${user.id}`);
+    }
+
+    // 2. Create Application Document
+    const appData = {
+      userId: user.id,
+      fullName: formData.fullName,
+      phone: formData.phone,
+      workplace: formData.workplace,
+      specialty: formData.specialty,
+      proofImages: proofImageUrls,
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    };
+    
+    await addDoc(collection(db, EXPERT_APPS_COLLECTION), appData);
+
+    // 3. Update User Status
+    const userRef = doc(db, USERS_COLLECTION, user.id);
+    await updateDoc(userRef, { 
+      expertStatus: 'pending',
+      specialty: formData.specialty, // Optimistic update
+      workplace: formData.workplace 
+    });
+
+  } catch (e) {
+    console.error("Error submitting expert application:", e);
+    throw e;
   }
 };
 

@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom';
 
 interface ExpertRegistrationProps {
   currentUser: User;
-  onSubmitApplication: (data: any) => void;
+  onSubmitApplication: (data: any) => Promise<void>;
 }
 
 const SPECIALTIES = [
@@ -87,14 +87,15 @@ export const ExpertRegistration: React.FC<ExpertRegistrationProps> = ({ currentU
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
-      onSubmitApplication(formData);
-      setIsSubmitting(false);
-    }, 2000);
+    try {
+        await onSubmitApplication(formData);
+        // Success handling is done by parent updating the user state
+    } catch (e) {
+        setIsSubmitting(false);
+    }
   };
 
   return (
