@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { Question, Answer, User } from '../types';
 import { generateDraftAnswer } from '../services/gemini';
-import { toggleQuestionLikeDb } from '../services/db';
+import { toggleQuestionLikeDb, toggleSaveQuestion } from '../services/db';
 import { ShareModal } from '../components/ShareModal';
 import { loginAnonymously } from '../services/auth';
 import { uploadFile } from '../services/storage';
@@ -176,6 +176,7 @@ export const QuestionDetail: React.FC<DetailProps> = ({
   const [showShareModal, setShowShareModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sortOption, setSortOption] = useState<'best' | 'newest' | 'oldest'>('best');
+  const [isSaved, setIsSaved] = useState(false);
   
   // Tool States
   const [showStickers, setShowStickers] = useState(false);
@@ -234,6 +235,13 @@ export const QuestionDetail: React.FC<DetailProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Update Save State
+  useEffect(() => {
+    if (currentUser && question) {
+        setIsSaved(currentUser.savedQuestions?.includes(question.id) || false);
+    }
+  }, [currentUser, question]);
+
   // Handle auto-resize of textarea
   useEffect(() => {
     if (answerInputRef.current) {
@@ -267,6 +275,20 @@ export const QuestionDetail: React.FC<DetailProps> = ({
       const user = await ensureAuth();
       toggleQuestionLikeDb(question, user);
     } catch (e) {}
+  };
+
+  const handleSave = async () => {
+    try {
+        const user = await ensureAuth();
+        const newStatus = !isSaved;
+        setIsSaved(newStatus); // Optimistic UI
+        await toggleSaveQuestion(user.id, question.id, newStatus);
+    } catch (e) {
+         if ((e as any).message !== "LOGIN_REQUIRED") {
+             setIsSaved(!isSaved); // Revert on error
+             alert("Không thể lưu. Vui lòng thử lại.");
+         }
+    }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -507,8 +529,8 @@ export const QuestionDetail: React.FC<DetailProps> = ({
                          <span>{question.answers.length > 0 ? question.answers.length : 'Trả lời'}</span>
                      </button>
                  </div>
-                 <button className="text-gray-400 hover:text-orange-500 transition-colors">
-                     <Bookmark size={20} />
+                 <button onClick={handleSave} className={`transition-colors active:scale-90 ${isSaved ? 'text-orange-500' : 'text-gray-400 hover:text-orange-500'}`}>
+                     <Bookmark size={20} className={isSaved ? "fill-current" : ""} />
                  </button>
              </div>
           </div>

@@ -15,6 +15,7 @@ export interface User {
   isGuest?: boolean;
   followers?: string[];
   following?: string[];
+  savedQuestions?: string[]; // List of saved question IDs
   isOnline?: boolean;
   lastActiveAt?: string;
   email?: string; // Add email for admin management

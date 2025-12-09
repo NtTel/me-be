@@ -3,9 +3,9 @@ import React, { useEffect, useState } from 'react';
 // @ts-ignore
 import { useParams, useNavigate } from 'react-router-dom';
 import { Game, GameQuestion } from '../../types';
-import { getGameById, fetchGameQuestions, createGameQuestion, deleteGameQuestion, updateGameQuestion } from '../../services/game';
+import { getGameById, fetchGameQuestions, createGameQuestion, deleteGameQuestion, updateGameQuestion, importQuestionsBatch } from '../../services/game';
 import { generateGameContent } from '../../services/gemini';
-import { ArrowLeft, Sparkles, Plus, Trash2, Eye, EyeOff, Save, Loader2, Bot } from 'lucide-react';
+import { ArrowLeft, Sparkles, Plus, Trash2, Eye, EyeOff, Save, Loader2, Bot, FileJson, Copy, Check } from 'lucide-react';
 
 export const GameDetail: React.FC = () => {
   const { gameId } = useParams<{ gameId: string }>();
@@ -27,6 +27,11 @@ export const GameDetail: React.FC = () => {
   const [aiCount, setAiCount] = useState(10);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedData, setGeneratedData] = useState<any[]>([]);
+
+  // Import JSON State
+  const [showJsonModal, setShowJsonModal] = useState(false);
+  const [jsonInput, setJsonInput] = useState('');
+  const [importStatus, setImportStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   useEffect(() => {
     if (gameId) loadData();
@@ -110,11 +115,56 @@ export const GameDetail: React.FC = () => {
      loadData();
   };
 
+  const handleJsonImport = async () => {
+    if (!gameId || !jsonInput.trim()) return;
+    try {
+        const parsed = JSON.parse(jsonInput);
+        if (!Array.isArray(parsed)) throw new Error("JSON phải là một mảng []");
+        
+        // Simple validation
+        const isValid = parsed.every(item => item.q && item.opts && item.a);
+        if (!isValid) throw new Error("Dữ liệu thiếu trường q, opts, hoặc a");
+
+        await importQuestionsBatch(gameId, parsed, questions.length + 1);
+        
+        setImportStatus('success');
+        setTimeout(() => {
+            setShowJsonModal(false);
+            setJsonInput('');
+            setImportStatus('idle');
+            loadData();
+        }, 1500);
+
+    } catch (error) {
+        alert("Lỗi Import: " + error);
+        setImportStatus('error');
+    }
+  };
+
+  const copySampleJson = () => {
+      const sample = `[
+  {
+    "q": "Con mèo kêu thế nào?",
+    "opts": ["Gâu gâu", "Meo meo", "Chíp chíp"],
+    "a": "Meo meo",
+    "displayType": "text"
+  },
+  {
+    "q": "Quả nào màu đỏ?",
+    "opts": ["🍏", "🍎", "🍌"],
+    "a": "🍎",
+    "displayType": "emoji"
+  }
+]`;
+      navigator.clipboard.writeText(sample);
+      alert("Đã copy mẫu JSON!");
+  };
+
   if (loading || !game) return <div className="p-10 text-center"><Loader2 className="animate-spin mx-auto"/></div>;
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-20">
-       <div className="flex items-center justify-between">
+       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
              <button onClick={() => navigate('/admin/games')} className="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
                 <ArrowLeft size={20} />
@@ -127,12 +177,20 @@ export const GameDetail: React.FC = () => {
              </div>
           </div>
           
-          <button 
-             onClick={() => { setShowAiModal(true); setAiTopic(game.title); }}
-             className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all"
-          >
-             <Sparkles size={18} /> AI Tạo câu hỏi
-          </button>
+          <div className="flex gap-2">
+            <button 
+                onClick={() => setShowJsonModal(true)}
+                className="bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-sm hover:bg-gray-50 transition-all"
+            >
+                <FileJson size={18} /> Import JSON
+            </button>
+            <button 
+                onClick={() => { setShowAiModal(true); setAiTopic(game.title); }}
+                className="bg-gradient-to-r from-purple-500 to-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all"
+            >
+                <Sparkles size={18} /> AI Generator
+            </button>
+          </div>
        </div>
 
        {/* MANUAL ADD FORM */}
@@ -252,6 +310,46 @@ export const GameDetail: React.FC = () => {
                          <button onClick={() => setGeneratedData([])} className="w-full text-gray-500 text-sm hover:underline">Thử lại</button>
                       </div>
                    )}
+                </div>
+             </div>
+          </div>
+       )}
+
+       {/* IMPORT JSON MODAL */}
+       {showJsonModal && (
+          <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+             <div className="bg-white rounded-2xl w-full max-w-xl animate-pop-in">
+                <div className="p-5 border-b border-gray-100 flex justify-between items-center">
+                   <h2 className="text-lg font-bold flex items-center gap-2 text-gray-800">
+                      <FileJson size={20} /> Import JSON
+                   </h2>
+                   <button onClick={() => setShowJsonModal(false)}><ArrowLeft size={20} className="rotate-180 text-gray-400" /></button>
+                </div>
+                
+                <div className="p-5">
+                   <div className="flex justify-between items-center mb-2">
+                        <label className="text-sm font-bold text-gray-700">Dán nội dung JSON vào đây:</label>
+                        <button onClick={copySampleJson} className="text-xs text-blue-600 hover:underline flex items-center gap-1"><Copy size={12} /> Copy mẫu</button>
+                   </div>
+                   
+                   <textarea 
+                      value={jsonInput}
+                      onChange={e => setJsonInput(e.target.value)}
+                      className="w-full h-48 border border-gray-300 rounded-xl p-3 text-xs font-mono focus:ring-2 focus:ring-indigo-200 outline-none resize-none"
+                      placeholder='[{"q": "Câu hỏi?", "opts": ["A", "B"], "a": "A", "displayType": "text"}]'
+                   />
+                   
+                   <div className="mt-4 flex justify-end gap-2">
+                      <button onClick={() => setShowJsonModal(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg font-bold">Hủy</button>
+                      <button 
+                        onClick={handleJsonImport}
+                        disabled={importStatus === 'success' || !jsonInput.trim()}
+                        className={`px-6 py-2 rounded-lg font-bold text-white flex items-center gap-2 transition-all ${importStatus === 'success' ? 'bg-green-500' : 'bg-indigo-600 hover:bg-indigo-700'}`}
+                      >
+                         {importStatus === 'success' ? <Check size={18} /> : <FileJson size={18} />}
+                         {importStatus === 'success' ? 'Thành công!' : 'Import ngay'}
+                      </button>
+                   </div>
                 </div>
              </div>
           </div>

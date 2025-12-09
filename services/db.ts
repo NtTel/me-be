@@ -1,3 +1,4 @@
+
 import { 
   collection, 
   doc, 
@@ -187,7 +188,7 @@ export const markNotificationAsRead = async (notifId: string) => {
   }
 };
 
-// --- USER SOCIAL (FOLLOW) SYSTEM ---
+// --- USER SOCIAL (FOLLOW & SAVE) SYSTEM ---
 export const followUser = async (currentUserId: string, targetUser: User) => {
   if (!db) return;
   try {
@@ -214,6 +215,19 @@ export const unfollowUser = async (currentUserId: string, targetUserId: string) 
     await updateDoc(targetUserRef, { followers: arrayRemove(currentUserId) });
   } catch (e) {
     console.error("Unfollow error:", e);
+    throw e;
+  }
+};
+
+export const toggleSaveQuestion = async (userId: string, questionId: string, shouldSave: boolean) => {
+  if (!db) return;
+  try {
+    const userRef = doc(db, USERS_COLLECTION, userId);
+    await updateDoc(userRef, { 
+      savedQuestions: shouldSave ? arrayUnion(questionId) : arrayRemove(questionId) 
+    });
+  } catch (e) {
+    console.error("Save question error:", e);
     throw e;
   }
 };

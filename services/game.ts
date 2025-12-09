@@ -1,6 +1,6 @@
 
 import { 
-  collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, getDoc 
+  collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, getDoc, writeBatch 
 } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { Game, GameQuestion } from '../types';
@@ -125,6 +125,39 @@ export const deleteGameQuestion = async (gameId: string, questionId: string) => 
     await deleteDoc(docRef);
   } catch (error) {
     console.error("Error deleting question:", error);
+    throw error;
+  }
+};
+
+/**
+ * Bulk Import Questions using WriteBatch
+ */
+export const importQuestionsBatch = async (gameId: string, questionsData: any[], startOrder: number) => {
+  if (!db) return;
+  try {
+    const batch = writeBatch(db);
+    const qCollectionRef = collection(db, GAMES_COLLECTION, gameId, 'questions');
+
+    questionsData.forEach((item, index) => {
+      // Create a reference for a new doc
+      const newDocRef = doc(qCollectionRef); // auto-id
+      
+      const qData: Omit<GameQuestion, 'id'> = {
+        q: item.q,
+        opts: item.opts,
+        a: item.a,
+        displayType: item.displayType || 'emoji',
+        order: startOrder + index,
+        isActive: true,
+        createdAt: new Date().toISOString()
+      };
+
+      batch.set(newDocRef, qData);
+    });
+
+    await batch.commit();
+  } catch (error) {
+    console.error("Error bulk importing questions:", error);
     throw error;
   }
 };

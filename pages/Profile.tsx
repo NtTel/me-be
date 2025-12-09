@@ -1,11 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, Question } from '../types';
-import { Settings, ShieldCheck, MessageCircle, HelpCircle, Heart, Star, Briefcase, Share2, Users, UserPlus, UserCheck, ArrowLeft, Loader2, Database } from 'lucide-react';
+import { Settings, ShieldCheck, MessageCircle, HelpCircle, Heart, Star, Briefcase, Share2, Users, UserPlus, UserCheck, ArrowLeft, Loader2 } from 'lucide-react';
 // @ts-ignore
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { followUser, unfollowUser, sendNotification } from '../services/db';
-import { updateUserRole } from '../services/admin';
 import { auth, db } from '../firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -91,13 +90,6 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
           return;
       }
       navigate(`/messages/${profileUser.id}`);
-  };
-
-  const handleDevPromoteAdmin = async () => {
-      if (!confirm("BẠN CÓ CHẮC KHÔNG? Hành động này sẽ cấp quyền Admin cho tài khoản hiện tại để test.")) return;
-      await updateUserRole(user.id, { isAdmin: true });
-      alert("Đã cấp quyền Admin! Hãy reload trang và vào /admin");
-      window.location.reload();
   };
 
   if (loadingProfile) {
@@ -220,19 +212,6 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
 
       <div className="px-4 max-w-5xl mx-auto space-y-6">
         
-        {/* DEV ONLY BUTTON - FOR TESTING ADMIN */}
-        {isViewingSelf && !user.isGuest && !user.isAdmin && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between">
-                <div>
-                    <h4 className="font-bold text-red-700 flex items-center gap-2"><Database size={16}/> Developer Mode</h4>
-                    <p className="text-xs text-red-600">Bạn đang ở môi trường Test? Tự cấp quyền Admin để truy cập dashboard.</p>
-                </div>
-                <button onClick={handleDevPromoteAdmin} className="bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md hover:bg-red-700">
-                    Kích hoạt Admin
-                </button>
-            </div>
-        )}
-
         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 snap-x">
           <StatCard icon={<Star className="text-yellow-500" size={20} />} value={reputationPoints} label="Điểm uy tín" bg="bg-yellow-50" />
           <StatCard icon={<HelpCircle className="text-blue-500" size={20} />} value={userQuestions.length} label="Câu hỏi" bg="bg-blue-50" />
