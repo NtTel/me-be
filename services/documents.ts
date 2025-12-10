@@ -65,6 +65,8 @@ export const fetchAllDocumentsAdmin = async (authorId?: string): Promise<Documen
     if (!db) return [];
     try {
       let q;
+      // If authorId is provided (e.g. for Expert), filter by it.
+      // If not provided (e.g. for Admin seeing all), fetch all.
       if (authorId) {
         q = query(collection(db, DOCS_COL), where('authorId', '==', authorId));
       } else {
