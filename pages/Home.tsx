@@ -13,6 +13,8 @@ interface HomeProps {
   categories: string[];
 }
 
+const PAGE_SIZE = 20;
+
 const FBImageGrid: React.FC<{ images: string[] }> = ({ images }) => {
   if (!images || images.length === 0) return null;
   const count = images.length;
@@ -71,6 +73,7 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
   const [adFrequency, setAdFrequency] = useState(5);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   useEffect(() => {
       const unsub = subscribeToAdConfig(config => setAdFrequency(config.frequency));
@@ -86,6 +89,11 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
 
       return () => unsub();
   }, []);
+
+  // Mỗi khi bộ lọc / tìm kiếm / danh sách câu hỏi thay đổi -> reset về trang đầu
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [activeCategory, viewFilter, searchQuery, questions.length]);
 
   let displayQuestions = activeCategory === 'Tất cả' 
     ? [...questions] 
@@ -138,6 +146,8 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
       displayQuestions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       break;
   }
+
+  const paginatedQuestions = displayQuestions.slice(0, visibleCount);
 
   return (
     <div className="space-y-4 animate-fade-in">
@@ -251,22 +261,26 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
                     </div>
                     
                     <div className="space-y-3">
-                        {documents.map(doc => (
-                            <Link to={`/documents/${doc.slug}`} key={doc.id} className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm active:scale-[0.98] transition-transform group">
-                                <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 transition-transform">
-                                    {doc.fileType === 'pdf' ? '📕' : doc.fileType === 'image' ? '🖼️' : doc.fileType === 'video' ? '🎬' : '📄'}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="font-bold text-sm text-textDark line-clamp-1 group-hover:text-green-600 transition-colors">{doc.title}</h4>
-                                    <p className="text-[10px] text-gray-400 line-clamp-1 flex items-center gap-2">
-                                        <span>{doc.authorName}</span>
-                                        <span>•</span>
-                                        <span className="flex items-center gap-0.5"><Download size={10}/> {doc.downloads}</span>
-                                    </p>
-                                </div>
-                                <div className="p-2 text-gray-300 group-hover:text-green-600 transition-colors"><ChevronRight size={18} /></div>
-                            </Link>
-                        ))}
+                        {documents.length > 0 && (
+                            <>
+                                {documents.map(doc => (
+                                    <Link to={`/documents/${doc.slug}`} key={doc.id} className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm active:scale-[0.98] transition-transform group">
+                                        <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 transition-transform">
+                                            {doc.fileType === 'pdf' ? '📕' : doc.fileType === 'image' ? '🖼️' : doc.fileType === 'video' ? '🎬' : '📄'}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-bold text-sm text-textDark line-clamp-1 group-hover:text-green-600 transition-colors">{doc.title}</h4>
+                                            <p className="text-[10px] text-gray-400 line-clamp-1 flex items-center gap-2">
+                                                <span>{doc.authorName}</span>
+                                                <span>•</span>
+                                                <span className="flex items-center gap-0.5"><Download size={10}/> {doc.downloads}</span>
+                                            </p>
+                                        </div>
+                                        <div className="p-2 text-gray-300 group-hover:text-green-600 transition-colors"><ChevronRight size={18} /></div>
+                                    </Link>
+                                ))}
+                            </>
+                        )}
                     </div>
                 </div>
             )}
@@ -324,7 +338,7 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
             </div>
           )}
 
-          {displayQuestions.map((q, index) => {
+          {paginatedQuestions.map((q, index) => {
              const query = searchQuery.toLowerCase().trim();
              const matchedAnswer = searchQuery && q.answers.find(a => a.content.toLowerCase().includes(query) || a.author.name.toLowerCase().includes(query));
              
@@ -376,6 +390,17 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
                 </React.Fragment>
              );
           })}
+
+          {paginatedQuestions.length < displayQuestions.length && (
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={() => setVisibleCount(prev => prev + PAGE_SIZE)}
+                className="px-6 py-2.5 rounded-full bg-white border border-gray-200 text-sm font-bold text-textDark shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
+              >
+                Xem thêm câu hỏi
+              </button>
+            </div>
+          )}
       </div>
     </div>
   );
