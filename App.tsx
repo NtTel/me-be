@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 // @ts-ignore
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -19,6 +18,8 @@ import { ExpertRegistration } from './pages/ExpertRegistration';
 import { BlogList } from './pages/BlogList';
 import { BlogDetail } from './pages/BlogDetail';
 import { About, Terms, Privacy, Contact } from './pages/StaticPages';
+import { DocumentList } from './pages/DocumentList';
+import { DocumentDetail } from './pages/DocumentDetail';
 
 // Admin Pages
 import { UserManagement } from './pages/admin/UserManagement';
@@ -30,10 +31,8 @@ import { GameDetail } from './pages/admin/GameDetail';
 import { ReportManagement } from './pages/admin/ReportManagement';
 import { AdSettings } from './pages/admin/AdSettings';
 import { BlogAdmin } from './pages/admin/BlogAdmin';
-// ... imports
 import { DocumentAdmin } from './pages/admin/DocumentAdmin';
-import { DocumentList } from './pages/DocumentList';
-import { DocumentDetail } from './pages/DocumentDetail';
+
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { AuthModal } from './components/AuthModal';
 import { Question, User, Answer, CATEGORIES } from './types';
@@ -207,6 +206,7 @@ export default function App() {
             <Route path="experts" element={<ExpertApprovals />} />
             <Route path="questions" element={<QuestionManagement />} />
             <Route path="blog" element={<BlogAdmin />} />
+            <Route path="documents" element={<DocumentAdmin />} />
             <Route path="games" element={<GameManagement />} />
             <Route path="games/:gameId" element={<GameDetail />} />
             <Route path="reports" element={<ReportManagement />} />
@@ -263,23 +263,17 @@ export default function App() {
         <Route path="/blog" element={<Layout><BlogList /></Layout>} />
         <Route path="/blog/:slug" element={<Layout><BlogDetail currentUser={currentUser} onOpenAuth={() => setShowGlobalAuthModal(true)} /></Layout>} />
 
+        {/* Document Routes */}
+        <Route path="/documents" element={<Layout><DocumentList /></Layout>} />
+        <Route path="/documents/:slug" element={<Layout><DocumentDetail currentUser={currentUser} onOpenAuth={() => setShowGlobalAuthModal(true)} /></Layout>} />
+
         <Route path="/about" element={<Layout><About /></Layout>} />
         <Route path="/terms" element={<Layout><Terms /></Layout>} />
         <Route path="/privacy" element={<Layout><Privacy /></Layout>} />
         <Route path="/contact" element={<Layout><Contact /></Layout>} />
         
         <Route path="*" element={<Navigate to="/" replace />} />
-        <Route path="/admin" element={<AdminLayout currentUser={currentUser} onLogout={handleLogout} />}>
-            {/* ... other admin routes ... */}
-            <Route path="documents" element={<DocumentAdmin />} />
-        </Route>
-
-        {/* ... user routes ... */}
-        <Route path="/documents" element={<Layout><DocumentList /></Layout>} />
-        <Route path="/documents/:slug" element={<Layout><DocumentDetail currentUser={currentUser} onOpenAuth={() => setShowGlobalAuthModal(true)} /></Layout>} />
       </Routes>
     </BrowserRouter>
   );
 }
-
-
