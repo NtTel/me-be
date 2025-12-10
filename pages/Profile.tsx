@@ -30,10 +30,13 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
   if (user.isGuest && isViewingSelf) {
       return (
           <div className="min-h-screen bg-[#F7F7F5] flex flex-col items-center justify-center p-6 text-center animate-fade-in pt-safe-top pb-24">
-              <div className="bg-white p-8 rounded-[2rem] shadow-xl border border-gray-100 max-w-sm w-full">
-                  <div className="w-24 h-24 bg-gradient-to-tr from-primary to-blue-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-200">
+              <div className="bg-white p-8 rounded-[2rem] shadow-xl border border-gray-100 max-w-sm w-full relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-primary to-blue-400"></div>
+                  
+                  <div className="w-24 h-24 bg-gradient-to-tr from-primary to-blue-400 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-blue-200 animate-bounce-small">
                       <LogIn size={40} className="text-white" />
                   </div>
+                  
                   <h1 className="text-2xl font-bold text-textDark mb-2">Chào bạn mới! 👋</h1>
                   <p className="text-textGray mb-8 text-sm leading-relaxed">
                       Đăng nhập để tham gia cộng đồng, theo dõi chuyên gia và lưu lại những kiến thức bổ ích nhé.
