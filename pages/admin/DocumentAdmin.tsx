@@ -40,9 +40,12 @@ export const DocumentAdmin: React.FC = () => {
 
   const loadData = async (user: any) => {
     setLoading(true);
+    // Admin gets all docs (undefined), Expert gets own docs (user.id)
+    const authorFilter = user.isAdmin ? undefined : user.id;
+    
     const [cats, allDocs] = await Promise.all([
       fetchDocumentCategories(),
-      fetchAllDocumentsAdmin(user.isAdmin ? undefined : user.id)
+      fetchAllDocumentsAdmin(authorFilter)
     ]);
     setCategories(cats);
     setDocs(allDocs);
