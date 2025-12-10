@@ -1,11 +1,12 @@
+
 import React, { useEffect, useState } from 'react';
 import { BlogPost, BlogCategory } from '../../types';
 import { 
   fetchBlogCategories, createBlogCategory, updateBlogCategory, deleteBlogCategory,
-  fetchPublishedPosts, createBlogPost, updateBlogPost, deleteBlogPost, fetchAllPostsAdmin
+  createBlogPost, updateBlogPost, deleteBlogPost, fetchAllPostsAdmin
 } from '../../services/blog';
 import { subscribeToAuthChanges } from '../../services/auth';
-import { Plus, Trash2, Edit2, Save, X, Loader2, Image as ImageIcon, Video, Link as LinkIcon, Eye, CheckCircle, AlertTriangle, BookOpen, Layers } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, Image as ImageIcon, Video, Link as LinkIcon, BookOpen, Layers } from 'lucide-react';
 
 export const BlogAdmin: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -51,8 +52,6 @@ export const BlogAdmin: React.FC = () => {
   const loadData = async (user: any) => {
     setLoading(true);
     // If Admin, fetch all posts. If Expert, fetch only own posts.
-    // Assuming fetchAllPostsAdmin handles this logic or we filter client-side if API is limited.
-    // Here we pass userId if not admin to filter query.
     const [cats, allPosts] = await Promise.all([
       fetchBlogCategories(),
       fetchAllPostsAdmin(user.isAdmin ? undefined : user.id)
@@ -73,15 +72,19 @@ export const BlogAdmin: React.FC = () => {
     if (!catForm.name) return;
     const slug = catForm.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
     
-    if (editingCat) {
-      await updateBlogCategory(editingCat.id, { ...catForm, slug });
-    } else {
-      await createBlogCategory({ ...catForm, slug });
+    try {
+        if (editingCat) {
+            await updateBlogCategory(editingCat.id, { ...catForm, slug });
+        } else {
+            await createBlogCategory({ ...catForm, slug });
+        }
+        setShowCatModal(false);
+        setEditingCat(null);
+        setCatForm({ name: '', iconEmoji: '📝', order: categories.length + 1, isActive: true });
+        loadData(currentUser);
+    } catch (e) {
+        alert("Lỗi khi lưu danh mục: " + e);
     }
-    setShowCatModal(false);
-    setEditingCat(null);
-    setCatForm({ name: '', iconEmoji: '📝', order: categories.length + 1, isActive: true });
-    loadData(currentUser);
   };
 
   const handleDeleteCat = async (id: string) => {
@@ -140,7 +143,7 @@ export const BlogAdmin: React.FC = () => {
     if (editingPost) {
       await updateBlogPost(editingPost.id, postData);
     } else {
-      await createBlogPost({ ...postData, views: 0 });
+      await createBlogPost(postData);
     }
     setShowPostModal(false);
     loadData(currentUser);
