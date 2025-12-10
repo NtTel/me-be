@@ -1,18 +1,24 @@
-
 import React, { useEffect, useState } from 'react';
 // @ts-ignore
-import { Link } from 'react-router-dom';
-import { BlogPost, BlogCategory } from '../types';
+import { Link, useNavigate } from 'react-router-dom';
+import { BlogPost, BlogCategory, User } from '../types';
 import { fetchBlogCategories, fetchPublishedPosts } from '../services/blog';
-import { Loader2, BookOpen, Clock, ChevronRight, User, Hash } from 'lucide-react';
+import { subscribeToAuthChanges } from '../services/auth';
+import { Loader2, BookOpen, Clock, ChevronRight, PenTool, Hash } from 'lucide-react';
 
 export const BlogList: React.FC = () => {
   const [categories, setCategories] = useState<BlogCategory[]>([]);
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [activeCat, setActiveCat] = useState<string>('all');
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
+    const unsub = subscribeToAuthChanges(user => {
+      setCurrentUser(user);
+    });
+
     const init = async () => {
       setLoading(true);
       const [catsData, postsData] = await Promise.all([
@@ -24,6 +30,8 @@ export const BlogList: React.FC = () => {
       setLoading(false);
     };
     init();
+
+    return () => unsub();
   }, []);
 
   const handleFilter = async (catId: string) => {
@@ -34,15 +42,33 @@ export const BlogList: React.FC = () => {
     setLoading(false);
   };
 
+  const isExpertOrAdmin = currentUser && (currentUser.isExpert || currentUser.isAdmin);
+
   return (
     <div className="min-h-screen bg-[#F7F7F5] pb-24 animate-fade-in pt-safe-top">
       {/* Header */}
       <div className="px-4 py-6 bg-white border-b border-gray-100 shadow-sm sticky top-[68px] md:top-20 z-30">
          <div className="max-w-5xl mx-auto">
-            <h1 className="text-2xl md:text-3xl font-bold text-textDark mb-2 flex items-center gap-2">
-                <BookOpen className="text-primary" /> Góc Chuyên Gia
-            </h1>
-            <p className="text-textGray text-sm">Kiến thức y khoa & nuôi dạy con chuẩn xác.</p>
+            <div className="flex justify-between items-start">
+                <div>
+                    <h1 className="text-2xl md:text-3xl font-bold text-textDark mb-2 flex items-center gap-2">
+                        <BookOpen className="text-primary" /> Góc Chuyên Gia
+                    </h1>
+                    <p className="text-textGray text-sm">Kiến thức y khoa & nuôi dạy con chuẩn xác.</p>
+                </div>
+                
+                {/* EXPERT ACTION BUTTON */}
+                {isExpertOrAdmin && (
+                    <button 
+                        onClick={() => navigate('/admin/blog')}
+                        className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2 rounded-xl font-bold text-xs flex items-center gap-2 shadow-lg shadow-blue-200 active:scale-95 transition-transform"
+                    >
+                        <PenTool size={16} />
+                        <span className="hidden md:inline">Viết Blog</span>
+                        <span className="md:hidden">Viết</span>
+                    </button>
+                )}
+            </div>
             
             {/* Categories */}
             <div className="flex gap-2 overflow-x-auto no-scrollbar mt-4 pb-1">
