@@ -4,7 +4,7 @@ import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { User, LayoutDashboard, Users, FileQuestion, GraduationCap, Flag, LogOut, Menu, X, ArrowLeft, Database, Gamepad2, Megaphone, BookOpen } from 'lucide-react';
 import { User as UserType } from '../types';
-
+import { FileText } from 'lucide-react';
 interface AdminLayoutProps {
   currentUser: UserType;
   onLogout: () => void;
@@ -39,6 +39,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ currentUser, onLogout 
     { path: '/admin/experts', label: 'Chuyên gia', icon: <GraduationCap size={20} />, roles: ['admin'] },
     { path: '/admin/questions', label: 'Câu hỏi', icon: <FileQuestion size={20} />, roles: ['admin'] },
     { path: '/admin/blog', label: 'Blog', icon: <BookOpen size={20} />, roles: ['admin', 'expert'] },
+    { path: '/admin/documents', label: 'Tài liệu', icon: <FileText size={20} />, roles: ['admin', 'expert'] },
     { path: '/admin/games', label: 'Quản lý Game', icon: <Gamepad2 size={20} />, roles: ['admin'] },
     { path: '/admin/reports', label: 'Báo cáo', icon: <Flag size={20} />, roles: ['admin'] },
     { path: '/admin/ads', label: 'Quảng cáo', icon: <Megaphone size={20} />, roles: ['admin'] },
