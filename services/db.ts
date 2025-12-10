@@ -1,323 +1,354 @@
+import React, { useState, useEffect } from 'react';
+// @ts-ignore
+import { Link, useLocation } from 'react-router-dom';
 import { 
-  collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDoc, 
-  arrayUnion, arrayRemove, where, addDoc, limit, QuerySnapshot, DocumentData, writeBatch 
-} from 'firebase/firestore';
-import { db } from '../firebaseConfig';
-import { Question, Answer, Notification, User, ChatSession, Message, toSlug } from '../types';
-import { uploadMultipleFiles } from './storage';
+  Home, 
+  Plus, 
+  Gamepad2, 
+  Facebook, 
+  Instagram, 
+  Youtube, 
+  User as UserIcon, 
+  Bell, 
+  MessageCircle, 
+  Bot 
+} from 'lucide-react';
+import { subscribeToNotifications, subscribeToChats, updateUserStatus } from '../services/db';
+import { auth } from '../firebaseConfig';
 
-const QUESTIONS_COLLECTION = 'questions';
-const NOTIFICATIONS_COLLECTION = 'notifications';
-const USERS_COLLECTION = 'users';
-const CHATS_COLLECTION = 'chats';
-const EXPERT_APPS_COLLECTION = 'expert_applications';
+interface LayoutProps {
+  children: React.ReactNode;
+}
 
-const sanitizeData = <T>(data: T): T => {
-  return JSON.parse(JSON.stringify(data));
-};
+export const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const location = useLocation();
+  const path = location.pathname;
 
-// --- USER UTILS ---
-export const getUsersByIds = async (userIds: string[]): Promise<User[]> => {
-  if (!db || !userIds || userIds.length === 0) return [];
-  try {
-    const promises = userIds.map(id => getDoc(doc(db, USERS_COLLECTION, id)));
-    const snapshots = await Promise.all(promises);
-    return snapshots
-      .filter(snap => snap.exists())
-      .map(snap => ({ id: snap.id, ...snap.data() } as User));
-  } catch (error) {
-    console.error("Error fetching users by IDs:", error);
-    return [];
-  }
-};
-
-export const updateUserStatus = async (userId: string, isOnline: boolean) => {
-  if (!db || !userId) return;
-  try {
-    await updateDoc(doc(db, USERS_COLLECTION, userId), {
-      isOnline,
-      lastActiveAt: new Date().toISOString()
-    });
-  } catch (e) {}
-};
-
-export const subscribeToUser = (userId: string, callback: (user: User | null) => void) => {
-  if (!db || !userId) return () => {};
-  return onSnapshot(doc(db, USERS_COLLECTION, userId), (docSnap) => {
-    if (docSnap.exists()) {
-      callback({ id: docSnap.id, ...docSnap.data() } as User);
-    } else {
-      callback(null);
-    }
-  }, (error) => console.warn("User sub error:", error));
-};
-
-// --- SOCIAL FEATURES (FOLLOW) ---
-export const followUser = async (currentUserId: string, targetUser: User) => {
-  if (!db || !currentUserId || !targetUser.id) return;
-  try {
-    const batch = writeBatch(db);
-    
-    // Add target to current user's following list
-    const currentUserRef = doc(db, USERS_COLLECTION, currentUserId);
-    batch.update(currentUserRef, { following: arrayUnion(targetUser.id) });
-
-    // Add current user to target's followers list
-    const targetUserRef = doc(db, USERS_COLLECTION, targetUser.id);
-    batch.update(targetUserRef, { followers: arrayUnion(currentUserId) });
-
-    await batch.commit();
-  } catch (e) {
-    console.error("Follow error:", e);
-    throw e;
-  }
-};
-
-export const unfollowUser = async (currentUserId: string, targetUserId: string) => {
-  if (!db) return;
-  try {
-    const batch = writeBatch(db);
-    
-    const currentUserRef = doc(db, USERS_COLLECTION, currentUserId);
-    batch.update(currentUserRef, { following: arrayRemove(targetUserId) });
-
-    const targetUserRef = doc(db, USERS_COLLECTION, targetUserId);
-    batch.update(targetUserRef, { followers: arrayRemove(currentUserId) });
-
-    await batch.commit();
-  } catch (e) {
-    console.error("Unfollow error:", e);
-    throw e;
-  }
-};
-
-// --- NOTIFICATIONS ---
-export const sendNotification = async (
-  recipientId: string,
-  sender: User,
-  type: Notification['type'],
-  content: string,
-  link: string
-) => {
-  if (!db || recipientId === sender.id) return;
-  try {
-    const notif: any = {
-      userId: recipientId,
-      sender: { name: sender.name, avatar: sender.avatar, id: sender.id },
-      type,
-      content,
-      link,
-      isRead: false,
-      createdAt: new Date().toISOString()
-    };
-    await addDoc(collection(db, NOTIFICATIONS_COLLECTION), notif);
-  } catch (e) {
-    console.warn("Send notif error:", e);
-  }
-};
-
-export const subscribeToNotifications = (userId: string, callback: (notifs: Notification[]) => void) => {
-  if (!db || !userId) return () => {};
-  const q = query(
-    collection(db, NOTIFICATIONS_COLLECTION),
-    where('userId', '==', userId),
-    limit(50)
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [unreadMsgCount, setUnreadMsgCount] = useState(0);
+  const [currentUserAvatar, setCurrentUserAvatar] = useState(
+    "https://cdn-icons-png.flaticon.com/512/3177/3177440.png"
   );
-  return onSnapshot(q, (snap) => {
-    const items = snap.docs.map(d => ({ id: d.id, ...d.data() } as Notification));
-    items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    callback(items);
-  });
-};
 
-export const markNotificationAsRead = async (notifId: string) => {
-  if (!db) return;
-  await updateDoc(doc(db, NOTIFICATIONS_COLLECTION, notifId), { isRead: true });
-};
+  // --- AUTH + PRESENCE + BADGES (NOTIF & CHAT) ---
+  useEffect(() => {
+    let presenceInterval: ReturnType<typeof setInterval> | null = null;
+    let unsubNotif: (() => void) | null = null;
+    let unsubChats: (() => void) | null = null;
 
-// --- CHAT SYSTEM ---
-export const getChatId = (uid1: string, uid2: string) => [uid1, uid2].sort().join('_');
+    const defaultAvatar = "https://cdn-icons-png.flaticon.com/512/3177/3177440.png";
 
-export const sendMessage = async (sender: User, recipient: User, content: string, type: 'text' | 'image' = 'text') => {
-  if (!db || !sender.id || !recipient.id) return;
-  
-  const chatId = getChatId(sender.id, recipient.id);
-  const chatRef = doc(db, CHATS_COLLECTION, chatId);
-  
-  try {
-    // Check if chat exists to update unread counts accurately
-    const chatDoc = await getDoc(chatRef);
-    const currentData = chatDoc.exists() ? chatDoc.data() : {};
-    
-    // Update Participant Data (to keep names/avatars fresh)
-    const pData = currentData.participantData || {};
-    pData[sender.id] = { name: sender.name, avatar: sender.avatar, isExpert: !!sender.isExpert };
-    pData[recipient.id] = { name: recipient.name, avatar: recipient.avatar, isExpert: !!recipient.isExpert };
-
-    // Update Unread Counts
-    const unread = currentData.unreadCount || {};
-    unread[recipient.id] = (unread[recipient.id] || 0) + 1;
-    unread[sender.id] = 0; // Sender read their own msg
-
-    // Update Chat Document
-    await setDoc(chatRef, {
-      id: chatId,
-      participants: [sender.id, recipient.id],
-      participantData: pData,
-      lastMessage: type === 'image' ? '[Hình ảnh]' : content,
-      lastMessageTime: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      unreadCount: unread
-    }, { merge: true });
-
-    // Add Message to Subcollection
-    const msgData: Message = {
-      id: Date.now().toString(),
-      senderId: sender.id,
-      content,
-      type,
-      isRead: false,
-      createdAt: new Date().toISOString()
+    const handleUnload = () => {
+      const current = auth.currentUser;
+      if (current) {
+        updateUserStatus(current.uid, false);
+      }
     };
-    await addDoc(collection(db, CHATS_COLLECTION, chatId, 'messages'), msgData);
-    
-  } catch (e) {
-    console.error("Send message error:", e);
-    throw e;
-  }
-};
 
-export const subscribeToChats = (userId: string, callback: (chats: ChatSession[]) => void) => {
-  if (!db || !userId) return () => {};
-  const q = query(collection(db, CHATS_COLLECTION), where('participants', 'array-contains', userId));
-  return onSnapshot(q, (snap) => {
-    const chats = snap.docs.map(d => d.data() as ChatSession);
-    chats.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-    callback(chats);
-  });
-};
+    const cleanupUser = () => {
+      if (presenceInterval) {
+        clearInterval(presenceInterval);
+        presenceInterval = null;
+      }
+      if (unsubNotif) {
+        unsubNotif();
+        unsubNotif = null;
+      }
+      if (unsubChats) {
+        unsubChats();
+        unsubChats = null;
+      }
+      window.removeEventListener('beforeunload', handleUnload);
+    };
 
-export const subscribeToMessages = (chatId: string, callback: (msgs: Message[]) => void) => {
-  if (!db || !chatId) return () => {};
-  const q = query(collection(db, CHATS_COLLECTION, chatId, 'messages'));
-  return onSnapshot(q, (snap) => {
-    const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() } as Message));
-    msgs.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-    callback(msgs);
-  });
-};
+    const unsubscribeAuth = auth.onAuthStateChanged(user => {
+      // Luôn cleanup config cũ trước khi xử lý user mới
+      cleanupUser();
 
-// ... (Keep existing Q&A, Expert, Storage functions)
-// Ensure sanitizeData is used
-export const addQuestionToDb = async (q: Question) => {
-    if (!db) return;
-    await setDoc(doc(db, QUESTIONS_COLLECTION, q.id), sanitizeData(q));
-};
+      if (user) {
+        // Avatar
+        // @ts-ignore
+        setCurrentUserAvatar(user.photoURL || defaultAvatar);
 
-export const updateQuestionInDb = async (id: string, data: Partial<Question>) => {
-    if (!db) return;
-    await updateDoc(doc(db, QUESTIONS_COLLECTION, id), sanitizeData(data));
-};
+        // Set online ngay
+        updateUserStatus(user.uid, true);
 
-export const deleteQuestionFromDb = async (id: string) => {
-    if (!db) return;
-    await deleteDoc(doc(db, QUESTIONS_COLLECTION, id));
-};
+        // Giữ online bằng heartbeat 2 phút/lần
+        presenceInterval = setInterval(() => {
+          updateUserStatus(user.uid, true);
+        }, 2 * 60 * 1000);
 
-export const subscribeToQuestions = (callback: (qs: Question[]) => void) => {
-    if (!db) return () => {};
-    const q = query(collection(db, QUESTIONS_COLLECTION), limit(100));
-    return onSnapshot(q, (snap) => {
-        const questions = snap.docs.map(d => ({ id: d.id, ...d.data() } as Question));
-        questions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        callback(questions);
-    });
-};
+        // Khi đóng tab → cố gắng set offline
+        window.addEventListener('beforeunload', handleUnload);
 
-export const toggleQuestionLikeDb = async (q: Question, user: User) => {
-    if (!db) return;
-    await updateQuestionInDb(q.id, { likes: q.likes + 1 });
-    await sendNotification(q.author.id, user, 'LIKE', `thích câu hỏi: ${q.title}`, `/question/${toSlug(q.title, q.id)}`);
-};
-
-export const toggleSaveQuestion = async (userId: string, qId: string, save: boolean) => {
-    if (!db) return;
-    const ref = doc(db, USERS_COLLECTION, userId);
-    await updateDoc(ref, { savedQuestions: save ? arrayUnion(qId) : arrayRemove(qId) });
-};
-
-export const addAnswerToDb = async (q: Question, a: Answer) => {
-    if (!db) return;
-    const ref = doc(db, QUESTIONS_COLLECTION, q.id);
-    await updateDoc(ref, { answers: arrayUnion(sanitizeData(a)) });
-    await sendNotification(q.author.id, a.author, 'ANSWER', `trả lời: ${q.title}`, `/question/${toSlug(q.title, q.id)}`);
-};
-
-export const updateAnswerInDb = async (qId: string, aId: string, updates: Partial<Answer>) => {
-    if (!db) return;
-    const ref = doc(db, QUESTIONS_COLLECTION, qId);
-    const snap = await getDoc(ref);
-    if (snap.exists()) {
-        const q = snap.data() as Question;
-        const newAnswers = q.answers.map(a => a.id === aId ? { ...a, ...updates } : a);
-        await updateDoc(ref, { answers: newAnswers });
-        
-        if (updates.isExpertVerified || updates.isBestAnswer) {
-            const answer = q.answers.find(a => a.id === aId);
-            if (answer) {
-                const type = updates.isExpertVerified ? 'VERIFY' : 'BEST_ANSWER';
-                const content = updates.isExpertVerified ? 'đã xác thực câu trả lời.' : 'đã chọn câu trả lời hay nhất.';
-                await sendNotification(answer.author.id, { name: 'System', avatar: '', id: 'system' } as any, type as any, content, `/question/${toSlug(q.title, q.id)}`);
-            }
-        }
-    }
-};
-
-export const deleteAnswerFromDb = async (qId: string, aId: string) => {
-    if (!db) return;
-    const ref = doc(db, QUESTIONS_COLLECTION, qId);
-    const snap = await getDoc(ref);
-    if (snap.exists()) {
-        const q = snap.data() as Question;
-        const newAnswers = q.answers.filter(a => a.id !== aId);
-        await updateDoc(ref, { answers: newAnswers });
-    }
-};
-
-export const toggleAnswerUseful = async (qId: string, aId: string, userId: string) => {
-    if (!db) return;
-    const ref = doc(db, QUESTIONS_COLLECTION, qId);
-    const snap = await getDoc(ref);
-    if (snap.exists()) {
-        const q = snap.data() as Question;
-        const newAnswers = q.answers.map(a => {
-            if (a.id === aId) {
-                const usefulBy = a.usefulBy || [];
-                const newUseful = usefulBy.includes(userId) ? usefulBy.filter(id => id !== userId) : [...usefulBy, userId];
-                return { ...a, usefulBy: newUseful, likes: newUseful.length };
-            }
-            return a;
+        // Lắng nghe thông báo
+        unsubNotif = subscribeToNotifications(user.uid, (notifs) => {
+          if (notifs) {
+            const unread = notifs.filter(n => !n.isRead).length;
+            setUnreadNotifCount(unread);
+          } else {
+            setUnreadNotifCount(0);
+          }
         });
-        await updateDoc(ref, { answers: newAnswers });
-    }
+
+        // Lắng nghe chat để tính tổng unread
+        unsubChats = subscribeToChats(user.uid, (chats) => {
+          let count = 0;
+          if (chats) {
+            chats.forEach(c => {
+              // @ts-ignore
+              if (c.unreadCount && c.unreadCount[user.uid]) {
+                // @ts-ignore
+                count += c.unreadCount[user.uid];
+              }
+            });
+          }
+          setUnreadMsgCount(count);
+        });
+
+      } else {
+        // Không có user → reset UI
+        setUnreadNotifCount(0);
+        setUnreadMsgCount(0);
+        setCurrentUserAvatar(defaultAvatar);
+      }
+    });
+
+    return () => {
+      // Cleanup khi Layout unmount hoặc hot reload
+      cleanupUser();
+      unsubscribeAuth();
+      const current = auth.currentUser;
+      if (current) {
+        updateUserStatus(current.uid, false);
+      }
+    };
+  }, []);
+
+  const isQuestionDetail = path.startsWith('/question/');
+  const isChatDetail = path.startsWith('/messages/');
+  const isGameZone = path === '/games';
+  const isAskPage = path === '/ask';
+  const isNotificationPage = path === '/notifications';
+  const isExpertReg = path === '/expert-register';
+  const isAiChat = path === '/ai-chat';
+
+  // Ẩn top bar trên vài trang đặc biệt (có header riêng)
+  const hideTopBar = isChatDetail || isAiChat || isQuestionDetail;
+
+  // Ẩn bottom bar khi đang ở form hỏi, màn chat, AI chat
+  const hideBottomBar = isAskPage || isChatDetail || isAiChat;
+
+  return (
+    <div className="min-h-screen font-sans text-textDark bg-[#F7F7F5] flex flex-col overflow-x-hidden selection:bg-primary/20">
+      
+      {/* --- DESKTOP HEADER (Hidden on Mobile) --- */}
+      <header className="hidden md:block bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-100 transition-all">
+        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+          <Link 
+            to="/" 
+            className="text-2xl font-bold text-primary flex items-center gap-2 select-none hover:scale-105 transition-transform"
+          >
+            <span className="bg-gradient-to-tr from-primary to-secondary p-1.5 rounded-xl text-white shadow-sm text-lg">
+              👶
+            </span>
+            Asking.vn
+          </Link>
+          
+          <nav className="flex items-center gap-1 font-medium text-[15px]">
+            <NavLink to="/" label="Trang chủ" active={path === '/'} />
+            <NavLink to="/games" label="Góc Bé Chơi" active={path === '/games'} />
+            <NavLink to="/messages" label="Tin nhắn" active={path === '/messages'} />
+            
+            <Link 
+              to="/ai-chat" 
+              className="bg-gradient-to-tr from-purple-500 to-blue-500 text-white px-4 py-2 rounded-full font-bold flex items-center gap-2 shadow-md hover:shadow-lg active:scale-95 transition-all mx-2"
+            >
+              <Bot size={18} /> Trợ lý AI
+            </Link>
+
+            <Link 
+              to="/notifications" 
+              className="relative p-2 mx-1 text-gray-500 hover:text-primary transition-colors"
+            >
+              <Bell size={20} />
+              {unreadNotifCount > 0 && (
+                <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-bounce-small shadow-sm ring-1 ring-white">
+                  {unreadNotifCount > 9 ? '9+' : unreadNotifCount}
+                </span>
+              )}
+            </Link>
+
+            <NavLink to="/profile" label="Tài khoản" active={path === '/profile'} />
+            
+            <Link 
+              to="/ask" 
+              className="ml-4 bg-primary text-white px-5 py-2.5 rounded-full hover:bg-primary/90 transition-all shadow-md hover:shadow-lg active:scale-95 select-none font-bold text-sm flex items-center gap-2"
+            >
+              <Plus size={18} strokeWidth={3} /> Đặt câu hỏi
+            </Link>
+          </nav>
+        </div>
+      </header>
+
+      {/* --- MOBILE TOP BAR --- */}
+      {!hideTopBar && !isAskPage && !isGameZone && !isNotificationPage && !isExpertReg && (
+        <header className="md:hidden fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-100/50 pt-safe-top pb-2 px-4 flex justify-between items-center transition-all shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+          <Link 
+            to="/" 
+            className="text-xl font-black text-primary flex items-center gap-2 tracking-tight"
+          >
+            Asking.vn
+          </Link>
+          <div className="flex items-center gap-4">
+            {/* Notification Bell */}
+            <Link 
+              to="/notifications" 
+              className="relative w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-textDark active:bg-gray-200 transition-colors"
+            >
+              <Bell size={20} />
+              {unreadNotifCount > 0 && (
+                <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                  {unreadNotifCount > 9 ? '!' : unreadNotifCount}
+                </span>
+              )}
+            </Link>
+            
+            {/* AI Chat Button */}
+            <Link 
+              to="/ai-chat" 
+              className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-500 to-blue-500 flex items-center justify-center text-white shadow-md active:scale-90 transition-transform"
+            >
+              <Bot size={20} />
+            </Link>
+          </div>
+        </header>
+      )}
+
+      {/* --- MAIN CONTENT --- */}
+      <main
+        className={`flex-1 w-full max-w-5xl mx-auto md:px-4 ${
+          (!hideTopBar && !isAskPage && !isGameZone && !isNotificationPage && !isExpertReg)
+            ? 'pt-20 md:pt-6'
+            : 'pt-0 md:pt-6'
+        } pb-24 md:pb-8 transition-all duration-300`}
+      >
+        {children}
+      </main>
+
+      {/* --- MOBILE BOTTOM NAVIGATION --- */}
+      {!hideBottomBar && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-2xl border-t border-gray-100 pb-safe-bottom pt-2 px-6 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.06)] rounded-t-[1.5rem]">
+          <div className="flex justify-between items-end">
+            <MobileNavItem 
+              to="/" 
+              icon={<Home size={24} />} 
+              label="Trang chủ" 
+              active={path === '/'} 
+            />
+            <MobileNavItem 
+              to="/games" 
+              icon={<Gamepad2 size={24} />} 
+              label="Bé chơi" 
+              active={path === '/games'} 
+            />
+            
+            {/* Floating Action Button (Center) */}
+            <div className="relative -top-6 group">
+              <Link 
+                to="/ask" 
+                className="flex items-center justify-center w-14 h-14 bg-gradient-to-tr from-primary to-[#26A69A] rounded-full text-white shadow-xl shadow-primary/40 active:scale-90 transition-transform ring-4 ring-white group-hover:shadow-2xl"
+              >
+                <Plus size={28} strokeWidth={2.5} />
+              </Link>
+            </div>
+
+            <MobileNavItem 
+              to="/messages" 
+              icon={
+                <div className="relative">
+                  <MessageCircle size={24} />
+                  {unreadMsgCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
+                  )}
+                </div>
+              } 
+              label="Tin nhắn" 
+              active={path.startsWith('/messages')} 
+            />
+            
+            <MobileNavItem 
+              to="/profile" 
+              icon={<UserIcon size={24} />} 
+              label="Cá nhân" 
+              active={path === '/profile'} 
+            />
+          </div>
+        </div>
+      )}
+
+      {/* --- DESKTOP FOOTER --- */}
+      {!hideBottomBar && !isNotificationPage && !isExpertReg && !isAiChat && !isQuestionDetail && !isGameZone && (
+        <footer className="bg-white border-t border-gray-100 py-10 px-4 md:px-0 mt-auto hidden md:block">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex flex-col items-center justify-center text-center">
+              <h3 className="text-primary font-bold text-xl mb-2">Asking.vn</h3>
+              <p className="text-textGray text-sm mb-4">
+                Cộng đồng Mẹ & Bé văn minh, hiện đại.
+              </p>
+              <div className="flex gap-4 mb-8">
+                <SocialIcon color="text-blue-600 bg-blue-50" icon={<Facebook size={16} />} />
+                <SocialIcon color="text-pink-600 bg-pink-50" icon={<Instagram size={16} />} />
+                <SocialIcon color="text-red-600 bg-red-50" icon={<Youtube size={16} />} />
+              </div>
+              <p className="text-xs text-gray-400">
+                © 2024 Asking.vn. All rights reserved.
+              </p>
+            </div>
+          </div>
+        </footer>
+      )}
+    </div>
+  );
 };
 
-export const submitExpertApplication = async (user: User, data: any) => {
-    if (!db) return;
-    const app = {
-        userId: user.id,
-        fullName: data.fullName,
-        phone: data.phone,
-        workplace: data.workplace,
-        specialty: data.specialty,
-        proofImages: [], // Handle upload in UI and pass URLs if possible, or update later
-        status: 'pending',
-        createdAt: new Date().toISOString()
-    };
-    await addDoc(collection(db, EXPERT_APPS_COLLECTION), app);
-    await updateDoc(doc(db, USERS_COLLECTION, user.id), { 
-        expertStatus: 'pending', 
-        specialty: data.specialty,
-        workplace: data.workplace
-    });
-};
+const NavLink: React.FC<{ to: string; label: string; active: boolean }> = ({ to, label, active }) => (
+  <Link 
+    to={to} 
+    className={`px-4 py-2 rounded-full transition-all ${
+      active ? 'bg-primary/10 text-primary font-bold' : 'text-textGray hover:text-primary hover:bg-gray-50'
+    }`}
+  >
+    {label}
+  </Link>
+);
+
+const MobileNavItem: React.FC<{ to: string; icon: React.ReactNode; label: string; active: boolean }> = ({ to, icon, label, active }) => (
+  <Link 
+    to={to} 
+    className="flex flex-col items-center gap-1 min-w-[60px] active:scale-95 transition-transform group"
+  >
+    <div className={`p-1.5 rounded-xl transition-colors ${
+      active ? 'text-primary' : 'text-gray-400 group-hover:text-textDark'
+    }`}>
+      {React.isValidElement(icon)
+        ? React.cloneElement(icon as React.ReactElement<any>, { 
+            fill: active ? "currentColor" : "none", 
+            strokeWidth: active ? 2.5 : 2 
+          })
+        : icon}
+    </div>
+    <span className={`text-[10px] font-bold ${active ? 'text-primary' : 'text-gray-400'}`}>
+      {label}
+    </span>
+  </Link>
+);
+
+const SocialIcon: React.FC<{ color: string; icon: React.ReactNode }> = ({ color, icon }) => (
+  <a 
+    href="#" 
+    className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-110 ${color}`}
+  >
+    {icon}
+  </a>
+);
