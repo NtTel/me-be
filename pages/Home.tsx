@@ -77,8 +77,8 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
       
       // Load recent blogs & documents
       Promise.all([
-          fetchPublishedPosts('all', 3),
-          fetchDocuments('all', 3)
+          fetchPublishedPosts('all', 4),
+          fetchDocuments('all', 4)
       ]).then(([blogs, docs]) => {
           if (blogs && blogs.length > 0) setBlogPosts(blogs);
           if (docs && docs.length > 0) setDocuments(docs);
