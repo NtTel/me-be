@@ -195,7 +195,7 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
                 <div className="relative z-10 flex justify-between items-center">
                     <div>
                         <h2 className="text-xl font-bold mb-1">Góc Chuyên Gia</h2>
-                        <p className="text-blue-50 text-xs font-medium opacity-90 mb-3">Kết nối với bác sĩ & chuyên gia uy tín.</p>
+                        <p className="text-blue-50 text-xs font-medium opacity-90 mb-3">Chia sẻ kinh nghiệm: Góp phần tạo ra thay đổi tích cực cho cộng đồng.</p>
                         <Link to="/expert-register" className="inline-flex items-center gap-1 bg-white/20 hover:bg-white/30 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 border border-white/20">
                             Đăng ký ngay <ChevronRight size={14} />
                         </Link>
