@@ -331,3 +331,58 @@ export const toggleAnswerUseful = async (qId: string, aId: string, userId: strin
         await updateDoc(ref, { answers: newAnswers });
     }
 };
+// =======================
+// PAGINATION – HOME FEED
+// =======================
+import {
+  getDocs,
+  startAfter,
+  QueryDocumentSnapshot
+} from 'firebase/firestore';
+
+export const QUESTIONS_PAGE_SIZE = 20;
+
+export const fetchQuestionsPage = async (
+  lastDoc?: QueryDocumentSnapshot<DocumentData>
+): Promise<{
+  items: Question[];
+  lastDoc: QueryDocumentSnapshot<DocumentData> | null;
+}> => {
+  if (!db) return { items: [], lastDoc: null };
+
+  try {
+    let q;
+
+    if (lastDoc) {
+      q = query(
+        collection(db, QUESTIONS_COLLECTION),
+        orderBy('createdAt', 'desc'),
+        startAfter(lastDoc),
+        limit(QUESTIONS_PAGE_SIZE)
+      );
+    } else {
+      q = query(
+        collection(db, QUESTIONS_COLLECTION),
+        orderBy('createdAt', 'desc'),
+        limit(QUESTIONS_PAGE_SIZE)
+      );
+    }
+
+    const snap = await getDocs(q);
+
+    const items = snap.docs.map(d => ({
+      id: d.id,
+      ...d.data()
+    })) as Question[];
+
+    return {
+      items,
+      lastDoc: snap.docs.length > 0
+        ? snap.docs[snap.docs.length - 1]
+        : null
+    };
+  } catch (e) {
+    console.error('Fetch questions page error:', e);
+    return { items: [], lastDoc: null };
+  }
+};
