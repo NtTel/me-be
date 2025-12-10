@@ -1,12 +1,12 @@
-
 import React, { useEffect, useState } from 'react';
 import { BlogPost, BlogCategory } from '../../types';
 import { 
   fetchBlogCategories, createBlogCategory, updateBlogCategory, deleteBlogCategory,
   createBlogPost, updateBlogPost, deleteBlogPost, fetchAllPostsAdmin
 } from '../../services/blog';
+import { generateBlogPost, generateBlogTitle } from '../../services/gemini';
 import { subscribeToAuthChanges } from '../../services/auth';
-import { Plus, Trash2, Edit2, X, Image as ImageIcon, Video, Link as LinkIcon, BookOpen, Layers } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, Image as ImageIcon, Video, Link as LinkIcon, BookOpen, Layers, Sparkles, Loader2 } from 'lucide-react';
 
 export const BlogAdmin: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -20,6 +20,9 @@ export const BlogAdmin: React.FC = () => {
   // Modals
   const [showCatModal, setShowCatModal] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
+
+  // AI State
+  const [aiLoading, setAiLoading] = useState({ title: false, content: false });
 
   // Form State - Category
   const [editingCat, setEditingCat] = useState<BlogCategory | null>(null);
@@ -51,7 +54,6 @@ export const BlogAdmin: React.FC = () => {
 
   const loadData = async (user: any) => {
     setLoading(true);
-    // If Admin, fetch all posts. If Expert, fetch only own posts.
     const [cats, allPosts] = await Promise.all([
       fetchBlogCategories(),
       fetchAllPostsAdmin(user.isAdmin ? undefined : user.id)
@@ -122,10 +124,45 @@ export const BlogAdmin: React.FC = () => {
     setShowPostModal(true);
   };
 
+  // --- AI HANDLERS ---
+  const handleAiTitle = async () => {
+      const topic = postForm.title || prompt("Nhập chủ đề bạn muốn viết:");
+      if (!topic) return;
+
+      setAiLoading(prev => ({ ...prev, title: true }));
+      try {
+          const newTitle = await generateBlogTitle(topic);
+          if (newTitle) setPostForm(prev => ({ ...prev, title: newTitle }));
+      } catch (e) {
+          alert("Lỗi AI: " + e);
+      } finally {
+          setAiLoading(prev => ({ ...prev, title: false }));
+      }
+  };
+
+  const handleAiContent = async () => {
+      if (!postForm.title) {
+          alert("Vui lòng nhập tiêu đề bài viết trước để AI hiểu chủ đề.");
+          return;
+      }
+      if (postForm.content && !confirm("Nội dung hiện tại sẽ bị ghi đè. Bạn có chắc muốn tiếp tục?")) {
+          return;
+      }
+
+      setAiLoading(prev => ({ ...prev, content: true }));
+      try {
+          const content = await generateBlogPost(postForm.title);
+          if (content) setPostForm(prev => ({ ...prev, content }));
+      } catch (e) {
+          alert("Lỗi AI: " + e);
+      } finally {
+          setAiLoading(prev => ({ ...prev, content: false }));
+      }
+  };
+
   const handleSavePost = async () => {
     if (!postForm.title || !currentUser) return;
     
-    // Auto slug if empty or changed title
     let slug = postForm.slug;
     if (!slug) {
         slug = postForm.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
@@ -288,7 +325,23 @@ export const BlogAdmin: React.FC = () => {
                   </div>
                   <div className="p-6 overflow-y-auto flex-1 space-y-4">
                       <div className="grid md:grid-cols-2 gap-4">
-                          <input value={postForm.title} onChange={e => setPostForm({...postForm, title: e.target.value})} placeholder="Tiêu đề bài viết" className="w-full p-3 border rounded-xl font-bold text-lg" />
+                          <div className="relative">
+                              <input 
+                                value={postForm.title} 
+                                onChange={e => setPostForm({...postForm, title: e.target.value})} 
+                                placeholder="Tiêu đề bài viết" 
+                                className="w-full p-3 border rounded-xl font-bold text-lg pr-20" 
+                              />
+                              <button 
+                                onClick={handleAiTitle}
+                                disabled={aiLoading.title}
+                                className="absolute right-2 top-2 p-1.5 bg-gradient-to-r from-purple-100 to-indigo-100 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-1 active:scale-95 transition-transform"
+                                title="AI Gợi ý tiêu đề"
+                              >
+                                {aiLoading.title ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} AI
+                              </button>
+                          </div>
+                          
                           <select value={postForm.categoryId} onChange={e => setPostForm({...postForm, categoryId: e.target.value})} className="w-full p-3 border rounded-xl">
                               <option value="">-- Chọn danh mục --</option>
                               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -296,7 +349,21 @@ export const BlogAdmin: React.FC = () => {
                       </div>
                       <input value={postForm.slug} onChange={e => setPostForm({...postForm, slug: e.target.value})} placeholder="Slug (tự động tạo nếu để trống)" className="w-full p-2 border rounded-xl text-sm font-mono text-gray-500" />
                       <textarea value={postForm.excerpt} onChange={e => setPostForm({...postForm, excerpt: e.target.value})} placeholder="Mô tả ngắn (Excerpt)" className="w-full p-3 border rounded-xl h-20" />
-                      <textarea value={postForm.content} onChange={e => setPostForm({...postForm, content: e.target.value})} placeholder="Nội dung bài viết (Hỗ trợ HTML cơ bản)..." className="w-full p-4 border rounded-xl h-64 font-mono text-sm" />
+                      
+                      <div className="relative">
+                          <div className="flex justify-between items-center mb-1">
+                              <label className="text-xs font-bold text-gray-500 uppercase">Nội dung</label>
+                              <button 
+                                onClick={handleAiContent} 
+                                disabled={aiLoading.content}
+                                className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 shadow-md hover:shadow-lg active:scale-95 transition-all"
+                              >
+                                {aiLoading.content ? <Loader2 size={14} className="animate-spin"/> : <Sparkles size={14} />} 
+                                {aiLoading.content ? 'AI đang viết...' : 'Viết bài với AI'}
+                              </button>
+                          </div>
+                          <textarea value={postForm.content} onChange={e => setPostForm({...postForm, content: e.target.value})} placeholder="Nội dung bài viết (Hỗ trợ HTML cơ bản)..." className="w-full p-4 border rounded-xl h-64 font-mono text-sm leading-relaxed" />
+                      </div>
                       
                       <div className="grid md:grid-cols-2 gap-4">
                           <div className="space-y-2">

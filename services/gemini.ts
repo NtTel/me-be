@@ -315,3 +315,36 @@ export const generateStory = async (
     throw error;
   }
 };
+/**
+ * Sinh nội dung bài viết Blog chuyên sâu
+ */
+export const generateBlogPost = async (title: string, outline: string = ""): Promise<string> => {
+  if (!ai) return "";
+
+  try {
+    const model = "gemini-2.5-flash";
+    const prompt = `
+      Bạn là một chuyên gia viết content về Mẹ & Bé, Y khoa và Giáo dục sớm.
+      Hãy viết một bài blog chi tiết, chuyên sâu và chuẩn SEO dựa trên tiêu đề: "${title}".
+      ${outline ? `Dàn ý gợi ý: "${outline}"` : ""}
+      
+      Yêu cầu:
+      1. Độ dài khoảng 800 - 1200 từ.
+      2. Giọng văn: Chuyên gia nhưng gần gũi, dễ hiểu, đồng cảm với các mẹ.
+      3. Cấu trúc bài viết rõ ràng: Mở bài, Thân bài (các mục lớn nhỏ), Kết bài.
+      4. Định dạng: Sử dụng thẻ HTML cơ bản (<h3>, <p>, <ul>, <li>, <strong>) để trình bày đẹp mắt. KHÔNG dùng Markdown.
+      5. Nội dung phải khoa học, chính xác, có giá trị thực tiễn.
+    `;
+
+    const response = await ai.models.generateContent({
+      model,
+      contents: prompt,
+    });
+
+    const text = (response as any).text ?? (response as any).response?.text?.();
+    return text || "";
+  } catch (error) {
+    console.error("Generate Blog Post Error:", error);
+    return "";
+  }
+};
