@@ -30,7 +30,10 @@ import { GameDetail } from './pages/admin/GameDetail';
 import { ReportManagement } from './pages/admin/ReportManagement';
 import { AdSettings } from './pages/admin/AdSettings';
 import { BlogAdmin } from './pages/admin/BlogAdmin';
-
+// ... imports
+import { DocumentAdmin } from './pages/admin/DocumentAdmin';
+import { DocumentList } from './pages/DocumentList';
+import { DocumentDetail } from './pages/DocumentDetail';
 import { PWAInstallPrompt } from './components/PWAInstallPrompt';
 import { AuthModal } from './components/AuthModal';
 import { Question, User, Answer, CATEGORIES } from './types';
@@ -266,7 +269,17 @@ export default function App() {
         <Route path="/contact" element={<Layout><Contact /></Layout>} />
         
         <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/admin" element={<AdminLayout currentUser={currentUser} onLogout={handleLogout} />}>
+            {/* ... other admin routes ... */}
+            <Route path="documents" element={<DocumentAdmin />} />
+        </Route>
+
+        {/* ... user routes ... */}
+        <Route path="/documents" element={<Layout><DocumentList /></Layout>} />
+        <Route path="/documents/:slug" element={<Layout><DocumentDetail currentUser={currentUser} onOpenAuth={() => setShowGlobalAuthModal(true)} /></Layout>} />
       </Routes>
     </BrowserRouter>
   );
 }
+
+
