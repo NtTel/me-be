@@ -1,12 +1,12 @@
-
 import React, { useState, useMemo, useEffect } from 'react';
 // @ts-ignore
 import { Link } from 'react-router-dom';
-import { Search, MessageCircle, Heart, ChevronDown, ChevronUp, HelpCircle, Clock, Flame, MessageSquareOff, ShieldCheck, ChevronRight, Sparkles, X, Filter, User as UserIcon, CornerDownRight, BookOpen } from 'lucide-react';
-import { Question, User, toSlug, BlogPost } from '../types';
+import { Search, MessageCircle, Heart, ChevronDown, ChevronUp, HelpCircle, Clock, Flame, MessageSquareOff, ShieldCheck, ChevronRight, Sparkles, X, Filter, User as UserIcon, CornerDownRight, BookOpen, FileText, Download } from 'lucide-react';
+import { Question, User, toSlug, BlogPost, Document } from '../types';
 import { AdBanner } from '../components/AdBanner';
 import { subscribeToAdConfig } from '../services/ads';
 import { fetchPublishedPosts } from '../services/blog';
+import { fetchDocuments } from '../services/documents';
 
 interface HomeProps {
   questions: Question[];
@@ -70,12 +70,19 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [adFrequency, setAdFrequency] = useState(5);
   const [blogPosts, setBlogPosts] = useState<BlogPost[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
 
   useEffect(() => {
       const unsub = subscribeToAdConfig(config => setAdFrequency(config.frequency));
       
-      // Load recent blogs
-      fetchPublishedPosts('all', 3).then(setBlogPosts);
+      // Load recent blogs & documents
+      Promise.all([
+          fetchPublishedPosts('all', 3),
+          fetchDocuments('all', 3)
+      ]).then(([blogs, docs]) => {
+          if (blogs && blogs.length > 0) setBlogPosts(blogs);
+          if (docs && docs.length > 0) setDocuments(docs);
+      });
 
       return () => unsub();
   }, []);
@@ -199,9 +206,9 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
                 </div>
             </div>
 
-            {/* EXPERT BLOGS BLOCK - Added Here */}
+            {/* EXPERT BLOGS BLOCK */}
             {blogPosts.length > 0 && (
-                <div className="space-y-3">
+                <div className="space-y-3 pt-2">
                     <div className="flex justify-between items-center px-1">
                         <div className="flex items-center gap-2">
                             <BookOpen size={18} className="text-blue-600" />
@@ -212,16 +219,52 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
                     
                     <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 pr-4 snap-x -mx-4 px-4 md:mx-0 md:px-0">
                         {blogPosts.map(post => (
-                            <Link to={`/blog/${post.slug}`} key={post.id} className="snap-start flex-shrink-0 w-64 bg-white rounded-2xl p-3 border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-95">
-                                <div className="aspect-[2/1] rounded-xl bg-gray-100 mb-3 overflow-hidden relative">
+                            <Link to={`/blog/${post.slug}`} key={post.id} className="snap-start flex-shrink-0 w-64 bg-white rounded-2xl p-3 border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-95 flex flex-col">
+                                <div className="aspect-[2/1] rounded-xl bg-gray-100 mb-3 overflow-hidden relative shrink-0">
                                     {post.coverImageUrl ? (
                                         <img src={post.coverImageUrl} className="w-full h-full object-cover" loading="lazy" />
                                     ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-3xl">{post.iconEmoji || '📝'}</div>
+                                        <div className="w-full h-full flex items-center justify-center text-3xl bg-gradient-to-br from-blue-50 to-purple-50">{post.iconEmoji || '📝'}</div>
                                     )}
                                 </div>
-                                <h4 className="font-bold text-sm text-textDark line-clamp-2 mb-1 leading-snug">{post.title}</h4>
-                                <p className="text-[10px] text-gray-400 line-clamp-2">{post.excerpt}</p>
+                                <h4 className="font-bold text-sm text-textDark line-clamp-2 mb-1 leading-snug flex-1">{post.title}</h4>
+                                <div className="flex items-center gap-1 mt-auto pt-2">
+                                    <span className="text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100 line-clamp-1 max-w-[100px]">{post.authorName}</span>
+                                    <span className="text-[10px] text-gray-300">•</span>
+                                    <span className="text-[10px] text-gray-400">{new Date(post.createdAt).toLocaleDateString('vi-VN')}</span>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* DOCUMENTS BLOCK */}
+            {documents.length > 0 && (
+                <div className="space-y-3 pt-2">
+                    <div className="flex justify-between items-center px-1">
+                        <div className="flex items-center gap-2">
+                            <FileText size={18} className="text-green-600" />
+                            <h3 className="font-bold text-textDark text-sm uppercase tracking-wide">Tài liệu chia sẻ</h3>
+                        </div>
+                        <Link to="/documents" className="text-xs font-bold text-green-500 hover:underline">Xem tất cả</Link>
+                    </div>
+                    
+                    <div className="space-y-3">
+                        {documents.map(doc => (
+                            <Link to={`/documents/${doc.slug}`} key={doc.id} className="flex items-center gap-4 bg-white p-3 rounded-2xl border border-gray-100 shadow-sm active:scale-[0.98] transition-transform group">
+                                <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-2xl shrink-0 group-hover:scale-110 transition-transform">
+                                    {doc.fileType === 'pdf' ? '📕' : doc.fileType === 'image' ? '🖼️' : doc.fileType === 'video' ? '🎬' : '📄'}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <h4 className="font-bold text-sm text-textDark line-clamp-1 group-hover:text-green-600 transition-colors">{doc.title}</h4>
+                                    <p className="text-[10px] text-gray-400 line-clamp-1 flex items-center gap-2">
+                                        <span>{doc.authorName}</span>
+                                        <span>•</span>
+                                        <span className="flex items-center gap-0.5"><Download size={10}/> {doc.downloads}</span>
+                                    </p>
+                                </div>
+                                <div className="p-2 text-gray-300 group-hover:text-green-600 transition-colors"><ChevronRight size={18} /></div>
                             </Link>
                         ))}
                     </div>
@@ -231,7 +274,7 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
       )}
 
       {!searchQuery && (
-        <div className="pl-4 md:px-0">
+        <div className="pl-4 md:px-0 mt-6">
             <div className="flex items-center gap-1 mb-2">
                 <Sparkles size={14} className="text-accent" fill="currentColor" />
                 <span className="text-xs font-bold text-textGray uppercase tracking-wider">Chủ đề</span>
@@ -256,7 +299,7 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
         </div>
       )}
 
-      <div className="px-4 md:px-0 flex items-center justify-between">
+      <div className="px-4 md:px-0 flex items-center justify-between mt-2">
          <h3 className="font-bold text-lg text-textDark">
              {searchQuery ? `Kết quả tìm kiếm (${displayQuestions.length})` : 'Cộng đồng hỏi đáp'}
          </h3>
