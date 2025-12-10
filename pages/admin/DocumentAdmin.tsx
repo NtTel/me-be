@@ -6,7 +6,7 @@ import {
 } from '../../services/documents';
 import { uploadFile } from '../../services/storage';
 import { subscribeToAuthChanges } from '../../services/auth';
-import { Plus, Trash2, Edit2, X, FileText, Folder, UploadCloud, Loader2, Video, Image as ImageIcon, File } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, FileText, Folder, UploadCloud, Loader2, Video, Image as ImageIcon, File, Link as LinkIcon, Globe } from 'lucide-react';
 
 export const DocumentAdmin: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -24,9 +24,11 @@ export const DocumentAdmin: React.FC = () => {
   // Forms
   const [catForm, setCatForm] = useState({ id: '', name: '', iconEmoji: '📁', order: 1 });
   const [docForm, setDocForm] = useState<Partial<Document>>({
-      title: '', slug: '', description: '', categoryId: '', tags: [], fileUrl: '', fileType: 'other'
+      title: '', slug: '', description: '', categoryId: '', tags: [], 
+      fileUrl: '', fileType: 'other', isExternal: false, externalLink: ''
   });
   const [tagsInput, setTagsInput] = useState('');
+  const [inputMode, setInputMode] = useState<'upload' | 'link'>('upload');
 
   useEffect(() => {
     const unsub = subscribeToAuthChanges(user => {
@@ -99,7 +101,9 @@ export const DocumentAdmin: React.FC = () => {
   };
 
   const handleSaveDoc = async () => {
-      if (!docForm.title || !docForm.fileUrl) return;
+      if (!docForm.title) return;
+      if (inputMode === 'upload' && !docForm.fileUrl) return;
+      if (inputMode === 'link' && !docForm.externalLink) return;
       
       const slug = docForm.slug || docForm.title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
       const tags = tagsInput.split(',').map(t => t.trim()).filter(t => t);
@@ -111,7 +115,11 @@ export const DocumentAdmin: React.FC = () => {
           authorId: currentUser.id,
           authorName: currentUser.name,
           authorAvatar: currentUser.avatar,
-          isExpert: currentUser.isExpert
+          isExpert: currentUser.isExpert,
+          isExternal: inputMode === 'link',
+          fileType: inputMode === 'link' ? 'link' : docForm.fileType,
+          fileUrl: inputMode === 'link' ? '' : docForm.fileUrl,
+          externalLink: inputMode === 'upload' ? '' : docForm.externalLink
       };
 
       try {
@@ -186,8 +194,9 @@ export const DocumentAdmin: React.FC = () => {
                 <div className="flex justify-end">
                    <button 
                         onClick={() => { 
-                            setDocForm({ title: '', slug: '', description: '', categoryId: categories[0]?.id || '', tags: [], fileUrl: '', fileType: 'other' }); 
+                            setDocForm({ title: '', slug: '', description: '', categoryId: categories[0]?.id || '', tags: [], fileUrl: '', fileType: 'other', isExternal: false, externalLink: '' }); 
                             setTagsInput('');
+                            setInputMode('upload');
                             setShowDocModal(true); 
                         }} 
                         className="bg-green-600 text-white px-4 py-2 rounded-lg font-bold flex gap-2"
@@ -198,15 +207,20 @@ export const DocumentAdmin: React.FC = () => {
                <div className="grid gap-4">
                    {docs.map(doc => (
                        <div key={doc.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex gap-4 items-center">
-                           <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-2xl">
-                               {doc.fileType === 'pdf' ? '📕' : doc.fileType === 'image' ? '🖼️' : doc.fileType === 'video' ? '🎬' : '📄'}
+                           <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl ${doc.isExternal ? 'bg-blue-50 text-blue-500' : 'bg-gray-100'}`}>
+                               {doc.isExternal ? <LinkIcon size={24} /> : (doc.fileType === 'pdf' ? '📕' : doc.fileType === 'image' ? '🖼️' : '📄')}
                            </div>
                            <div className="flex-1 min-w-0">
                                <h3 className="font-bold text-gray-900 truncate">{doc.title}</h3>
                                <p className="text-xs text-gray-500">{doc.authorName} • {new Date(doc.createdAt).toLocaleDateString('vi-VN')} • {doc.downloads} tải</p>
                            </div>
                            <div className="flex gap-2">
-                               <button onClick={() => { setDocForm(doc); setTagsInput(doc.tags.join(', ')); setShowDocModal(true); }} className="p-2 text-blue-500 bg-blue-50 rounded-lg"><Edit2 size={18}/></button>
+                               <button onClick={() => { 
+                                   setDocForm(doc); 
+                                   setTagsInput(doc.tags.join(', ')); 
+                                   setInputMode(doc.isExternal ? 'link' : 'upload');
+                                   setShowDocModal(true); 
+                                }} className="p-2 text-blue-500 bg-blue-50 rounded-lg"><Edit2 size={18}/></button>
                                <button onClick={() => handleDeleteDoc(doc.id)} className="p-2 text-red-500 bg-red-50 rounded-lg"><Trash2 size={18}/></button>
                            </div>
                        </div>
@@ -243,6 +257,46 @@ export const DocumentAdmin: React.FC = () => {
                    <div className="space-y-4">
                        <input value={docForm.title} onChange={e => setDocForm({...docForm, title: e.target.value})} placeholder="Tiêu đề tài liệu" className="w-full p-3 border rounded-xl font-bold" />
                        
+                       <div className="flex bg-gray-100 p-1 rounded-xl">
+                           <button onClick={() => setInputMode('upload')} className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${inputMode === 'upload' ? 'bg-white shadow-sm text-green-600' : 'text-gray-500'}`}>
+                               <UploadCloud size={16} /> Tải file lên
+                           </button>
+                           <button onClick={() => setInputMode('link')} className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${inputMode === 'link' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500'}`}>
+                               <LinkIcon size={16} /> Nhập Link
+                           </button>
+                       </div>
+
+                       {inputMode === 'upload' ? (
+                           <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 transition-colors relative">
+                               {uploading ? (
+                                   <div className="flex flex-col items-center text-green-600">
+                                       <Loader2 className="animate-spin mb-2" /> Đang tải lên...
+                                   </div>
+                               ) : docForm.fileUrl ? (
+                                   <div className="flex items-center gap-4 justify-center">
+                                       <div className="text-green-600 font-bold flex items-center gap-2"><File size={20} /> Đã có file: {docForm.fileName}</div>
+                                       <label className="text-sm text-blue-500 cursor-pointer hover:underline">
+                                           Thay đổi <input type="file" className="hidden" onChange={handleFileUpload} />
+                                       </label>
+                                   </div>
+                               ) : (
+                                   <label className="cursor-pointer block">
+                                       <UploadCloud className="mx-auto text-gray-400 mb-2" size={32} />
+                                       <span className="text-sm text-gray-500">Tải file tài liệu (PDF, Word, Excel, Ảnh, Video...)</span>
+                                       <input type="file" className="hidden" onChange={handleFileUpload} />
+                                   </label>
+                               )}
+                           </div>
+                       ) : (
+                           <div className="space-y-2">
+                               <label className="text-xs font-bold text-gray-500 uppercase">Link tài liệu</label>
+                               <div className="flex items-center border rounded-xl p-3 gap-2 focus-within:ring-2 focus-within:ring-blue-100">
+                                   <Globe size={18} className="text-gray-400" />
+                                   <input value={docForm.externalLink || ''} onChange={e => setDocForm({...docForm, externalLink: e.target.value})} placeholder="https://..." className="flex-1 outline-none text-sm" />
+                               </div>
+                           </div>
+                       )}
+                       
                        <div className="grid md:grid-cols-2 gap-4">
                            <select value={docForm.categoryId} onChange={e => setDocForm({...docForm, categoryId: e.target.value})} className="w-full p-3 border rounded-xl">
                                <option value="">-- Chọn chuyên mục --</option>
@@ -252,32 +306,11 @@ export const DocumentAdmin: React.FC = () => {
                        </div>
 
                        <textarea value={docForm.description} onChange={e => setDocForm({...docForm, description: e.target.value})} placeholder="Mô tả ngắn về tài liệu..." className="w-full p-3 border rounded-xl h-24" />
-
-                       <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:bg-gray-50 transition-colors relative">
-                           {uploading ? (
-                               <div className="flex flex-col items-center text-green-600">
-                                   <Loader2 className="animate-spin mb-2" /> Đang tải lên...
-                               </div>
-                           ) : docForm.fileUrl ? (
-                               <div className="flex items-center gap-4 justify-center">
-                                   <div className="text-green-600 font-bold flex items-center gap-2"><File size={20} /> Đã có file: {docForm.fileName}</div>
-                                   <label className="text-sm text-blue-500 cursor-pointer hover:underline">
-                                       Thay đổi <input type="file" className="hidden" onChange={handleFileUpload} />
-                                   </label>
-                               </div>
-                           ) : (
-                               <label className="cursor-pointer block">
-                                   <UploadCloud className="mx-auto text-gray-400 mb-2" size={32} />
-                                   <span className="text-sm text-gray-500">Tải file tài liệu (PDF, Word, Excel, Ảnh, Video...)</span>
-                                   <input type="file" className="hidden" onChange={handleFileUpload} />
-                               </label>
-                           )}
-                       </div>
                    </div>
 
                    <div className="pt-4 border-t flex justify-end gap-3">
                        <button onClick={() => setShowDocModal(false)} className="px-6 py-2 text-gray-600 font-bold hover:bg-gray-100 rounded-xl">Hủy</button>
-                       <button onClick={handleSaveDoc} disabled={uploading || !docForm.fileUrl} className="px-6 py-2 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 disabled:opacity-50">Lưu tài liệu</button>
+                       <button onClick={handleSaveDoc} disabled={uploading || (inputMode === 'upload' && !docForm.fileUrl) || (inputMode === 'link' && !docForm.externalLink)} className="px-6 py-2 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 disabled:opacity-50">Lưu tài liệu</button>
                    </div>
                </div>
            </div>
