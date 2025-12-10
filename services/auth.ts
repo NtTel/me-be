@@ -1,5 +1,5 @@
 import * as firebaseAuth from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../firebaseConfig';
 import { User } from '../types';
 
@@ -128,19 +128,29 @@ export const logoutUser = async () => {
   await firebaseAuth.signOut(auth);
 };
 
+// IMPROVED: Use onSnapshot for real-time user data updates from Firestore
 export const subscribeToAuthChanges = (callback: (user: User | null) => void) => {
   if (!auth) return () => {};
   
-  return firebaseAuth.onAuthStateChanged(auth, async (fbUser) => {
+  return firebaseAuth.onAuthStateChanged(auth, (fbUser) => {
     if (fbUser) {
-      try {
-        const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
-        const userData = userDoc.exists() ? userDoc.data() : undefined;
-        callback(mapUser(fbUser, userData));
-      } catch (e) {
-        // Fallback if firestore fails (e.g. permission rules)
-        callback(mapUser(fbUser));
-      }
+      // Set up a real-time listener for the user document
+      // This ensures if role changes (e.g. becomes Admin/Expert), UI updates instantly without refresh
+      const userDocRef = doc(db, 'users', fbUser.uid);
+      const unsubFirestore = onSnapshot(userDocRef, (docSnap) => {
+        if (docSnap.exists()) {
+            callback(mapUser(fbUser, docSnap.data()));
+        } else {
+            // Fallback if doc doesn't exist yet (e.g. right after creation)
+            callback(mapUser(fbUser));
+        }
+      }, (error) => {
+          console.error("Firestore user sync error:", error);
+          // Still return basic auth user if firestore fails
+          callback(mapUser(fbUser));
+      });
+
+      return () => unsubFirestore();
     } else {
       callback(null);
     }
