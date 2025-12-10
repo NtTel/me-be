@@ -13,7 +13,7 @@ const DOC_REVIEWS_COL = 'documentReviews';
 
 // --- TYPE HELPERS ---
 
-// Định nghĩa kiểu dữ liệu cho dữ liệu đầu vào khi tạo Document
+// Định nghĩa kiểu dữ liệu cho dữ liệu đầu vào khi tạo Document (Không bao gồm các trường được khởi tạo tự động)
 export type CreateDocumentData = Omit<Document, 
   'id' | 'views' | 'downloads' | 'rating' | 'ratingCount' | 'createdAt' | 'updatedAt'
 >;
@@ -34,7 +34,7 @@ const toDocumentCategory = (data: DocumentData, id: string): DocumentCategory =>
  * Chuyển đổi Firestore DocumentData thành Document
  */
 const toDocument = (data: DocumentData, id: string): Document => {
-  // Chuẩn hóa thời gian từ Timestamp (nếu có) sang ISO string
+  // Chuẩn hóa thời gian từ Firestore Timestamp (nếu có) sang ISO string
   const createdAt = (data.createdAt instanceof Timestamp) ? data.createdAt.toDate().toISOString() : data.createdAt;
   const updatedAt = (data.updatedAt instanceof Timestamp) ? data.updatedAt.toDate().toISOString() : data.updatedAt;
 
@@ -129,7 +129,7 @@ export const fetchAllDocumentsAdmin = async (authorId?: string): Promise<Documen
     const q = query(
       collection(db, DOCS_COL), 
       ...conditions,
-      orderBy('createdAt', 'desc') // Sắp xếp trên server
+      orderBy('createdAt', 'desc') 
     );
     
     const snapshot = await getDocs(q);
@@ -171,6 +171,7 @@ export const updateDocument = async (id: string, data: Partial<Document>) => {
   }
 };
 
+// KHẮC PHỤC LỖI: Hàm này đã được thêm export
 export const deleteDocument = async (id: string) => {
     if (!db) return;
     try {
@@ -189,7 +190,4 @@ export const incrementDownload = async (id: string) => {
     }
 };
 
-// =================================================================
-// --- REVIEWS ---
-// (Giữ nguyên các hàm Reviews nếu bạn đã có, hoặc bổ sung nếu cần)
-// =================================================================
+// ... (Bạn có thể thêm các hàm Reviews nếu cần)
