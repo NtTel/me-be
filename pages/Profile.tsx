@@ -10,7 +10,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { followUser, unfollowUser, sendNotification } from '../services/db';
 import { db } from '../firebaseConfig';
 import { doc, updateDoc, onSnapshot, query, where, getDocs, collection, limit, getDoc } from 'firebase/firestore'; 
-import { uploadFile } from '../services/storage'; // Import hàm upload ảnh
+import { uploadFile } from '../services/storage';
 import { ShareModal } from '../components/ShareModal';
 
 interface ProfileProps {
@@ -31,53 +31,53 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
   // Modal State
   const [showEditModal, setShowEditModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  
   const [editForm, setEditForm] = useState({ name: '', bio: '', avatar: '', username: '', coverUrl: '' });
   const [isSaving, setIsSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false); // Trạng thái đang tải ảnh
-
+  const [isUploading, setIsUploading] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
 
-  // --- 1. LOGIC CHUYỂN HƯỚNG URL THÔNG MINH (FIX LỖI SLUG) ---
+  // --- 1. XỬ LÝ KHÁCH VÃNG LAI & CHUYỂN HƯỚNG ---
   useEffect(() => {
-    // Nếu user vào /profile trống -> Chuyển hướng
-    if (!userId && user && !user.isGuest) {
-        // Ưu tiên dùng username nếu có, không thì dùng ID
+    // Nếu là Khách và đang vào trang /profile trống -> Dừng tải, để hiển thị Guest View
+    if (!userId && user.isGuest) {
+        setLoadingProfile(false);
+        return;
+    }
+
+    // Nếu là User thật và vào /profile trống -> Chuyển hướng sang link chuẩn
+    if (!userId && !user.isGuest) {
         const slug = user.username || user.id;
         navigate(`/profile/${slug}`, { replace: true });
     }
   }, [userId, user, navigate]);
 
-  const targetId = userId || (user?.username || user?.id);
-
-  // --- 2. TÌM KIẾM PROFILE (Hỗ trợ cả ID và Username) ---
+  // --- 2. TẢI DỮ LIỆU PROFILE (Hỗ trợ ID và Username) ---
   useEffect(() => {
-    let unsubscribe: () => void;
+    // Nếu không có userId trên URL (và đã xử lý redirect ở trên), thì không cần fetch
+    if (!userId) return;
 
-    const setupProfileListener = async () => {
+    let unsubscribe: () => void;
+    
+    const fetchProfile = async () => {
         setLoadingProfile(true);
         let foundId = '';
 
-        if (!userId) {
-            // Trường hợp fallback khi chưa redirect kịp
-            if (user && !user.isGuest) foundId = user.id;
-        } else {
-            // A. Thử tìm theo ID
+        // A. Thử tìm theo ID (Nhanh nhất)
+        // Kiểm tra xem chuỗi userId có phải là ID chuẩn của Firebase không (thường 20-28 ký tự)
+        if (userId.length > 20) { 
             const docRef = doc(db, 'users', userId);
             const docSnap = await getDoc(docRef);
-            
-            if (docSnap.exists()) {
-                foundId = docSnap.id;
-            } else {
-                // B. Tìm theo Username
-                const q = query(collection(db, 'users'), where('username', '==', userId), limit(1));
-                const querySnap = await getDocs(q);
-                if (!querySnap.empty) {
-                    foundId = querySnap.docs[0].id;
-                }
-            }
+            if (docSnap.exists()) foundId = docSnap.id;
         }
 
+        // B. Nếu không tìm thấy theo ID, tìm theo Username
+        if (!foundId) {
+            const q = query(collection(db, 'users'), where('username', '==', userId), limit(1));
+            const querySnap = await getDocs(q);
+            if (!querySnap.empty) foundId = querySnap.docs[0].id;
+        }
+
+        // C. Nếu tìm thấy User -> Lắng nghe Realtime
         if (foundId) {
             unsubscribe = onSnapshot(doc(db, 'users', foundId), (docSnap) => {
                 if (docSnap.exists()) {
@@ -89,18 +89,17 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
                 setLoadingProfile(false);
             });
         } else {
+            // Không tìm thấy user nào khớp
             setProfileData(null);
             setLoadingProfile(false);
         }
     };
 
-    setupProfileListener();
+    fetchProfile();
     return () => { if (unsubscribe) unsubscribe(); };
-  }, [userId, user]); // Phụ thuộc vào userId trên URL
+  }, [userId]);
 
-  const isViewingSelf = user && profileData && user.id === profileData.id;
-
-  // --- 3. LOGIC THEO DÕI ---
+  // --- 3. LẮNG NGHE TRẠNG THÁI THEO DÕI ---
   useEffect(() => {
     if (user && !user.isGuest && profileData && user.id !== profileData.id) {
         const unsub = onSnapshot(doc(db, 'users', user.id), (docSnap) => {
@@ -114,6 +113,10 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
         setIsFollowing(false);
     }
   }, [user.id, profileData?.id]);
+
+  // --- CHECK CHÍNH CHỦ ---
+  // Xem profile của chính mình khi: (URL trùng ID) HOẶC (URL trùng Username)
+  const isViewingSelf = user && profileData && user.id === profileData.id;
 
   // --- ACTIONS ---
   const handleFollowToggle = async () => {
@@ -140,24 +143,17 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
     setShowEditModal(true);
   };
 
-  // --- HÀM UPLOAD ẢNH (Avatar & Cover) ---
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'avatar' | 'coverUrl') => {
       const file = e.target.files?.[0];
       if (!file) return;
-
-      // Giới hạn dung lượng < 5MB
-      if (file.size > 5 * 1024 * 1024) {
-          alert("Ảnh quá lớn! Vui lòng chọn ảnh dưới 5MB.");
-          return;
-      }
+      if (file.size > 5 * 1024 * 1024) return alert("Ảnh quá lớn (Max 5MB)");
 
       setIsUploading(true);
       try {
-          const url = await uploadFile(file, `users/${user.id}/${field}`);
+          const url = await uploadFile(file, `users/${user.id}/${field}_${Date.now()}`);
           setEditForm(prev => ({ ...prev, [field]: url }));
       } catch (error) {
-          console.error(error);
-          alert("Lỗi tải ảnh lên. Vui lòng thử lại.");
+          alert("Lỗi tải ảnh. Vui lòng thử lại.");
       } finally {
           setIsUploading(false);
       }
@@ -171,16 +167,17 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
         let finalUsername = editForm.username.trim().toLowerCase(); 
         
         if (finalUsername && !/^[a-z0-9._]+$/.test(finalUsername)) {
-            alert("Tên định danh chỉ được chứa chữ thường, số, dấu chấm (.) và gạch dưới (_)");
+            alert("Username chỉ được chứa chữ thường, số, dấu chấm (.) và gạch dưới (_)");
             setIsSaving(false);
             return;
         }
 
+        // Check trùng username nếu thay đổi
         if (finalUsername && finalUsername !== profileData.username) {
             const q = query(collection(db, 'users'), where('username', '==', finalUsername));
             const snapshot = await getDocs(q);
             if (!snapshot.empty) {
-                alert(`Tên định danh "${finalUsername}" đã có người sử dụng.`);
+                alert(`Tên "${finalUsername}" đã có người dùng.`);
                 setIsSaving(false);
                 return;
             }
@@ -194,14 +191,14 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
             coverUrl: editForm.coverUrl || null
         });
 
-        // Nếu đổi username thành công -> Chuyển hướng URL
-        if (finalUsername && finalUsername !== userId && finalUsername !== profileData.username) {
+        // Nếu đổi username -> Chuyển hướng sang link mới
+        if (finalUsername && finalUsername !== userId) {
             navigate(`/profile/${finalUsername}`, { replace: true });
         }
         
         setShowEditModal(false);
     } catch (error) {
-        alert("Có lỗi xảy ra khi lưu!");
+        alert("Lỗi khi lưu hồ sơ.");
     } finally {
         setIsSaving(false);
     }
@@ -217,22 +214,32 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
       if (profileData) navigate(`/messages/${profileData.id}`);
   };
 
-  if (user.isGuest && isViewingSelf) {
+  // --- GUEST VIEW (KHẮC PHỤC LỖI "NGƯỜI DÙNG KHÔNG TỒN TẠI") ---
+  // Điều kiện: Người dùng là Guest VÀ (không có ID trên URL hoặc ID trên URL trùng với ID tạm của Guest)
+  if (user.isGuest && (!userId || userId === user.id)) {
       return (
           <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center animate-fade-in pt-safe-top pb-24">
               <div className="w-24 h-24 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
                   <LogIn size={40} className="text-blue-500" />
               </div>
               <h1 className="text-2xl font-bold text-gray-900 mb-2">Chào bạn mới! 👋</h1>
-              <p className="text-gray-500 mb-8 text-sm">Đăng nhập để tham gia cộng đồng ngay.</p>
+              <p className="text-gray-500 mb-8 text-sm">Đăng nhập để lưu hồ sơ và tham gia cộng đồng.</p>
               <button onClick={onOpenAuth} className="px-8 py-3 bg-primary text-white font-bold rounded-full shadow-lg hover:bg-[#25A99C]">Đăng nhập / Đăng ký</button>
           </div>
       );
   }
 
+  // --- LOADING / NOT FOUND ---
   if (loadingProfile) return <div className="min-h-screen flex items-center justify-center bg-white"><Loader2 className="animate-spin text-primary" size={32} /></div>;
-  if (!profileData) return <div className="p-10 text-center">Người dùng không tồn tại</div>;
+  if (!profileData) return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F7F7F5] p-4 text-center">
+          <h2 className="text-xl font-bold text-gray-800 mb-2">Không tìm thấy người dùng</h2>
+          <p className="text-gray-500 mb-6">Đường dẫn có thể bị sai hoặc tài khoản đã bị xóa.</p>
+          <button onClick={() => navigate('/')} className="bg-primary text-white px-6 py-2 rounded-xl font-bold">Về trang chủ</button>
+      </div>
+  );
 
+  // Stats
   const userQuestions = questions.filter(q => q.author.id === profileData.id);
   const userAnswersCount = questions.reduce((acc, q) => acc + q.answers.filter(a => a.author.id === profileData.id).length, 0);
   const reputationPoints = profileData.points || (userQuestions.length * 10) + (userAnswersCount * 20);
@@ -248,11 +255,12 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
       
       {/* 1. COVER PHOTO */}
       <div className={bannerClasses} style={bannerStyle}>
-         {hasCover && <div className="absolute inset-0 bg-black/30 backdrop-blur-[1px]"></div>}
+         {hasCover && <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]"></div>}
          {!hasCover && <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-20"></div>}
          
+         {/* Nút Back chỉ hiện khi xem người khác */}
          {!isViewingSelf && (
-             <button onClick={() => navigate(-1)} className="absolute top-safe-top left-4 p-2 bg-black/20 text-white rounded-full backdrop-blur-md md:hidden z-10 hover:bg-black/30 transition-colors"><ArrowLeft size={20} /></button>
+             <button onClick={() => navigate(-1)} className="absolute top-safe-top left-4 p-2 bg-black/20 text-white rounded-full backdrop-blur-md z-10 hover:bg-black/30 transition-colors"><ArrowLeft size={20} /></button>
          )}
          <button onClick={() => setShowShareModal(true)} className="absolute top-safe-top right-4 p-2 bg-black/20 text-white rounded-full backdrop-blur-md z-10 hover:bg-black/30 transition-colors"><Share2 size={20} /></button>
       </div>
@@ -284,6 +292,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
                                 <span className="text-blue-600 font-medium text-sm flex items-center gap-1"><Briefcase size={14} /> {profileData.specialty}</span>
                             )}
                         </div>
+                        
                         <div className="flex items-center justify-center sm:justify-start gap-6 mt-4 text-sm text-gray-600">
                             <div className="flex gap-1"><strong className="text-gray-900">{profileData.followers?.length || 0}</strong> người theo dõi</div>
                             <div className="flex gap-1"><strong className="text-gray-900">{profileData.following?.length || 0}</strong> đang theo dõi</div>
@@ -302,7 +311,10 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
                             </>
                         ) : (
                             <>
-                                <button onClick={handleFollowToggle} className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-2 ${isFollowing ? 'bg-white border border-gray-300 text-gray-700' : 'bg-primary text-white hover:bg-teal-600 shadow-teal-200'}`}>
+                                <button 
+                                    onClick={handleFollowToggle} 
+                                    className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center justify-center gap-2 ${isFollowing ? 'bg-white border border-gray-300 text-gray-700' : 'bg-primary text-white hover:bg-teal-600 shadow-teal-200'}`}
+                                >
                                     {isFollowing ? <UserCheck size={18} /> : <UserPlus size={18} />}
                                     {isFollowing ? 'Đang theo dõi' : 'Theo dõi'}
                                 </button>
@@ -316,12 +328,14 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
             </div>
         </div>
 
+        {/* 4. BIO */}
         {profileData.bio && (
             <div className="mb-8">
                 <p className="text-gray-600 text-sm leading-relaxed max-w-2xl bg-gray-50 p-4 rounded-xl border border-gray-200/60 shadow-sm">"{profileData.bio}"</p>
             </div>
         )}
 
+        {/* 5. TABS */}
         <div className="border-b border-gray-200 mb-6 flex gap-8">
             <button onClick={() => setActiveTab('overview')} className={`pb-3 text-sm font-bold transition-all relative ${activeTab === 'overview' ? 'text-primary' : 'text-gray-500 hover:text-gray-800'}`}>
                 Tổng quan {activeTab === 'overview' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full"></div>}
@@ -332,6 +346,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
             </button>
         </div>
 
+        {/* 6. TAB CONTENT */}
         <div className="min-h-[300px]">
             {activeTab === 'overview' && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-fade-in">
@@ -366,7 +381,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
         </div>
       </div>
 
-      {/* EDIT MODAL - CÓ UPLOAD ẢNH */}
+      {/* EDIT MODAL */}
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in no-scrollbar overflow-y-auto">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md my-auto animate-pop-in relative flex flex-col max-h-[90vh]">
@@ -376,8 +391,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
                 </div>
                 
                 <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
-                    
-                    {/* ẢNH BÌA UPLOAD */}
+                    {/* Ảnh bìa */}
                     <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase mb-2 flex items-center gap-1"><ImageIcon size={14}/> Ảnh bìa</label>
                         <div className="relative group rounded-xl overflow-hidden border border-gray-200 h-28 bg-gray-50 cursor-pointer">
@@ -393,7 +407,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
                         </div>
                     </div>
 
-                    {/* AVATAR UPLOAD */}
+                    {/* Avatar */}
                     <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase mb-2 flex items-center gap-1">Ảnh đại diện</label>
                         <div className="flex gap-4 items-center">
@@ -413,7 +427,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
 
                     <div className="h-px bg-gray-100 my-2"></div>
 
-                    {/* TEXT FIELDS */}
+                    {/* Text Fields */}
                     <div>
                         <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tên hiển thị</label>
                         <input type="text" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 text-sm font-bold text-gray-800" />
