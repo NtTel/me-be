@@ -15,8 +15,7 @@ interface HomeProps {
 
 const PAGE_SIZE = 20;
 
-// --- HÀM TIỆN ÍCH LẤY LINK PROFILE ---
-// Nếu có username thì dùng username, không thì dùng ID
+// Helper: Lấy link profile chuẩn (Ưu tiên Username nếu có)
 const getProfileLink = (user: User) => {
     return `/profile/${user.username || user.id}`;
 };
@@ -180,7 +179,7 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
         </div>
       </div>
 
-      {/* --- KẾT QUẢ TÌM KIẾM NGƯỜI DÙNG (ĐÃ SỬA LINK) --- */}
+      {/* --- PHẦN ĐÃ SỬA: Dùng getProfileLink để tạo link chuẩn username --- */}
       {searchQuery && matchingUsers.length > 0 && (
         <div className="pl-4 md:px-0 animate-slide-up">
            <div className="flex items-center gap-1 mb-2">
@@ -189,7 +188,6 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
            </div>
            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 pr-4 snap-x">
               {matchingUsers.map(user => (
-                  // SỬA: Dùng getProfileLink để lấy link đẹp
                   <Link to={getProfileLink(user)} key={user.id} className="snap-start flex-shrink-0 bg-white p-3 pr-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3 min-w-[160px] active:scale-95 transition-transform">
                       <div className="relative">
                         <img src={user.avatar} className="w-10 h-10 rounded-full object-cover border border-gray-100" />
@@ -360,11 +358,8 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
                     <div className="bg-white p-5 rounded-[1.5rem] shadow-[0_2px_15px_rgba(0,0,0,0.03)] border border-gray-100 active:scale-[0.98] transition-all relative overflow-hidden">
                         {q.answers.length === 0 && <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-orange-100 to-transparent rounded-bl-full -mr-8 -mt-8"></div>}
                         <div className="flex items-start justify-between mb-3 relative z-10">
-                        {/* --- SỬA LINK TÁC GIẢ BÀI VIẾT (Feed) --- */}
                         <div className="flex items-center gap-2">
-                            <object data={getProfileLink(q.author)} className="pointer-events-none">
-                                <img src={q.author.avatar} className="w-8 h-8 rounded-full border border-gray-100 object-cover" />
-                            </object>
+                            <img src={q.author.avatar} className="w-8 h-8 rounded-full border border-gray-100 object-cover" />
                             <div>
                                 <p className="text-xs font-bold text-textDark flex items-center gap-1">
                                     {q.author.name}
