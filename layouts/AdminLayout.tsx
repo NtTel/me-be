@@ -101,7 +101,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ currentUser, onLogout 
         {/* Sidebar Header */}
         <div className="h-16 flex items-center px-6 border-b border-gray-100 justify-between md:justify-start">
           <Link to="/" className="flex items-center gap-2 text-xl font-black text-gray-800 tracking-tight hover:opacity-80">
-            <span className="bg-blue-600 text-white p-1 rounded-md text-sm">A</span>dmin
+            <span className="bg-blue-600 text-white p-1 rounded-md text-sm">A</span>sking
           </Link>
           {/* Mobile Close Button */}
           <button 
