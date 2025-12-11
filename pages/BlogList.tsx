@@ -4,7 +4,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { BlogPost, BlogCategory, User } from '../types';
 import { fetchBlogCategories, fetchPublishedPosts } from '../services/blog';
 import { subscribeToAuthChanges } from '../services/auth';
-import { Loader2, BookOpen, Clock, ChevronRight, PenTool, Hash, ArrowDown } from 'lucide-react';
+// ĐÃ THÊM: Search và X (nút xóa) vào import
+import { Loader2, BookOpen, Clock, ChevronRight, PenTool, Hash, ArrowDown, Search, X } from 'lucide-react';
 
 // Số lượng bài hiển thị mỗi lần (9 bài cho đẹp grid 3 cột)
 const PAGE_SIZE = 9; 
@@ -18,6 +19,9 @@ export const BlogList: React.FC = () => {
   // State quản lý số lượng bài đang hiện
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   
+  // MỚI: State quản lý từ khóa tìm kiếm
+  const [searchTerm, setSearchTerm] = useState('');
+  
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const navigate = useNavigate();
 
@@ -30,7 +34,7 @@ export const BlogList: React.FC = () => {
       setLoading(true);
       const [catsData, postsData] = await Promise.all([
         fetchBlogCategories(),
-        // Lấy 100 bài để có dữ liệu cho nút Xem thêm hoạt động
+        // Lấy 100 bài để có dữ liệu cho nút Xem thêm và Tìm kiếm hoạt động tốt
         fetchPublishedPosts('all', 100) 
       ]);
       setCategories(catsData);
@@ -45,10 +49,10 @@ export const BlogList: React.FC = () => {
   const handleFilter = async (catId: string) => {
     setActiveCat(catId);
     setLoading(true);
-    // Reset lại số lượng hiển thị về mặc định khi chuyển danh mục
-    setVisibleCount(PAGE_SIZE); 
+    setVisibleCount(PAGE_SIZE);
+    // Khi đổi danh mục thì nên reset tìm kiếm cho đỡ rối
+    setSearchTerm(''); 
     
-    // Lấy 100 bài theo danh mục
     const data = await fetchPublishedPosts(catId, 100);
     setPosts(data);
     setLoading(false);
@@ -60,15 +64,22 @@ export const BlogList: React.FC = () => {
 
   const isExpertOrAdmin = currentUser && (currentUser.isExpert || currentUser.isAdmin);
 
-  // Cắt danh sách bài viết dựa trên visibleCount
-  const visiblePosts = posts.slice(0, visibleCount);
+  // --- LOGIC LỌC & PHÂN TRANG MỚI ---
+  // 1. Lọc theo từ khóa trước
+  const filteredPosts = posts.filter(post => 
+    post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (post.excerpt && post.excerpt.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  // 2. Sau đó mới cắt trang
+  const visiblePosts = filteredPosts.slice(0, visibleCount);
 
   return (
     <div className="min-h-screen bg-[#F7F7F5] pb-24 animate-fade-in pt-safe-top">
       {/* Header */}
       <div className="px-4 py-6 bg-white border-b border-gray-100 shadow-sm sticky top-[68px] md:top-20 z-30">
          <div className="max-w-5xl mx-auto">
-            <div className="flex justify-between items-start">
+            <div className="flex justify-between items-start mb-4">
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-textDark mb-2 flex items-center gap-2">
                         <BookOpen className="text-primary" /> Góc Chuyên Gia
@@ -88,9 +99,28 @@ export const BlogList: React.FC = () => {
                     </button>
                 )}
             </div>
+
+            {/* --- THANH TÌM KIẾM (MỚI THÊM) --- */}
+            <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input 
+                  value={searchTerm} 
+                  onChange={e => setSearchTerm(e.target.value)} 
+                  placeholder="Tìm kiếm bài viết..." 
+                  className="w-full pl-10 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                />
+                {searchTerm && (
+                    <button 
+                        onClick={() => setSearchTerm('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                    >
+                        <X size={16} />
+                    </button>
+                )}
+            </div>
             
             {/* Categories */}
-            <div className="flex gap-2 overflow-x-auto no-scrollbar mt-4 pb-1">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                 <button 
                     onClick={() => handleFilter('all')}
                     className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${activeCat === 'all' ? 'bg-textDark text-white shadow-md' : 'bg-gray-100 text-textGray hover:bg-gray-200'}`}
@@ -114,8 +144,10 @@ export const BlogList: React.FC = () => {
       <div className="max-w-5xl mx-auto px-4 py-6">
          {loading ? (
              <div className="flex justify-center py-20"><Loader2 className="animate-spin text-primary" size={32} /></div>
-         ) : posts.length === 0 ? (
-             <div className="text-center py-20 text-gray-400">Chưa có bài viết nào trong mục này.</div>
+         ) : filteredPosts.length === 0 ? (
+             <div className="text-center py-20 text-gray-400 italic">
+                 {searchTerm ? 'Không tìm thấy bài viết nào phù hợp.' : 'Chưa có bài viết nào trong mục này.'}
+             </div>
          ) : (
              <>
                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -157,7 +189,7 @@ export const BlogList: React.FC = () => {
                  </div>
 
                  {/* NÚT XEM THÊM (LOAD MORE) */}
-                 {visibleCount < posts.length && (
+                 {visibleCount < filteredPosts.length && (
                     <div className="flex justify-center mt-8">
                         <button
                             onClick={handleLoadMore}
