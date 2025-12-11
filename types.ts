@@ -7,18 +7,22 @@ export interface User {
   specialty?: string; // e.g., "Bác sĩ Nhi khoa", "Chuyên gia Dinh dưỡng"
   workplace?: string;
   isAdmin?: boolean;
-  isBanned?: boolean; // New field for banning users
+  isBanned?: boolean;
   bio?: string;
+  
+  // --- MỚI THÊM: USERNAME (Tên định danh tùy chỉnh) ---
+  username?: string; // VD: "mebap", "bacsihung"
+  
   points?: number;
   joinedAt?: string;
   isGuest?: boolean;
   followers?: string[];
   following?: string[];
-  savedQuestions?: string[]; // List of saved question IDs
+  savedQuestions?: string[];
   isOnline?: boolean;
   lastActiveAt?: string;
-  email?: string; // Add email for admin management
-  isFake?: boolean; // For seed data management
+  email?: string;
+  isFake?: boolean;
 }
 
 export interface Answer {
@@ -27,14 +31,14 @@ export interface Answer {
   author: User;
   content: string;
   likes: number;
-  usefulBy?: string[]; // List of user IDs who voted useful
+  usefulBy?: string[];
   isBestAnswer: boolean;
   isExpertVerified?: boolean;
   createdAt: string;
   isAi: boolean;
   isHidden?: boolean;
   reportCount?: number;
-  isFake?: boolean; // For seed data management
+  isFake?: boolean;
 }
 
 export interface Question {
@@ -50,7 +54,7 @@ export interface Question {
   images?: string[]; 
   isHidden?: boolean;
   reportCount?: number;
-  isFake?: boolean; // For seed data management
+  isFake?: boolean;
 }
 
 export interface Notification {
@@ -84,8 +88,6 @@ export interface ChatSession {
 }
 
 // --- GAME TYPES ---
-
-// Changed to string to support dynamic categories
 export type GameCategory = string; 
 export type GameType = 'quiz' | 'html5' | 'story' | 'ai-story';
 export type GameOrientation = 'portrait' | 'landscape' | 'auto';
@@ -101,29 +103,28 @@ export interface CategoryDef {
 export interface Game {
   id: string;
   title: string;
-  icon: string; // Emoji or URL
-  color: string; // Tailwind class like 'bg-blue-400'
+  icon: string;
+  color: string;
   gameType: GameType;
   category: GameCategory;
-  orientation?: GameOrientation; // New field for screen orientation
+  orientation?: GameOrientation;
   
-  // Specific fields based on type
-  gameUrl?: string; // For HTML5 games
-  storyContent?: string; // For Stories
+  gameUrl?: string;
+  storyContent?: string;
   
   minAge: number;
   maxAge: number;
   isActive: boolean;
   order: number;
   createdAt: string;
-  questionCount?: number; // Optional, for UI display
+  questionCount?: number;
 }
 
 export interface GameQuestion {
   id: string;
-  q: string; // Question text
-  opts: string[]; // Options
-  a: string; // Correct answer
+  q: string;
+  opts: string[];
+  a: string;
   displayType: 'text' | 'emoji' | 'color';
   order: number;
   isActive: boolean;
@@ -147,10 +148,10 @@ export interface ExpertApplication {
 
 export interface Report {
   id: string;
-  targetId: string; // Question ID or Answer ID
+  targetId: string;
   targetType: 'question' | 'answer';
   reason: string;
-  reportedBy: string; // User ID
+  reportedBy: string;
   createdAt: string;
   status: 'open' | 'resolved' | 'dismissed';
 }
@@ -163,11 +164,10 @@ export interface AdConfig {
   adsenseSlotId?: string;
   customBannerUrl?: string;
   customTargetUrl?: string;
-  frequency: number; // e.g. every 5 posts
+  frequency: number;
 }
 
 // --- BLOG MODULE TYPES ---
-
 export interface BlogCategory {
   id: string;
   name: string;
@@ -182,19 +182,17 @@ export interface BlogPost {
   title: string;
   slug: string;
   excerpt: string;
-  content: string; // HTML or Markdown
+  content: string;
   coverImageUrl?: string;
   iconEmoji?: string;
   
-  // Media & Source
   youtubeUrl?: string;
   sourceUrl?: string;
   sourceLabel?: string;
   
-  categoryId?: string; // ID of BlogCategory
+  categoryId?: string;
   tags?: string[];
   
-  // Author Denormalization
   authorId: string;
   authorName: string;
   authorAvatar: string;
@@ -210,19 +208,15 @@ export interface BlogComment {
   id: string;
   postId: string;
   content: string;
-  
-  // Author Denormalization
   authorId: string;
   authorName: string;
   authorAvatar: string;
   isExpert: boolean;
-  
   createdAt: string;
   updatedAt: string;
 }
 
 // --- DOCUMENT MODULE TYPES ---
-
 export interface DocumentCategory {
   id: string;
   name: string;
@@ -238,10 +232,9 @@ export interface Document {
   slug: string;
   description: string;
   
-  // File or Link
   isExternal?: boolean; 
   externalLink?: string; 
-  fileUrl?: string;     
+  fileUrl?: string;      
   
   fileType: 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'image' | 'video' | 'link' | 'other';
   fileName?: string;
@@ -250,7 +243,6 @@ export interface Document {
   categoryId: string;
   tags: string[];
   
-  // Author
   authorId: string;
   authorName: string;
   authorAvatar: string;
@@ -311,7 +303,7 @@ export const toSlug = (title: string, id?: string) => {
   // 2. Xóa dấu tiếng Việt (Chuẩn hóa Unicode để tách dấu ra khỏi chữ, sau đó xóa dấu)
   slug = slug.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-  // 3. Xử lý riêng ký tự đ/Đ (vì hàm normalize không xử lý chữ này)
+  // 3. Xử lý riêng ký tự đ/Đ
   slug = slug.replace(/[đĐ]/g, "d");
 
   // 4. Xóa các ký tự đặc biệt (chỉ giữ lại chữ, số và khoảng trắng)
@@ -325,6 +317,7 @@ export const toSlug = (title: string, id?: string) => {
   slug = slug.replace(/^-+|-+$/g, "");
 
   // 7. Nối ID vào cuối để tạo đường dẫn duy nhất (nếu có ID)
+  // LƯU Ý: Với Username profile thì KHÔNG dùng cái này, dùng trực tiếp username.
   if (id) {
     return `${slug}-${id}`;
   }
