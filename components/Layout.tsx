@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 // @ts-ignore
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Plus, Gamepad2, Facebook, Instagram, Youtube, User as UserIcon, Bell, MessageCircle, Bot } from 'lucide-react';
+// ĐÃ THÊM CÁC ICON MỚI VÀO ĐÂY (MapPin, Phone, Mail, ShieldCheck, Heart...)
+import { Home, Plus, Gamepad2, Facebook, Instagram, Youtube, User as UserIcon, Bell, MessageCircle, Bot, MapPin, Phone, Mail, ShieldCheck, Heart } from 'lucide-react';
 import { subscribeToNotifications, subscribeToChats, updateUserStatus } from '../services/db';
 import { auth } from '../firebaseConfig';
 
@@ -22,9 +23,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             // @ts-ignore
             setCurrentUserAvatar(user.photoURL || "https://cdn-icons-png.flaticon.com/512/3177/3177440.png");
             
-            // --- PRESENCE SYSTEM (HEARTBEAT) ---
+            // --- PRESENCE SYSTEM ---
             updateUserStatus(user.uid, true);
-            
             const presenceInterval = setInterval(() => {
                 updateUserStatus(user.uid, true);
             }, 2 * 60 * 1000);
@@ -85,9 +85,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <div className="min-h-screen font-sans text-textDark bg-[#F7F7F5] flex flex-col overflow-x-hidden selection:bg-primary/20">
       
-      {/* --- DESKTOP HEADER (Hidden on Mobile) --- */}
+      {/* --- DESKTOP HEADER --- */}
       <header className="hidden md:block bg-white/90 backdrop-blur-md shadow-sm sticky top-0 z-50 border-b border-gray-100 transition-all">
-        <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <Link to="/" className="text-2xl font-bold text-primary flex items-center gap-2 select-none hover:scale-105 transition-transform">
             <span className="bg-gradient-to-tr from-primary to-secondary p-1.5 rounded-xl text-white shadow-sm text-lg">👶</span>
             Asking.vn
@@ -144,7 +144,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       )}
 
       {/* --- MAIN CONTENT --- */}
-      <main className={`flex-1 w-full max-w-5xl mx-auto md:px-4 ${(!hideTopBar && !isAskPage && !isGameZone && !isNotificationPage && !isExpertReg) ? 'pt-20 md:pt-6' : 'pt-0 md:pt-6'} pb-24 md:pb-8 transition-all duration-300`}>
+      <main className={`flex-1 w-full max-w-6xl mx-auto md:px-4 ${(!hideTopBar && !isAskPage && !isGameZone && !isNotificationPage && !isExpertReg) ? 'pt-20 md:pt-6' : 'pt-0 md:pt-6'} pb-24 md:pb-8 transition-all duration-300`}>
         {children}
       </main>
 
@@ -173,36 +173,91 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       )}
 
-      {/* --- DESKTOP FOOTER (ĐÃ THÊM LINK) --- */}
+      {/* --- DESKTOP FOOTER (MỚI - CHUYÊN NGHIỆP) --- */}
       {!hideBottomBar && !isNotificationPage && !isExpertReg && !isAiChat && !isQuestionDetail && !isGameZone && (
-        <footer className={`bg-white border-t border-gray-100 py-10 px-4 md:px-0 mt-auto hidden md:block`}>
-          <div className="max-w-5xl mx-auto">
-             <div className="flex flex-col items-center justify-center text-center">
-                <h3 className="text-primary font-bold text-xl mb-2">Asking.vn</h3>
-                <p className="text-textGray text-sm mb-6">Cộng đồng Mẹ & Bé văn minh, hiện đại.</p>
-                
-                {/* --- KHU VỰC LINK MỚI THÊM --- */}
-                <div className="flex gap-6 mb-6 text-sm font-medium text-gray-500">
-                    <Link to="/about" className="hover:text-primary transition-colors">Về chúng tôi</Link>
-                    <Link to="/terms" className="hover:text-primary transition-colors">Điều khoản</Link>
-                    <Link to="/privacy" className="hover:text-primary transition-colors">Bảo mật</Link>
-                    <Link to="/contact" className="hover:text-primary transition-colors">Liên hệ</Link>
+        <footer className="bg-white border-t border-gray-200 pt-16 pb-8 text-sm hidden md:block mt-10">
+          <div className="max-w-6xl mx-auto px-4">
+            {/* GRID 4 CỘT */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+              
+              {/* Cột 1: Thông tin thương hiệu */}
+              <div className="space-y-4">
+                <Link to="/" className="text-2xl font-bold text-primary flex items-center gap-2">
+                  <span className="bg-gradient-to-tr from-primary to-secondary p-1.5 rounded-xl text-white shadow-sm text-lg">👶</span>
+                  Asking.vn
+                </Link>
+                <p className="text-gray-500 leading-relaxed text-sm">
+                  Cộng đồng Mẹ & Bé văn minh, hiện đại. Nơi kết nối hàng triệu bà mẹ Việt Nam cùng đội ngũ chuyên gia y tế hàng đầu.
+                </p>
+                <div className="space-y-3 text-gray-500 pt-2 text-sm">
+                  <div className="flex items-start gap-3">
+                    <MapPin size={18} className="mt-0.5 shrink-0 text-primary" />
+                    <span>Tầng 12, Tòa nhà Asking, Quận 1, TP.HCM</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Phone size={18} className="text-primary" />
+                    <span>1900 1000 (8h - 20h)</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Mail size={18} className="text-primary" />
+                    <span>hotro@asking.vn</span>
+                  </div>
                 </div>
-                {/* ----------------------------- */}
+              </div>
 
-                <div className="flex gap-4 mb-8">
-                  <SocialIcon color="text-blue-600 bg-blue-50" icon={<Facebook size={16} />} />
-                  <SocialIcon color="text-pink-600 bg-pink-50" icon={<Instagram size={16} />} />
-                  <SocialIcon color="text-red-600 bg-red-50" icon={<Youtube size={16} />} />
+              {/* Cột 2: Về chúng tôi */}
+              <div>
+                <h4 className="font-bold text-gray-900 text-base mb-5">Về Asking.vn</h4>
+                <ul className="space-y-3 text-gray-500">
+                  <li><Link to="/about" className="hover:text-primary transition-colors">Giới thiệu chung</Link></li>
+                  <li><Link to="/expert-register" className="hover:text-primary transition-colors flex items-center gap-1">Đăng ký Chuyên gia <ShieldCheck size={14} className="text-blue-500"/></Link></li>
+                  <li><Link to="/blog" className="hover:text-primary transition-colors">Góc chuyên gia</Link></li>
+                  <li><Link to="/documents" className="hover:text-primary transition-colors">Tài liệu chia sẻ</Link></li>
+                </ul>
+              </div>
+
+              {/* Cột 3: Hỗ trợ & Chính sách */}
+              <div>
+                <h4 className="font-bold text-gray-900 text-base mb-5">Hỗ trợ & Chính sách</h4>
+                <ul className="space-y-3 text-gray-500">
+                  <li><Link to="/terms" className="hover:text-primary transition-colors">Điều khoản sử dụng</Link></li>
+                  <li><Link to="/privacy" className="hover:text-primary transition-colors">Chính sách bảo mật</Link></li>
+                  <li><Link to="/contact" className="hover:text-primary transition-colors">Liên hệ báo cáo</Link></li>
+                  <li><a href="#" className="hover:text-primary transition-colors">Câu hỏi thường gặp</a></li>
+                </ul>
+              </div>
+
+              {/* Cột 4: Kết nối */}
+              <div>
+                <h4 className="font-bold text-gray-900 text-base mb-5">Kết nối với chúng tôi</h4>
+                <div className="flex gap-3 mb-8">
+                  <SocialIcon color="text-blue-600 bg-blue-50 hover:bg-blue-100" icon={<Facebook size={18} />} />
+                  <SocialIcon color="text-pink-600 bg-pink-50 hover:bg-pink-100" icon={<Instagram size={18} />} />
+                  <SocialIcon color="text-red-600 bg-red-50 hover:bg-red-100" icon={<Youtube size={18} />} />
                 </div>
-                <p className="text-xs text-gray-400">© 2024 Asking.vn. All rights reserved.</p>
-             </div>
+                
+                <h4 className="font-bold text-gray-900 text-base mb-3">Chứng nhận</h4>
+                <div className="flex gap-2 opacity-80 grayscale hover:grayscale-0 transition-all cursor-pointer">
+                   <img src="https://webmedia.com.vn/images/2021/09/logo-da-thong-bao-bo-cong-thuong-mau-xanh.png" className="h-10 object-contain" alt="BCT" />
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Bar */}
+            <div className="border-t border-gray-100 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-400">
+              <p>© 2024 Asking.vn - Bản quyền thuộc về Công ty TNHH Asking Việt Nam.</p>
+              <div className="flex items-center gap-1">
+                Made with <Heart size={12} className="text-red-500 fill-red-500" /> by Asking Team
+              </div>
+            </div>
           </div>
         </footer>
       )}
     </div>
   );
 };
+
+// --- HELPER COMPONENTS ---
 
 const NavLink: React.FC<{ to: string; label: string; active: boolean }> = ({ to, label, active }) => (
   <Link 
@@ -228,7 +283,7 @@ const MobileNavItem: React.FC<{ to: string; icon: React.ReactNode; label: string
 );
 
 const SocialIcon: React.FC<{ color: string; icon: React.ReactNode }> = ({ color, icon }) => (
-  <a href="#" className={`w-8 h-8 rounded-full flex items-center justify-center transition-transform hover:scale-110 ${color}`}>
+  <a href="#" className={`w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110 ${color}`}>
     {icon}
   </a>
 );
