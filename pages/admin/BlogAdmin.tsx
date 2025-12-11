@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { BlogPost, BlogCategory } from '../../types';
+// Đảm bảo bạn đã import toSlug từ file types hoặc utils
+import { toSlug } from '../../types'; 
 import { 
   fetchBlogCategories, createBlogCategory, updateBlogCategory, deleteBlogCategory,
   createBlogPost, updateBlogPost, deleteBlogPost, fetchAllPostsAdmin
 } from '../../services/blog';
 import { generateBlogPost, generateBlogTitle } from '../../services/gemini';
 import { subscribeToAuthChanges } from '../../services/auth';
-import { Plus, Trash2, Edit2, X, Image as ImageIcon, Video, Link as LinkIcon, BookOpen, Layers, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, X, Image as ImageIcon, Video, Link as LinkIcon, BookOpen, Layers, Sparkles, Loader2, RefreshCw } from 'lucide-react';
 
 export const BlogAdmin: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -72,7 +74,8 @@ export const BlogAdmin: React.FC = () => {
 
   const handleSaveCat = async () => {
     if (!catForm.name) return;
-    const slug = catForm.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+    // Sử dụng toSlug chuẩn thay vì regex cũ
+    const slug = toSlug(catForm.name);
     
     try {
         if (editingCat) {
@@ -96,6 +99,25 @@ export const BlogAdmin: React.FC = () => {
   };
 
   // --- POST HANDLERS ---
+  
+  // Xử lý khi nhập tiêu đề -> Tự động tạo Slug
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const newTitle = e.target.value;
+      setPostForm(prev => ({
+          ...prev,
+          title: newTitle,
+          // Chỉ tự động tạo slug nếu đang tạo mới hoặc slug đang trống
+          slug: (!editingPost || !prev.slug) ? toSlug(newTitle) : prev.slug
+      }));
+  };
+
+  // Hàm tạo lại slug thủ công
+  const handleRegenerateSlug = () => {
+      if (postForm.title) {
+          setPostForm(prev => ({ ...prev, slug: toSlug(prev.title) }));
+      }
+  };
+
   const handleEditPost = (post: BlogPost) => {
     setEditingPost(post);
     setPostForm({
@@ -132,7 +154,13 @@ export const BlogAdmin: React.FC = () => {
       setAiLoading(prev => ({ ...prev, title: true }));
       try {
           const newTitle = await generateBlogTitle(topic);
-          if (newTitle) setPostForm(prev => ({ ...prev, title: newTitle }));
+          if (newTitle) {
+              setPostForm(prev => ({ 
+                  ...prev, 
+                  title: newTitle,
+                  slug: toSlug(newTitle) // Tự động cập nhật slug theo tiêu đề AI
+              }));
+          }
       } catch (e) {
           alert("Lỗi AI: " + e);
       } finally {
@@ -163,14 +191,15 @@ export const BlogAdmin: React.FC = () => {
   const handleSavePost = async () => {
     if (!postForm.title || !currentUser) return;
     
+    // Đảm bảo luôn có slug chuẩn
     let slug = postForm.slug;
     if (!slug) {
-        slug = postForm.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+        slug = toSlug(postForm.title);
     }
 
     const postData: any = {
       ...postForm,
-      slug,
+      slug, // Lưu slug chuẩn
       authorId: currentUser.id,
       authorName: currentUser.name,
       authorAvatar: currentUser.avatar,
@@ -285,6 +314,7 @@ export const BlogAdmin: React.FC = () => {
                                   <span>{new Date(post.createdAt).toLocaleDateString('vi-VN')}</span>
                                   <span>• {post.authorName}</span>
                                   <span>• {categories.find(c => c.id === post.categoryId)?.name || 'Chưa phân loại'}</span>
+                                  <span className="font-mono text-gray-300 ml-2">/{post.slug}</span>
                               </div>
                           </div>
                           <div className="flex gap-2 shrink-0">
@@ -326,28 +356,52 @@ export const BlogAdmin: React.FC = () => {
                   <div className="p-6 overflow-y-auto flex-1 space-y-4">
                       <div className="grid md:grid-cols-2 gap-4">
                           <div className="relative">
+                              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tiêu đề</label>
                               <input 
                                 value={postForm.title} 
-                                onChange={e => setPostForm({...postForm, title: e.target.value})} 
+                                onChange={handleTitleChange} // Sử dụng hàm mới để auto update slug
                                 placeholder="Tiêu đề bài viết" 
                                 className="w-full p-3 border rounded-xl font-bold text-lg pr-20" 
                               />
                               <button 
-                                onClick={handleAiTitle}
+                                onClick={handleAiTitle} 
                                 disabled={aiLoading.title}
-                                className="absolute right-2 top-2 p-1.5 bg-gradient-to-r from-purple-100 to-indigo-100 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-1 active:scale-95 transition-transform"
+                                className="absolute right-2 top-8 p-1.5 bg-gradient-to-r from-purple-100 to-indigo-100 text-indigo-600 rounded-lg text-xs font-bold flex items-center gap-1 active:scale-95 transition-transform"
                                 title="AI Gợi ý tiêu đề"
                               >
                                 {aiLoading.title ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />} AI
                               </button>
                           </div>
                           
-                          <select value={postForm.categoryId} onChange={e => setPostForm({...postForm, categoryId: e.target.value})} className="w-full p-3 border rounded-xl">
-                              <option value="">-- Chọn danh mục --</option>
-                              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                          </select>
+                          <div>
+                              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Danh mục</label>
+                              <select value={postForm.categoryId} onChange={e => setPostForm({...postForm, categoryId: e.target.value})} className="w-full p-3 border rounded-xl">
+                                  <option value="">-- Chọn danh mục --</option>
+                                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                              </select>
+                          </div>
                       </div>
-                      <input value={postForm.slug} onChange={e => setPostForm({...postForm, slug: e.target.value})} placeholder="Slug (tự động tạo nếu để trống)" className="w-full p-2 border rounded-xl text-sm font-mono text-gray-500" />
+
+                      {/* SLUG INPUT CẢI TIẾN */}
+                      <div>
+                          <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Đường dẫn (Slug)</label>
+                          <div className="flex gap-2">
+                              <input 
+                                  value={postForm.slug} 
+                                  onChange={e => setPostForm({...postForm, slug: e.target.value})} 
+                                  placeholder="duong-dan-bai-viet-chuan-seo" 
+                                  className="w-full p-2 border rounded-xl text-sm font-mono text-gray-600 bg-gray-50" 
+                              />
+                              <button 
+                                  onClick={handleRegenerateSlug}
+                                  className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600"
+                                  title="Tạo lại từ tiêu đề"
+                              >
+                                  <RefreshCw size={18} />
+                              </button>
+                          </div>
+                      </div>
+
                       <textarea value={postForm.excerpt} onChange={e => setPostForm({...postForm, excerpt: e.target.value})} placeholder="Mô tả ngắn (Excerpt)" className="w-full p-3 border rounded-xl h-20" />
                       
                       <div className="relative">
