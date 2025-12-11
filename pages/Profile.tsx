@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { User, Question, toSlug } from '../types';
-import { Settings, ShieldCheck, MessageCircle, HelpCircle, Heart, Star, Briefcase, Share2, Users, UserPlus, UserCheck, ArrowLeft, Loader2, LogIn, UserPlus as RegisterIcon } from 'lucide-react';
+import { Settings, ShieldCheck, MessageCircle, HelpCircle, Heart, Star, Briefcase, Share2, Users, UserPlus, UserCheck, ArrowLeft, Loader2, LogIn, X, Save } from 'lucide-react';
 // @ts-ignore
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { followUser, unfollowUser, sendNotification } from '../services/db';
 import { auth, db } from '../firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+// IMPORT MODAL CHIA SẺ
+import { ShareModal } from '../components/ShareModal';
 
 interface ProfileProps {
   user: User;
@@ -21,11 +23,17 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
   const [viewedUser, setViewedUser] = useState<User | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
+  // --- STATE QUẢN LÝ CÁC MODAL ---
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false); // State cho ShareModal
+  
+  const [editForm, setEditForm] = useState({ name: '', bio: '', avatar: '' });
+  const [isSaving, setIsSaving] = useState(false);
+
   // Determine viewing mode
   const isViewingSelf = !userId || (user && userId === user.id);
   
   // Determine which user object to display
-  // CRITICAL FIX: Fallback to 'user' if viewing self, but ensure 'user' exists.
   const profileUser = isViewingSelf ? user : (viewedUser || null);
 
   // Fetch Viewed User Profile
@@ -62,7 +70,37 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
     }
   }, [user.following, profileUser]);
 
-  // --- GUEST VIEW HANDLER (For Self Profile) ---
+  // --- LOGIC MỞ MODAL SỬA ---
+  const openEditModal = () => {
+    if (!profileUser) return;
+    setEditForm({
+      name: profileUser.name,
+      bio: profileUser.bio || '',
+      avatar: profileUser.avatar || ''
+    });
+    setShowEditModal(true);
+  };
+
+  // --- LOGIC LƯU PROFILE ---
+  const handleSaveProfile = async () => {
+    if (!profileUser) return;
+    setIsSaving(true);
+    try {
+      const userRef = doc(db, 'users', profileUser.id);
+      await updateDoc(userRef, {
+        name: editForm.name,
+        bio: editForm.bio,
+        avatar: editForm.avatar
+      });
+      window.location.reload(); 
+    } catch (error) {
+      console.error("Lỗi khi lưu profile:", error);
+      alert("Có lỗi xảy ra, vui lòng thử lại!");
+      setIsSaving(false);
+    }
+  };
+
+  // --- GUEST VIEW HANDLER ---
   if (user.isGuest && isViewingSelf) {
       return (
           <div className="min-h-screen bg-[#F7F7F5] flex flex-col items-center justify-center p-6 text-center animate-fade-in pt-safe-top pb-24">
@@ -122,7 +160,6 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
     if (user.isGuest) onOpenAuth();
     else {
         onLogout();
-        // Redirect to home immediately after logout click to prevent white screen on profile
         navigate('/');
     }
   };
@@ -154,10 +191,12 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
   return (
     <div className="pb-24 md:pb-10 animate-fade-in bg-[#F7F7F5] min-h-screen">
       <div className="relative">
+        {/* Header Background */}
         <div className="h-40 md:h-56 bg-gradient-to-r from-[#2EC4B6] to-[#3B82F6] relative overflow-hidden">
            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
            <div className="absolute top-[-50%] left-[-10%] w-[300px] h-[300px] rounded-full bg-white/10 blur-3xl"></div>
            <div className="absolute bottom-[-50%] right-[-10%] w-[200px] h-[200px] rounded-full bg-yellow-300/20 blur-3xl"></div>
+           
            <div className="absolute top-safe-top left-4 md:hidden">
               {!isViewingSelf && (
                   <button onClick={() => navigate(-1)} className="p-2 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 transition-colors">
@@ -165,18 +204,29 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
                   </button>
               )}
            </div>
+           
+           {/* HEADER BUTTONS: SHARE & SETTINGS */}
            <div className="absolute top-safe-top right-4 flex gap-2">
-             <button className="p-2 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 transition-colors active:scale-95">
+             <button 
+                onClick={() => setShowShareModal(true)} // Mở ShareModal
+                className="p-2 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 transition-colors active:scale-95"
+                title="Chia sẻ"
+             >
                 <Share2 size={20} />
              </button>
              {isViewingSelf && (
-                <button className="p-2 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 transition-colors active:scale-95">
+                <button 
+                  onClick={openEditModal}
+                  className="p-2 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 transition-colors active:scale-95"
+                  title="Cài đặt"
+                >
                     <Settings size={20} />
                 </button>
              )}
            </div>
         </div>
 
+        {/* Profile Card Info */}
         <div className="px-4 -mt-16 mb-4 relative z-10">
           <div className="bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 p-6 flex flex-col items-center md:flex-row md:items-end gap-4 border border-white/50">
             <div className="relative -mt-16 md:-mt-12 group">
@@ -269,6 +319,82 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
            )}
         </div>
       </div>
+
+      {/* --- MODAL EDIT PROFILE (POPUP SỬA THÔNG TIN) --- */}
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-pop-in">
+                <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                    <h3 className="font-bold text-lg text-gray-800">Chỉnh sửa hồ sơ</h3>
+                    <button onClick={() => setShowEditModal(false)} className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+                        <X size={20} />
+                    </button>
+                </div>
+                
+                <div className="p-6 space-y-5">
+                    <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-gray-700">Ảnh đại diện (Link)</label>
+                        <div className="flex gap-4 items-center">
+                            <img src={editForm.avatar || 'https://via.placeholder.com/100'} className="w-14 h-14 rounded-full object-cover border border-gray-200 bg-gray-50" />
+                            <input 
+                                type="text" 
+                                value={editForm.avatar}
+                                onChange={e => setEditForm({...editForm, avatar: e.target.value})}
+                                placeholder="https://..."
+                                className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-gray-700">Tên hiển thị</label>
+                        <input 
+                            type="text" 
+                            value={editForm.name}
+                            onChange={e => setEditForm({...editForm, name: e.target.value})}
+                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm font-medium"
+                        />
+                    </div>
+                    
+                    <div className="space-y-2">
+                        <label className="block text-sm font-semibold text-gray-700">Giới thiệu bản thân</label>
+                        <textarea 
+                            rows={4}
+                            value={editForm.bio}
+                            onChange={e => setEditForm({...editForm, bio: e.target.value})}
+                            placeholder="Chia sẻ đôi chút về bạn..."
+                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm resize-none"
+                        />
+                    </div>
+                </div>
+
+                <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                    <button 
+                        onClick={() => setShowEditModal(false)}
+                        className="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-200 rounded-xl transition-colors"
+                    >
+                        Hủy
+                    </button>
+                    <button 
+                        onClick={handleSaveProfile}
+                        disabled={isSaving}
+                        className="px-5 py-2.5 text-sm font-bold text-white bg-primary hover:bg-[#25A99C] rounded-xl flex items-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-70 transition-all active:scale-95"
+                    >
+                        {isSaving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
+                        Lưu thay đổi
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* --- SHARE MODAL (MỚI TÍCH HỢP) --- */}
+      <ShareModal 
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        url={window.location.href}
+        title={`Trang cá nhân của ${profileUser?.name}`}
+      />
     </div>
   );
 };
