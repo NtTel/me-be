@@ -386,3 +386,25 @@ export const fetchQuestionsPage = async (
     return { items: [], lastDoc: null };
   }
 };
+// --- REPORTING ---
+export const sendReport = async (
+  targetId: string,
+  targetType: 'question' | 'answer',
+  reason: string,
+  reportedBy: string
+) => {
+  if (!db) return;
+  try {
+    await addDoc(collection(db, 'reports'), {
+      targetId,
+      targetType,
+      reason,
+      reportedBy,
+      status: 'open',
+      createdAt: new Date().toISOString()
+    });
+  } catch (e) {
+    console.error("Error sending report", e);
+    throw e;
+  }
+};
