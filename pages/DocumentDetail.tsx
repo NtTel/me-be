@@ -238,7 +238,7 @@ export const DocumentDetail: React.FC<{ currentUser: User; onOpenAuth: () => voi
 										<Loader2 className="animate-spin" size={16} /> Đang tải...
 									</>
 								) : (
-									'Tải thêm đánh giá'
+									'Xem thêm đánh giá'
 								)}
 							</button>
 						</div>
