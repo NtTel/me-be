@@ -15,6 +15,11 @@ interface HomeProps {
 
 const PAGE_SIZE = 20;
 
+// Helper: Lấy link profile chuẩn (Ưu tiên Username nếu có)
+const getProfileLink = (user: User) => {
+    return `/profile/${user.username || user.id}`;
+};
+
 const FBImageGrid: React.FC<{ images: string[] }> = ({ images }) => {
   if (!images || images.length === 0) return null;
   const count = images.length;
@@ -174,6 +179,7 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
         </div>
       </div>
 
+      {/* --- PHẦN ĐÃ SỬA: Dùng getProfileLink để tạo link chuẩn username --- */}
       {searchQuery && matchingUsers.length > 0 && (
         <div className="pl-4 md:px-0 animate-slide-up">
            <div className="flex items-center gap-1 mb-2">
@@ -182,7 +188,7 @@ export const Home: React.FC<HomeProps> = ({ questions, categories }) => {
            </div>
            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 pr-4 snap-x">
               {matchingUsers.map(user => (
-                  <Link to={`/profile/${user.id}`} key={user.id} className="snap-start flex-shrink-0 bg-white p-3 pr-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3 min-w-[160px] active:scale-95 transition-transform">
+                  <Link to={getProfileLink(user)} key={user.id} className="snap-start flex-shrink-0 bg-white p-3 pr-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-3 min-w-[160px] active:scale-95 transition-transform">
                       <div className="relative">
                         <img src={user.avatar} className="w-10 h-10 rounded-full object-cover border border-gray-100" />
                         {user.isExpert && <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-0.5 border border-white"><ShieldCheck size={10} /></div>}
