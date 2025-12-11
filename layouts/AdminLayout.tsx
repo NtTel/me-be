@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 // @ts-ignore
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -14,19 +14,18 @@ interface AdminLayoutProps {
 }
 
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ currentUser, onLogout }) => {
-  // Logic: Mặc định mở sidebar nếu màn hình lớn hơn 768px
+  // Logic: Mặc định mở sidebar nếu màn hình lớn hơn 768px (kiểm tra an toàn với SSR)
   const [isSidebarOpen, setSidebarOpen] = useState(() => {
     if (typeof window !== 'undefined') {
       return window.innerWidth >= 768;
     }
-    return true;
+    return false;
   });
 
   const location = useLocation();
   const navigate = useNavigate();
 
   // --- 1. Security Check ---
-  // Nếu không có user hoặc không phải admin/expert thì chặn truy cập
   if (!currentUser || (!currentUser.isAdmin && !currentUser.isExpert)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 p-4">
@@ -61,7 +60,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ currentUser, onLogout 
     { path: '/admin/seed', label: 'Sinh dữ liệu (Demo)', icon: <Database size={20} />, roles: ['admin'] },
   ];
 
-  // Tìm tiêu đề trang hiện tại để hiển thị trên Header
+  // Tìm tiêu đề trang hiện tại
   const currentItem = navItems.find(item => 
     location.pathname === item.path || 
     (item.path !== '/admin' && location.pathname.startsWith(item.path))
@@ -70,14 +69,12 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ currentUser, onLogout 
 
   // --- 3. Handlers & Effects ---
 
-  // Tự động đóng sidebar khi click vào link trên mobile
   const handleLinkClick = () => {
-    if (window.innerWidth < 768) {
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setSidebarOpen(false);
     }
   };
 
-  // Lắng nghe resize window để reset trạng thái sidebar
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768) {
@@ -141,7 +138,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ currentUser, onLogout 
             })}
         </nav>
 
-        {/* Sidebar Footer (User Profile) */}
+        {/* Sidebar Footer */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 bg-white">
           <div className="flex items-center gap-3 mb-4 px-2">
             <img 
@@ -164,7 +161,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ currentUser, onLogout 
       </aside>
 
       {/* --- MOBILE OVERLAY --- */}
-      {/* Lớp phủ đen mờ khi mở sidebar trên mobile */}
       {isSidebarOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
@@ -186,7 +182,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ currentUser, onLogout 
               {isSidebarOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
             
-            {/* Page Title */}
             <h2 className="text-lg font-bold text-gray-800 truncate">
               {pageTitle}
             </h2>
@@ -197,7 +192,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ currentUser, onLogout 
           </Link>
         </header>
 
-        {/* Page Content Outlet */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8">
           <Outlet />
         </main>
