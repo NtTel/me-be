@@ -17,7 +17,6 @@ import { AiChat } from './pages/AiChat';
 import { ExpertRegistration } from './pages/ExpertRegistration';
 import { BlogList } from './pages/BlogList';
 import { BlogDetail } from './pages/BlogDetail';
-// ĐÃ THÊM FAQ VÀO ĐÂY
 import { About, Terms, Privacy, Contact, FAQ } from './pages/StaticPages';
 import { DocumentList } from './pages/DocumentList';
 import { DocumentDetail } from './pages/DocumentDetail';
@@ -86,8 +85,11 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // --- SỬA LOGIC ĐĂNG XUẤT: GHI ĐÈ TRẠNG THÁI LOCAL ---
   const handleLogout = async () => {
     await logoutUser();
+    // QUAN TRỌNG: Ghi đè trạng thái ngay lập tức để tránh lỗi race condition khi navigate
+    setCurrentUser(GUEST_USER); 
   };
 
   const handleAddQuestion = async (q: Question) => {
@@ -235,7 +237,6 @@ export default function App() {
         <Route path="/messages/:userId" element={<Layout><ChatDetail currentUser={currentUser} onOpenAuth={() => setShowGlobalAuthModal(true)} /></Layout>} />
         <Route path="/ai-chat" element={<Layout><AiChat /></Layout>} />
         
-        {/* Updated Route to use slug */}
         <Route path="/question/:slug" element={
           <Layout>
             <QuestionDetail 
@@ -256,8 +257,11 @@ export default function App() {
         } />
         
         <Route path="/games" element={<Layout><GameZone /></Layout>} />
+        
+        {/* Profile Routes (Using the same component logic) */}
         <Route path="/profile" element={<Layout><Profile user={currentUser} questions={questions} onLogout={handleLogout} onOpenAuth={() => setShowGlobalAuthModal(true)} /></Layout>} />
         <Route path="/profile/:userId" element={<Layout><Profile user={currentUser} questions={questions} onLogout={handleLogout} onOpenAuth={() => setShowGlobalAuthModal(true)} /></Layout>} />
+        
         <Route path="/expert-register" element={<Layout><ExpertRegistration currentUser={currentUser} onSubmitApplication={handleExpertRegistration} /></Layout>} />
         
         {/* Blog Routes */}
@@ -272,7 +276,6 @@ export default function App() {
         <Route path="/terms" element={<Layout><Terms /></Layout>} />
         <Route path="/privacy" element={<Layout><Privacy /></Layout>} />
         <Route path="/contact" element={<Layout><Contact /></Layout>} />
-        {/* ĐÃ SỬA LẠI DÒNG NÀY */}
         <Route path="/faq" element={<Layout><FAQ /></Layout>} />
         
         <Route path="*" element={<Navigate to="/" replace />} />
