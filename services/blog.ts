@@ -13,7 +13,6 @@ const BLOG_COMMENTS_COL = 'blogComments';
 export const fetchBlogCategories = async (): Promise<BlogCategory[]> => {
   if (!db) return [];
   try {
-    // Simplified query to avoid index issues
     const q = query(collection(db, BLOG_CATS_COL)); 
     const snapshot = await getDocs(q);
     const cats = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as BlogCategory));
@@ -51,27 +50,26 @@ export const fetchPublishedPosts = async (categoryId?: string, limitCount = 20):
   if (!db) return [];
   try {
     let q;
-    // Simple queries without orderBy to prevent 'Missing Index' error
+    // QUAN TRỌNG: Đã thêm orderBy('createdAt', 'desc') để lấy bài mới nhất
     if (categoryId && categoryId !== 'all') {
         q = query(
             collection(db, BLOG_POSTS_COL),
             where('status', '==', 'published'),
             where('categoryId', '==', categoryId),
+            orderBy('createdAt', 'desc'), // Sắp xếp giảm dần theo thời gian
             limit(limitCount) 
         );
     } else {
         q = query(
             collection(db, BLOG_POSTS_COL),
             where('status', '==', 'published'),
+            orderBy('createdAt', 'desc'), // Sắp xếp giảm dần theo thời gian
             limit(limitCount)
         );
     }
 
     const snapshot = await getDocs(q);
-    const posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any } as BlogPost));
-    
-    // Sort Client-side
-    return posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any } as BlogPost));
   } catch (e) {
     console.error("Error fetching blog posts", e);
     return [];
@@ -84,14 +82,20 @@ export const fetchAllPostsAdmin = async (authorId?: string): Promise<BlogPost[]>
   try {
     let q;
     if (authorId) {
-        q = query(collection(db, BLOG_POSTS_COL), where('authorId', '==', authorId));
+        // Admin cũng nên sắp xếp để dễ quản lý
+        q = query(
+            collection(db, BLOG_POSTS_COL), 
+            where('authorId', '==', authorId),
+            orderBy('createdAt', 'desc')
+        );
     } else {
-        q = query(collection(db, BLOG_POSTS_COL));
+        q = query(
+            collection(db, BLOG_POSTS_COL),
+            orderBy('createdAt', 'desc')
+        );
     }
     const snapshot = await getDocs(q);
-    const posts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any } as BlogPost));
-    // Sort client-side
-    return posts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any } as BlogPost));
   } catch (e) {
     console.error("Error fetching admin blog posts", e);
     return [];
@@ -131,6 +135,7 @@ export const fetchPostBySlug = async (slug: string): Promise<BlogPost | null> =>
     const snapshot = await getDocs(q);
     if (!snapshot.empty) {
       const docData = snapshot.docs[0];
+      // Tăng view không cần await để tránh chặn UI
       updateDoc(docData.ref, { views: (docData.data().views || 0) + 1 }).catch(()=>{});
       return { id: docData.id, ...docData.data() as any } as BlogPost;
     }
@@ -144,18 +149,20 @@ export const fetchPostBySlug = async (slug: string): Promise<BlogPost | null> =>
 export const fetchRelatedPosts = async (currentPostId: string, categoryId?: string): Promise<BlogPost[]> => {
   if (!db) return [];
   try {
+    // Lấy các bài mới nhất để gợi ý
     const q = query(
         collection(db, BLOG_POSTS_COL), 
         where('status', '==', 'published'),
-        limit(10)
+        orderBy('createdAt', 'desc'),
+        limit(10) // Lấy 10 bài mới nhất rồi lọc client-side
     );
     
     const snapshot = await getDocs(q);
     const posts = snapshot.docs
         .map(doc => ({ id: doc.id, ...doc.data() as any } as BlogPost))
-        .filter(p => p.id !== currentPostId)
-        .filter(p => !categoryId || p.categoryId === categoryId)
-        .slice(0, 3); 
+        .filter(p => p.id !== currentPostId) // Loại trừ bài hiện tại
+        .filter(p => !categoryId || p.categoryId === categoryId) // Ưu tiên cùng danh mục
+        .slice(0, 3); // Chỉ lấy 3 bài
     
     return posts;
   } catch (e) {
