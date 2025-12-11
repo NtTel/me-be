@@ -1,6 +1,6 @@
 import { collection, writeBatch, doc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebaseConfig'; // Đảm bảo đường dẫn này đúng với dự án của bạn
-import { User, Question, Answer, CATEGORIES } from '../types';
+import { User, Question, Answer } from '../types';
 
 // --- 1. DATASETS CAO CẤP (RICH DATASETS) ---
 
@@ -145,14 +145,8 @@ const getRandomInt = (min: number, max: number) => Math.floor(Math.random() * (m
 
 // --- HÀM TẠO AVATAR (Đã sửa lỗi URL & Encoding) ---
 const generateAvatar = (seed: string, gender: 'male' | 'female' = 'female') => {
-  // Mã hóa seed để tránh lỗi URL (ví dụ tên có dấu cách)
   const safeSeed = encodeURIComponent(seed);
-  
-  // Style 'avataaars' rất ổn định và chuyên nghiệp
-  // Style 'adventurer' dễ thương, hợp với các mẹ
   const style = gender === 'male' ? 'avataaars' : 'adventurer'; 
-  
-  // Dùng API v9.x mới nhất của DiceBear
   return `https://api.dicebear.com/9.x/${style}/svg?seed=${safeSeed}`;
 };
 
@@ -361,4 +355,16 @@ export const clearFakeData = async (onLog: (msg: string) => void) => {
   const uSnap = await getDocs(uQuery);
   
   const uChunks = [];
-  for (let i = 0; i < uSnap.docs.length; i += batchSize
+  for (let i = 0; i < uSnap.docs.length; i += batchSize) {
+      uChunks.push(uSnap.docs.slice(i, i + batchSize));
+  }
+
+  for (const chunk of uChunks) {
+      const batch = writeBatch(db);
+      chunk.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+      onLog(`   - Đã xóa ${chunk.length} user.`);
+  }
+
+  onLog("✨ Đã dọn dẹp sạch sẽ dữ liệu giả!");
+};
