@@ -13,7 +13,7 @@ interface ExpandedReview extends DocumentReview {
     isExpanded?: boolean;
 }
 
-const PAGE_SIZE = 10; // Cố định số lượng đánh giá tải mỗi lần
+const PAGE_SIZE = 5; // Cố định số lượng đánh giá tải mỗi lần
 const MAX_REVIEW_LENGTH = 150; // Giới hạn ký tự cho nút xem thêm (tính năng phụ)
 
 export const DocumentDetail: React.FC<{ currentUser: User; onOpenAuth: () => void }> = ({ currentUser, onOpenAuth }) => {
