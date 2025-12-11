@@ -1,5 +1,5 @@
 import { collection, writeBatch, doc, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
+import { db } from '../firebaseConfig'; // Đảm bảo đường dẫn này đúng với dự án của bạn
 import { User, Question, Answer, CATEGORIES } from '../types';
 
 // --- 1. DATASETS CAO CẤP (RICH DATASETS) ---
@@ -16,8 +16,8 @@ const EXPERT_PROFILES = [
 // Tên người dùng thông thường phong phú hơn
 const MOM_NAMES = ["Mẹ Bắp", "Mẹ Sóc", "Mẹ Cua", "Mẹ Gấu", "Mẹ Xoài", "Mẹ Cherry", "Mẹ Ken", "Mẹ Shin", "Mẹ Tép", "Mẹ Bống", "Thu Hà", "Ngọc Mai", "Thanh Tâm", "Hồng Nhung", "Phương Thảo"];
 
-// Ngân hàng câu hỏi & câu trả lời theo CHỦ ĐỀ (Để tránh râu ông nọ cắm cằm bà kia)
-const TOPIC_DATA = {
+// Ngân hàng câu hỏi & câu trả lời theo CHỦ ĐỀ
+const TOPIC_DATA: Record<string, any[]> = {
   "Mang thai": [
     {
       titles: [
@@ -110,28 +110,6 @@ const TOPIC_DATA = {
           "Cho uống hạ sốt xong lau nách bẹn thôi, đừng lau toàn thân con lạnh con sợ đấy."
         ]
       }
-    },
-    {
-      titles: [
-        "Bé ho đờm, khò khè cả tháng không khỏi",
-        "Rửa mũi nhiều cho con có hại niêm mạc không?",
-        "Review các loại siro ho thảo dược hiệu quả"
-      ],
-      contents: [
-        "Cu Bon nhà em ho đờm 3 tuần nay, đi khám phổi bình thường, bác sĩ kê kháng sinh uống 5 ngày đỡ xong lại bị lại. Nhìn con ho đỏ mặt mà xót quá.",
-        "Các mẹ có kinh nghiệm vỗ rung long đờm không chỉ em với? Em rửa mũi hút mũi ngày 3 lần mà cảm giác đờm vẫn đầy cổ."
-      ],
-      answers: {
-        expert: [
-          "Ho là phản xạ tống đờm của cơ thể. Nếu phổi sạch, mẹ nên hạn chế kháng sinh. Tăng cường vệ sinh mũi họng, giữ ẩm không khí và vỗ rung long đờm đúng cách vào buổi sáng.",
-          "Việc lạm dụng rửa mũi bằng xilanh áp lực cao có thể gây viêm tai giữa. Mẹ chỉ nên nhỏ nước muối sinh lý và hút nhẹ nhàng khi mũi quá đặc."
-        ],
-        user: [
-          "Mom thử chưng quất đường phèn mật ong xem, bé nhà mình uống 3 hôm long đờm hẳn.",
-          "Đừng lạm dụng kháng sinh mom ơi, cho con uống Prospan hoặc Ích Nhi xem sao.",
-          "Phải kiên trì rửa mũi mom ạ, mũi sạch thì họng mới hết viêm được."
-        ]
-      }
     }
   ],
   "Gia đình": [
@@ -165,21 +143,15 @@ const TOPIC_DATA = {
 const getRandomItem = <T>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 const getRandomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
 
-// HÀM TẠO AVATAR MỚI (Đã sửa lỗi)
+// --- ĐÃ SỬA LẠI HÀM AVATAR TẠI ĐÂY ---
 const generateAvatar = (seed: string, gender: 'male' | 'female' = 'female') => {
-  // Mã hóa seed để tránh lỗi khi tên có dấu cách hoặc ký tự đặc biệt
   const safeSeed = encodeURIComponent(seed);
-  
-  // Style 'avataaars' rất ổn định và chuyên nghiệp cho avatar người
+  // Style 'avataaars' rất ổn định cho avatar người
   // Style 'adventurer' dễ thương, hợp với các mẹ
   const style = gender === 'male' ? 'avataaars' : 'adventurer'; 
   
-  // Dùng API v9.x mới nhất
+  // Dùng API DiceBear v9.x mới nhất
   return `https://api.dicebear.com/9.x/${style}/svg?seed=${safeSeed}`;
-};
-
-// Nếu vẫn lỗi ảnh, bạn có thể dùng link dự phòng này (Avatar chữ cái tên):
-// return `https://ui-avatars.com/api/?name=${safeSeed}&background=random&color=fff&size=128`;
 };
 
 // --- CORE FUNCTIONS ---
@@ -191,13 +163,13 @@ export const generateFakeUsers = async (count: number, onLog: (msg: string) => v
   let batch = writeBatch(db);
   let batchCount = 0;
 
-  // 1. TẠO EXPERT USERS (Cố định, chất lượng cao)
+  // 1. TẠO EXPERT USERS (Cố định)
   for (const expert of EXPERT_PROFILES) {
-    const uid = `expert_${expert.seed}`; // ID cố định để dễ quản lý
+    const uid = `expert_${expert.seed}`;
     const user: User = {
       id: uid,
       name: expert.name,
-      avatar: generateAvatar(expert.seed, 'female'), // Giả sử đa số là nữ hoặc dùng seed fix
+      avatar: generateAvatar(expert.seed, 'female'), // Giả sử chuyên gia là nữ
       email: `contact.${expert.seed.toLowerCase()}@asking.vn`,
       isExpert: true,
       expertStatus: 'approved',
@@ -205,8 +177,8 @@ export const generateFakeUsers = async (count: number, onLog: (msg: string) => v
       isAdmin: false,
       isBanned: false,
       bio: expert.bio,
-      points: getRandomInt(1000, 5000), // Expert nhiều điểm
-      joinedAt: new Date(Date.now() - getRandomInt(86400000 * 365, 86400000 * 730)).toISOString(), // Tham gia 1-2 năm trước
+      points: getRandomInt(1000, 5000),
+      joinedAt: new Date(Date.now() - getRandomInt(86400000 * 365, 86400000 * 730)).toISOString(),
       isFake: true
     };
     
@@ -216,7 +188,7 @@ export const generateFakeUsers = async (count: number, onLog: (msg: string) => v
     batchCount++;
   }
 
-  // 2. TẠO REGULAR USERS (Các mẹ bỉm sữa)
+  // 2. TẠO REGULAR USERS
   for (let i = 0; i < count; i++) {
     const uid = `fake_user_${Date.now()}_${i}`;
     const nameSeed = getRandomItem(MOM_NAMES);
@@ -260,7 +232,7 @@ export const generateFakeUsers = async (count: number, onLog: (msg: string) => v
 
 export const generateFakeContent = async (
   fakeUsers: User[], 
-  questionsPerCat: number, // Số lượng câu hỏi muốn tạo mỗi loại chủ đề
+  questionsPerCat: number, 
   answersPerQuestion: number,
   onLog: (msg: string) => void
 ) => {
@@ -278,54 +250,49 @@ export const generateFakeContent = async (
   let opCount = 0;
   let qCountTotal = 0;
 
-  // Duyệt qua từng Category có trong TOPIC_DATA
-  for (const [category, topics] of Object.entries(TOPIC_DATA)) {
-    onLog(`👉 Đang tạo nội dung chủ đề: ${category}...`);
+  // Lặp qua danh mục có sẵn trong types, map với dữ liệu
+  const availableCategories = Object.keys(TOPIC_DATA);
 
-    // Lặp để tạo đủ số lượng yêu cầu
+  for (const category of availableCategories) {
+    onLog(`👉 Đang tạo nội dung chủ đề: ${category}...`);
+    const topics = TOPIC_DATA[category];
+
     for (let i = 0; i < questionsPerCat; i++) {
-      // 1. Chọn ngẫu nhiên 1 Topic template
       const topicTemplate = getRandomItem(topics);
       
-      const author = getRandomItem(regularUsers); // Người hỏi thường là mẹ bỉm
+      const author = getRandomItem(regularUsers);
       const qId = `fake_q_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // 2. Tạo Câu Hỏi
+      // Tạo Question
       const question: Question = {
         id: qId,
         title: getRandomItem(topicTemplate.titles),
         content: getRandomItem(topicTemplate.contents),
         category: category,
         author: author,
-        answers: [], // Sẽ điền sau
+        answers: [],
         likes: getRandomInt(5, 100),
         views: getRandomInt(100, 5000),
         createdAt: new Date(Date.now() - getRandomInt(86400000, 86400000 * 30)).toISOString(),
         isFake: true
       };
 
-      // 3. Tạo Câu Trả Lời (Mix giữa Expert và User)
+      // Tạo Answers
       const answers: Answer[] = [];
       const numAnswers = getRandomInt(2, answersPerQuestion);
-      
-      // -> Luôn cố gắng có ít nhất 1 câu trả lời từ chuyên gia nếu topic khó
-      const hasExpertAns = Math.random() > 0.4; // 60% cơ hội có chuyên gia trả lời
+      const hasExpertAns = Math.random() > 0.4; 
 
       for (let j = 0; j < numAnswers; j++) {
         let ansAuthor: User;
         let ansContent: string;
         let isExpertAns = false;
 
-        // Logic chọn người trả lời và nội dung phù hợp
         if (j === 0 && hasExpertAns && experts.length > 0) {
-           // Câu trả lời đầu tiên là Chuyên gia (để lên top)
            ansAuthor = getRandomItem(experts);
            ansContent = getRandomItem(topicTemplate.answers.expert);
            isExpertAns = true;
         } else {
-           // Các câu sau là User thường
            ansAuthor = getRandomItem(regularUsers);
-           // Tránh người hỏi tự trả lời
            if (ansAuthor.id === author.id) continue;
            ansContent = getRandomItem(topicTemplate.answers.user);
         }
@@ -337,19 +304,16 @@ export const generateFakeContent = async (
           content: ansContent,
           likes: isExpertAns ? getRandomInt(50, 200) : getRandomInt(0, 20),
           isBestAnswer: false,
-          isExpertVerified: isExpertAns, // Nếu là expert thì auto verified
-          createdAt: new Date(new Date(question.createdAt).getTime() + getRandomInt(60000, 86400000)).toISOString(), // Trả lời sau câu hỏi 1 chút
+          isExpertVerified: isExpertAns,
+          createdAt: new Date(new Date(question.createdAt).getTime() + getRandomInt(60000, 86400000)).toISOString(),
           isAi: false,
           isFake: true
         });
       }
 
-      // Sort answer: Expert lên đầu
       answers.sort((a, b) => (b.isExpertVerified ? 1 : 0) - (a.isExpertVerified ? 1 : 0));
-      question.answers = answers; // Gán lại vào câu hỏi (cho NoSQL structure)
+      question.answers = answers;
 
-      // Lưu câu hỏi (đã chứa answers bên trong nếu cấu trúc DB của bạn lưu lồng nhau)
-      // Nếu bạn lưu answers ở collection riêng, hãy sửa đoạn này để save vào collection 'answers'
       const qRef = doc(db, 'questions', qId);
       batch.set(qRef, question);
       
@@ -371,7 +335,6 @@ export const generateFakeContent = async (
   onLog(`✨ Hoàn tất! Tổng cộng ${qCountTotal} chủ đề thảo luận sôi nổi được tạo.`);
 };
 
-// Hàm xóa dữ liệu cũ (Giữ nguyên logic của bạn)
 export const clearFakeData = async (onLog: (msg: string) => void) => {
   if (!db) return;
   const batchSize = 400;
