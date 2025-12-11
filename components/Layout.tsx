@@ -23,21 +23,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             setCurrentUserAvatar(user.photoURL || "https://cdn-icons-png.flaticon.com/512/3177/3177440.png");
             
             // --- PRESENCE SYSTEM (HEARTBEAT) ---
-            // Set online immediately
             updateUserStatus(user.uid, true);
             
-            // Pulse every 2 minutes to keep status active
             const presenceInterval = setInterval(() => {
                 updateUserStatus(user.uid, true);
             }, 2 * 60 * 1000);
 
-            // Set offline on window close
             const handleUnload = () => {
                 updateUserStatus(user.uid, false);
             };
             window.addEventListener('beforeunload', handleUnload);
 
-            // Subscribe Notifications (Safe call)
             const unsubNotif = subscribeToNotifications(user.uid, (notifs) => {
                 if (notifs) {
                     const unread = notifs.filter(n => !n.isRead).length;
@@ -45,16 +41,15 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 }
             });
 
-            // Subscribe Chats for Badge (Safe call)
             const unsubChats = subscribeToChats(user.uid, (chats) => {
                 let count = 0;
                 if (chats) {
                     chats.forEach(c => {
-                       // @ts-ignore
-                       if (c.unreadCount && c.unreadCount[user.uid]) {
-                           // @ts-ignore
-                           count += c.unreadCount[user.uid];
-                       }
+                        // @ts-ignore
+                        if (c.unreadCount && c.unreadCount[user.uid]) {
+                            // @ts-ignore
+                            count += c.unreadCount[user.uid];
+                        }
                     });
                 }
                 setUnreadMsgCount(count);
@@ -65,7 +60,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 if (unsubChats) unsubChats();
                 clearInterval(presenceInterval);
                 window.removeEventListener('beforeunload', handleUnload);
-                // Try to set offline on cleanup (might not fire on sudden close, but good practice)
                 updateUserStatus(user.uid, false);
             }
         } else {
@@ -85,9 +79,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const isExpertReg = path === '/expert-register';
   const isAiChat = path === '/ai-chat';
   
-  // Hide Top Bar on Chat Detail/AI/Question Detail to allow custom headers
   const hideTopBar = isChatDetail || isAiChat || isQuestionDetail; 
-  
   const hideBottomBar = isAskPage || isChatDetail || isAiChat;
 
   return (
@@ -135,7 +127,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
              Asking.vn
           </Link>
           <div className="flex items-center gap-4">
-             {/* Notification Bell */}
              <Link to="/notifications" className="relative w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-textDark active:bg-gray-200 transition-colors">
                 <Bell size={20} />
                 {unreadNotifCount > 0 && (
@@ -145,7 +136,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                  )}
              </Link>
              
-             {/* AI Chat Button (Replacing Profile Avatar on Header) */}
              <Link to="/ai-chat" className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-500 to-blue-500 flex items-center justify-center text-white shadow-md active:scale-90 transition-transform">
                 <Bot size={20} />
              </Link>
@@ -165,7 +155,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <MobileNavItem to="/" icon={<Home size={24} />} label="Trang chủ" active={path === '/'} />
             <MobileNavItem to="/games" icon={<Gamepad2 size={24} />} label="Bé chơi" active={path === '/games'} />
             
-            {/* Floating Action Button (Center) */}
             <div className="relative -top-6 group">
               <Link to="/ask" className="flex items-center justify-center w-14 h-14 bg-gradient-to-tr from-primary to-[#26A69A] rounded-full text-white shadow-xl shadow-primary/40 active:scale-90 transition-transform ring-4 ring-white group-hover:shadow-2xl">
                 <Plus size={28} strokeWidth={2.5} />
@@ -184,13 +173,23 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       )}
 
-      {/* --- DESKTOP FOOTER --- */}
+      {/* --- DESKTOP FOOTER (ĐÃ THÊM LINK) --- */}
       {!hideBottomBar && !isNotificationPage && !isExpertReg && !isAiChat && !isQuestionDetail && !isGameZone && (
         <footer className={`bg-white border-t border-gray-100 py-10 px-4 md:px-0 mt-auto hidden md:block`}>
           <div className="max-w-5xl mx-auto">
              <div className="flex flex-col items-center justify-center text-center">
                 <h3 className="text-primary font-bold text-xl mb-2">Asking.vn</h3>
-                <p className="text-textGray text-sm mb-4">Cộng đồng Mẹ & Bé văn minh, hiện đại.</p>
+                <p className="text-textGray text-sm mb-6">Cộng đồng Mẹ & Bé văn minh, hiện đại.</p>
+                
+                {/* --- KHU VỰC LINK MỚI THÊM --- */}
+                <div className="flex gap-6 mb-6 text-sm font-medium text-gray-500">
+                    <Link to="/about" className="hover:text-primary transition-colors">Về chúng tôi</Link>
+                    <Link to="/terms" className="hover:text-primary transition-colors">Điều khoản</Link>
+                    <Link to="/privacy" className="hover:text-primary transition-colors">Bảo mật</Link>
+                    <Link to="/contact" className="hover:text-primary transition-colors">Liên hệ</Link>
+                </div>
+                {/* ----------------------------- */}
+
                 <div className="flex gap-4 mb-8">
                   <SocialIcon color="text-blue-600 bg-blue-50" icon={<Facebook size={16} />} />
                   <SocialIcon color="text-pink-600 bg-pink-50" icon={<Instagram size={16} />} />
