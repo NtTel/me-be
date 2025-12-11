@@ -10,8 +10,9 @@ export interface User {
   isBanned?: boolean;
   bio?: string;
   
-  // --- MỚI THÊM: USERNAME (Tên định danh tùy chỉnh) ---
-  username?: string; // VD: "mebap", "bacsihung"
+  // --- CÁC TRƯỜNG MỚI CHO PROFILE CHUYÊN NGHIỆP ---
+  username?: string; // Tên định danh (VD: "bacsihung")
+  coverUrl?: string; // Ảnh bìa (Cover Image)
   
   points?: number;
   joinedAt?: string;
