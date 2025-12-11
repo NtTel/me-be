@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { User, Question, toSlug } from '../types';
-import { Settings, ShieldCheck, MessageCircle, HelpCircle, Heart, Star, Briefcase, Share2, Users, UserPlus, UserCheck, ArrowLeft, Loader2, LogIn, X, Save } from 'lucide-react';
+import { 
+  Settings, ShieldCheck, MessageCircle, HelpCircle, Heart, Star, Briefcase, 
+  Share2, Users, UserPlus, UserCheck, ArrowLeft, Loader2, LogIn, X, Save 
+} from 'lucide-react';
 // @ts-ignore
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { followUser, unfollowUser, sendNotification } from '../services/db';
 import { auth, db } from '../firebaseConfig';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-// IMPORT MODAL CHIA SẺ
+// Thêm onSnapshot vào import để lắng nghe dữ liệu
+import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { ShareModal } from '../components/ShareModal';
 
 interface ProfileProps {
-  user: User;
+  user: User; // Current User (Người đang đăng nhập)
   questions: Question[];
   onLogout: () => void;
   onOpenAuth: () => void;
@@ -23,20 +26,23 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
   const [viewedUser, setViewedUser] = useState<User | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
-  // --- STATE QUẢN LÝ CÁC MODAL ---
+  // --- STATE QUẢN LÝ MODAL ---
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showShareModal, setShowShareModal] = useState(false); // State cho ShareModal
+  const [showShareModal, setShowShareModal] = useState(false);
   
   const [editForm, setEditForm] = useState({ name: '', bio: '', avatar: '' });
   const [isSaving, setIsSaving] = useState(false);
 
-  // Determine viewing mode
+  // --- STATE THEO DÕI (REAL-TIME) ---
+  const [isFollowing, setIsFollowing] = useState(false);
+
+  // Xác định chế độ xem (Xem chính mình hay xem người khác)
   const isViewingSelf = !userId || (user && userId === user.id);
   
-  // Determine which user object to display
+  // Xác định user nào đang được hiển thị trên màn hình
   const profileUser = isViewingSelf ? user : (viewedUser || null);
 
-  // Fetch Viewed User Profile
+  // 1. Fetch thông tin người dùng (nếu đang xem người khác)
   useEffect(() => {
     const fetchUser = async () => {
         if (userId && userId !== user.id) {
@@ -60,17 +66,30 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
     fetchUser();
   }, [userId, user.id]);
 
-  // Handle Following State
-  const isFollowing = profileUser && user.following ? user.following.includes(profileUser.id) : false;
-  const [followingState, setFollowingState] = useState(isFollowing);
-
+  // 2. LOGIC THEO DÕI CHUẨN (Lắng nghe Real-time từ Database)
   useEffect(() => {
-    if (profileUser && user.following) {
-        setFollowingState(user.following.includes(profileUser.id));
+    // Chỉ chạy khi: Đã đăng nhập + Không phải khách + Đang xem profile người khác
+    if (user && !user.isGuest && profileUser && user.id !== profileUser.id) {
+        // Lắng nghe thay đổi trong document của "Chính mình" (currentUser)
+        // Để xem danh sách "following" có chứa ID người kia không
+        const unsub = onSnapshot(doc(db, 'users', user.id), (docSnap) => {
+            if (docSnap.exists()) {
+                const userData = docSnap.data();
+                const myFollowingList = userData.following || [];
+                // Cập nhật trạng thái nút bấm dựa trên dữ liệu thật từ DB
+                setIsFollowing(myFollowingList.includes(profileUser.id));
+            }
+        });
+        
+        // Dọn dẹp listener khi rời trang
+        return () => unsub();
+    } else {
+        setIsFollowing(false);
     }
-  }, [user.following, profileUser]);
+  }, [user.id, profileUser?.id, user.isGuest]);
 
-  // --- LOGIC MỞ MODAL SỬA ---
+  // --- ACTIONS ---
+
   const openEditModal = () => {
     if (!profileUser) return;
     setEditForm({
@@ -81,7 +100,6 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
     setShowEditModal(true);
   };
 
-  // --- LOGIC LƯU PROFILE ---
   const handleSaveProfile = async () => {
     if (!profileUser) return;
     setIsSaving(true);
@@ -100,7 +118,38 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
     }
   };
 
-  // --- GUEST VIEW HANDLER ---
+  const handleFollowToggle = async () => {
+    if (user.isGuest) {
+        onOpenAuth();
+        return;
+    }
+    // Không cần set state thủ công ở đây nữa
+    // Vì useEffect ở trên sẽ tự động cập nhật UI khi DB thay đổi
+    if (isFollowing) {
+        await unfollowUser(user.id, profileUser.id);
+    } else {
+        await followUser(user.id, profileUser);
+        await sendNotification(profileUser.id, user, 'FOLLOW', 'đã bắt đầu theo dõi bạn.', `/profile/${user.id}`);
+    }
+  };
+
+  const handleAuthAction = () => {
+    if (user.isGuest) onOpenAuth();
+    else {
+        onLogout();
+        navigate('/');
+    }
+  };
+
+  const handleMessage = () => {
+      if (user.isGuest) {
+          onOpenAuth();
+          return;
+      }
+      navigate(`/messages/${profileUser.id}`);
+  };
+
+  // --- GUEST VIEW (Khi khách xem trang của chính mình) ---
   if (user.isGuest && isViewingSelf) {
       return (
           <div className="min-h-screen bg-[#F7F7F5] flex flex-col items-center justify-center p-6 text-center animate-fade-in pt-safe-top pb-24">
@@ -135,7 +184,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
       );
   }
 
-  // --- LOADING / NOT FOUND STATES ---
+  // --- LOADING / NOT FOUND ---
   if (loadingProfile) {
       return <div className="min-h-screen flex items-center justify-center bg-[#F7F7F5]"><Loader2 className="animate-spin text-primary" size={32} /></div>;
   }
@@ -150,48 +199,16 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
       );
   }
 
-  // --- MAIN CONTENT ---
+  // --- CALCULATE STATS ---
   const userQuestions = questions.filter(q => q.author.id === profileUser.id);
   const userAnswersCount = questions.reduce((acc, q) => acc + q.answers.filter(a => a.author.id === profileUser.id).length, 0);
   const bestAnswersCount = questions.reduce((acc, q) => acc + q.answers.filter(a => a.author.id === profileUser.id && a.isBestAnswer).length, 0);
   const reputationPoints = profileUser.points || (userQuestions.length * 10) + (userAnswersCount * 20) + (bestAnswersCount * 50);
 
-  const handleAuthAction = () => {
-    if (user.isGuest) onOpenAuth();
-    else {
-        onLogout();
-        navigate('/');
-    }
-  };
-
-  const handleFollowToggle = async () => {
-    if (user.isGuest) {
-        onOpenAuth();
-        return;
-    }
-    const newState = !followingState;
-    setFollowingState(newState);
-
-    if (followingState) {
-        await unfollowUser(user.id, profileUser.id);
-    } else {
-        await followUser(user.id, profileUser);
-        await sendNotification(profileUser.id, user, 'FOLLOW', 'đã bắt đầu theo dõi bạn.', `/profile/${user.id}`);
-    }
-  };
-
-  const handleMessage = () => {
-      if (user.isGuest) {
-          onOpenAuth();
-          return;
-      }
-      navigate(`/messages/${profileUser.id}`);
-  };
-
   return (
     <div className="pb-24 md:pb-10 animate-fade-in bg-[#F7F7F5] min-h-screen">
       <div className="relative">
-        {/* Header Background */}
+        {/* Banner */}
         <div className="h-40 md:h-56 bg-gradient-to-r from-[#2EC4B6] to-[#3B82F6] relative overflow-hidden">
            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10"></div>
            <div className="absolute top-[-50%] left-[-10%] w-[300px] h-[300px] rounded-full bg-white/10 blur-3xl"></div>
@@ -205,10 +222,9 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
               )}
            </div>
            
-           {/* HEADER BUTTONS: SHARE & SETTINGS */}
            <div className="absolute top-safe-top right-4 flex gap-2">
              <button 
-                onClick={() => setShowShareModal(true)} // Mở ShareModal
+                onClick={() => setShowShareModal(true)}
                 className="p-2 bg-white/20 backdrop-blur-md text-white rounded-full hover:bg-white/30 transition-colors active:scale-95"
                 title="Chia sẻ"
              >
@@ -226,7 +242,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
            </div>
         </div>
 
-        {/* Profile Card Info */}
+        {/* Profile Card */}
         <div className="px-4 -mt-16 mb-4 relative z-10">
           <div className="bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 p-6 flex flex-col items-center md:flex-row md:items-end gap-4 border border-white/50">
             <div className="relative -mt-16 md:-mt-12 group">
@@ -255,7 +271,14 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
                     <button onClick={handleAuthAction} className={`flex-1 md:flex-none px-6 py-2.5 font-bold rounded-xl transition-all active:scale-95 text-sm ${user.isGuest ? 'bg-primary text-white shadow-lg shadow-primary/30 hover:bg-[#25A99C]' : 'bg-gray-100 hover:bg-gray-200 text-textDark'}`}>{user.isGuest ? 'Đăng nhập ngay' : 'Đăng xuất'}</button>
                 ) : (
                     <>
-                        <button onClick={handleFollowToggle} className={`flex-1 md:flex-none px-5 py-2.5 font-bold rounded-xl transition-all active:scale-95 text-sm flex items-center justify-center gap-2 shadow-lg ${followingState ? 'bg-white border border-gray-200 text-textDark' : 'bg-blue-600 text-white shadow-blue-200'}`}>{followingState ? <UserCheck size={18} /> : <UserPlus size={18} />}{followingState ? 'Đang theo dõi' : 'Theo dõi'}</button>
+                        {/* NÚT THEO DÕI ĐÃ ĐƯỢC CẬP NHẬT TRẠNG THÁI */}
+                        <button 
+                            onClick={handleFollowToggle} 
+                            className={`flex-1 md:flex-none px-5 py-2.5 font-bold rounded-xl transition-all active:scale-95 text-sm flex items-center justify-center gap-2 shadow-lg ${isFollowing ? 'bg-white border border-gray-200 text-textDark' : 'bg-blue-600 text-white shadow-blue-200'}`}
+                        >
+                            {isFollowing ? <UserCheck size={18} /> : <UserPlus size={18} />}
+                            {isFollowing ? 'Đang theo dõi' : 'Theo dõi'}
+                        </button>
                         <button onClick={handleMessage} className="flex-1 md:flex-none px-5 py-2.5 bg-gray-100 text-textDark font-bold rounded-xl hover:bg-gray-200 transition-all active:scale-95 text-sm flex items-center justify-center gap-2"><MessageCircle size={18} />Nhắn tin</button>
                     </>
                 )}
@@ -264,6 +287,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
         </div>
       </div>
 
+      {/* Stats & Tabs */}
       <div className="px-4 max-w-5xl mx-auto space-y-6">
         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 snap-x">
           <StatCard icon={<Star className="text-yellow-500" size={20} />} value={reputationPoints} label="Điểm uy tín" bg="bg-yellow-50" />
@@ -320,7 +344,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
         </div>
       </div>
 
-      {/* --- MODAL EDIT PROFILE (POPUP SỬA THÔNG TIN) --- */}
+      {/* --- MODAL EDIT PROFILE --- */}
       {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-pop-in">
@@ -388,7 +412,6 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
         </div>
       )}
 
-      {/* --- SHARE MODAL (MỚI TÍCH HỢP) --- */}
       <ShareModal 
         isOpen={showShareModal}
         onClose={() => setShowShareModal(false)}
