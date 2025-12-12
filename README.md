@@ -1,18 +1,129 @@
+Tuyệt vời\! Đây là một câu chuyện rất thú vị. Việc xây dựng toàn bộ một nền tảng bằng AI và công khai nó dưới dạng **Mã nguồn mở (Open Source)** là một cách tuyệt vời để đóng góp cho cộng đồng lập trình viên, cũng như chứng minh sức mạnh của AI trong kỷ nguyên coding hiện đại.
 
-# Asking.vn - Nền tảng Hỏi đáp Mẹ & Bé và Giáo dục sớm
+Dưới đây là nội dung mẫu cho file **`README.md`** trên GitHub của bạn. Nó được viết để thu hút các lập trình viên khác (Contributors), giải thích rõ nguồn gốc "AI-generated" của dự án và khuyến khích mọi người cùng phát triển.
 
-**Asking.vn** là một ứng dụng web cao cấp (Premium Web App) dành cho cộng đồng Mẹ & Bé tại Việt Nam.
-## 🚀 Cài đặt & Chạy (Local)
+-----
 
-1.  **Cài đặt**:
-    ```bash
-    npm install
-    ```
+# 👶 Asking.vn (Mẹ & Bé) - Open Source AI-Powered Platform
 
-2.  **Cấu hình `.env`**:
-    Tạo file `.env` ở thư mục gốc và điền thông tin Firebase của bạn.
+[](https://opensource.org/licenses/MIT)
+[](https://github.com/kenhgt247/me-be)
+[](https://reactjs.org/)
 
-3.  **Chạy dự án**:
-    ```bash
-    npm run dev
-    ```
+> **Kho lưu trữ chính thức:** [https://github.com/kenhgt247/me-be](https://github.com/kenhgt247/me-be)
+
+## 📖 Giới thiệu (Introduction)
+
+Chào mừng bạn đến với **Asking.vn (Project Mẹ & Bé)**. Đây là một nền tảng Hỏi đáp & Chia sẻ kiến thức về Sức khỏe, Gia đình và Nuôi dạy con cái.
+
+🔥 **Điểm đặc biệt nhất của dự án này:**
+**99% mã nguồn của dự án này được viết bởi Trí tuệ nhân tạo (AI)** dưới sự hướng dẫn prompt của con người. Dự án là minh chứng sống động cho việc AI có thể hỗ trợ xây dựng các ứng dụng thực tế, phức tạp với giao diện hiện đại (UX/UI) và logic chặt chẽ như thế nào.
+
+Chúng tôi công khai mã nguồn này với mong muốn tạo ra một **Cộng đồng Mã nguồn mở**, nơi các lập trình viên có thể tham khảo cách AI viết code, đồng thời cùng nhau cải thiện, thêm tính năng để tạo ra một sản phẩm thực sự có ích cho cộng đồng cha mẹ Việt Nam.
+
+-----
+
+## 🌟 Tính năng nổi bật (Features)
+
+  * **Hỏi đáp Thông minh:** Người dùng đặt câu hỏi, AI (Gemini) hỗ trợ gợi ý tiêu đề và tự động soạn thảo nội dung sơ bộ.
+  * **Giao diện Tối giản (Minimalist UX/UI):** Thiết kế tập trung vào trải nghiệm đọc, thân thiện với mobile, lấy cảm hứng từ các nền tảng blog hiện đại.
+  * **Hệ thống Blog Chuyên gia:** Tích hợp bài viết chuẩn SEO, mục lục tự động, video embed, và hệ thống bình luận mượt mà.
+  * **Tương tác Cộng đồng:** Bình luận, thả tim, sticker cảm xúc vui nhộn.
+  * **Chế độ Ẩn danh:** Cho phép người dùng login và hỏi đáp ẩn danh để bảo đảm riêng tư.
+  * **Upload ảnh & Media:** Tối ưu hóa trải nghiệm tải ảnh và xem preview.
+
+-----
+
+## 🛠 Công nghệ sử dụng (Tech Stack)
+
+Dự án sử dụng các công nghệ hiện đại và phổ biến nhất hiện nay:
+
+  * **Frontend:** [React](https://reactjs.org/) (Vite), [TypeScript](https://www.typescriptlang.org/)
+  * **Styling:** [Tailwind CSS](https://tailwindcss.com/) (Mobile-first design)
+  * **Icons:** [Lucide React](https://lucide.dev/)
+  * **AI Integration:** Google Gemini API (cho việc gợi ý title, generate content)
+  * **Routing:** React Router DOM
+  * **Backend/BaaS (Giả định/Tích hợp):** Firebase (Auth, Storage, Firestore) hoặc tương đương.
+
+-----
+
+## 🚀 Cài đặt & Chạy dự án (Getting Started)
+
+Hãy clone dự án về và thử nghiệm sức mạnh của AI coding ngay trên máy của bạn\!
+
+### 1\. Clone repository
+
+```bash
+git clone https://github.com/kenhgt247/me-be.git
+cd me-be
+```
+
+### 2\. Cài đặt dependencies
+
+```bash
+npm install
+# hoặc
+yarn install
+```
+
+### 3\. Cấu hình môi trường (.env)
+
+Tạo file `.env` ở thư mục gốc và điền các key cần thiết (ví dụ API Key của Gemini, Firebase config...):
+
+```env
+VITE_GEMINI_API_KEY=your_api_key_here
+VITE_FIREBASE_API_KEY=...
+```
+
+### 4\. Chạy dự án
+
+```bash
+npm run dev
+```
+
+Truy cập `http://localhost:5173` để xem kết quả.
+
+-----
+
+## 🤝 Đóng góp (Contributing)
+
+Dự án này thuộc về cộng đồng\! Chúng tôi rất hoan nghênh mọi sự đóng góp, dù là nhỏ nhất:
+
+1.  **Sửa lỗi (Bug Fixes):** AI viết code nhanh nhưng không hoàn hảo, hãy giúp chúng tôi fix bug.
+2.  **Cải thiện UI/UX:** Làm cho giao diện đẹp hơn, mượt mà hơn.
+3.  **Thêm tính năng mới:** Chat trực tiếp, Thông báo realtime, Gamification...
+4.  **Refactor Code:** Tối ưu hóa cấu trúc code để dễ bảo trì hơn.
+
+**Cách tham gia:**
+
+1.  Fork dự án này.
+2.  Tạo branch tính năng mới (`git checkout -b feature/AmazingFeature`).
+3.  Commit thay đổi (`git commit -m 'Add some AmazingFeature'`).
+4.  Push lên branch (`git push origin feature/AmazingFeature`).
+5.  Mở một **Pull Request**.
+
+-----
+
+## 🗺 Lộ trình phát triển (Roadmap)
+
+  * [x] Khởi tạo dự án Core bằng AI.
+  * [x] Tích hợp Gemini AI để hỗ trợ viết nội dung.
+  * [ ] Tối ưu hóa SEO (Next.js migration?).
+  * [ ] Phát triển Mobile App (React Native) dùng chung logic.
+  * [ ] Tích hợp Chuyên gia xác thực (Verified Badge).
+  * [ ] Dark Mode.
+
+-----
+
+## 📜 Giấy phép (License)
+
+Dự án được phân phối dưới giấy phép **MIT License**. Bạn được tự do sử dụng, sửa đổi và phân phối lại mã nguồn này cho mục đích cá nhân hoặc thương mại.
+
+-----
+
+> **Lời nhắn từ tác giả:**
+> *"Đây là một thử nghiệm táo bạo khi để AI đảm nhiệm vai trò 'Lead Developer'. Hy vọng repository này sẽ là nguồn cảm hứng cho các bạn thấy rằng: Khoảng cách từ ý tưởng đến sản phẩm đang ngày càng được thu hẹp nhờ công nghệ. Hãy cùng nhau hoàn thiện nó nhé\!"*
+
+-----
+
+**Made with ❤️ and 🤖 AI**
