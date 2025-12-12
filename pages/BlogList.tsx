@@ -212,13 +212,7 @@ export const BlogList: React.FC = () => {
              </div>
          </div>
       </div>
-{/* --- THÊM KHỐI ĐĂNG KÝ CHUYÊN GIA TẠI ĐÂY --- */}
-                 {!currentUser?.isExpert && (
-                    <div className="mb-12 animate-slide-up" style={{ animationDelay: '0.08s' }}>
-                        <ExpertPromoBox />
-                    </div>
-                 )}
-      {/* --- MAIN CONTENT --- */}
+
       <div className="max-w-5xl mx-auto px-4 py-8">
          {loading ? (
              <BlogSkeleton />
@@ -260,7 +254,13 @@ export const BlogList: React.FC = () => {
                         </Link>
                     </div>
                  )}
-
+{/* --- THÊM KHỐI ĐĂNG KÝ CHUYÊN GIA TẠI ĐÂY --- */}
+                 {!currentUser?.isExpert && (
+                    <div className="mb-12 animate-slide-up" style={{ animationDelay: '0.08s' }}>
+                        <ExpertPromoBox />
+                    </div>
+                 )}
+      {/* --- MAIN CONTENT --- */}
                  {/* 2. TRENDING SECTION */}
                  {trendingPosts.length > 0 && (
                      <div className="mb-12 animate-slide-up" style={{ animationDelay: '0.05s' }}>
