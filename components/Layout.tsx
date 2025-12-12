@@ -6,12 +6,14 @@ import { subscribeToNotifications, subscribeToChats, updateUserStatus } from '..
 import { auth } from '../firebaseConfig';
 import ThemeToggle from './ThemeToggle'; // Đã import nút chuyển đổi giao diện
 import LanguageSwitcher from './LanguageSwitcher';
+import { useTranslation } from 'react-i18next';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
+  const { t } = useTranslation();
   const location = useLocation();
   const path = location.pathname;
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
@@ -96,9 +98,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           </Link>
 
           <nav className="flex items-center gap-1 font-medium text-[15px]">
-            <NavLink to="/" label="Trang chủ" active={path === '/'} />
-            <NavLink to="/games" label="Góc Bé Chơi" active={path === '/games'} />
-            <NavLink to="/messages" label="Tin nhắn" active={path === '/messages'} />
+            <NavLink to="/" label={t("nav.home")} active={path === '/'} />
+            <NavLink to="/games" label={t("nav.games")} active={path === '/games'} />
+            <NavLink to="/messages" label={t("nav.messages")} active={path === '/messages'} />
 
             <Link to="/ai-chat" className="bg-gradient-to-tr from-purple-500 to-blue-500 text-white px-4 py-2 rounded-full font-bold flex items-center gap-2 shadow-md hover:shadow-lg active:scale-95 transition-all mx-2">
               <Bot size={18} /> Trợ lý AI
@@ -120,7 +122,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               )}
             </Link>
 
-            <NavLink to="/profile" label="Tài khoản" active={path === '/profile'} />
+            <NavLink to="/profile" label={t("nav.profile")} active={path === '/profile'} />
 
             <Link to="/ask" className="ml-4 bg-primary text-white px-5 py-2.5 rounded-full hover:bg-primary/90 transition-all shadow-md hover:shadow-lg active:scale-95 select-none font-bold text-sm flex items-center gap-2">
               <Plus size={18} strokeWidth={3} /> Đặt câu hỏi
@@ -138,6 +140,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="flex items-center gap-3">
             {/* --- NÚT DARK MODE CHO MOBILE --- */}
             <ThemeToggle />
+            <LanguageSwitcher />
 
             <Link to="/notifications" className="relative w-9 h-9 rounded-full bg-gray-50 dark:bg-slate-700 flex items-center justify-center text-textDark dark:text-white active:bg-gray-200 dark:active:bg-slate-600 transition-colors">
               <Bell size={20} />
@@ -164,8 +167,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       {!hideBottomBar && (
         <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-dark-card/95 backdrop-blur-2xl border-t border-gray-100 dark:border-dark-border pb-safe-bottom pt-2 px-6 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.06)] rounded-t-[1.5rem]">
           <div className="flex justify-between items-end">
-            <MobileNavItem to="/" icon={<Home size={24} />} label="Trang chủ" active={path === '/'} />
-            <MobileNavItem to="/games" icon={<Gamepad2 size={24} />} label="Bé chơi" active={path === '/games'} />
+            <MobileNavItem to="/" icon={<Home size={24} />} label={t("nav.home")} active={path === '/'} />
+            <MobileNavItem to="/games" icon={<Gamepad2 size={24} />} label={t("nav.games")} active={path === '/games'} />
 
             <div className="relative -top-6 group">
               <Link to="/ask" className="flex items-center justify-center w-14 h-14 bg-gradient-to-tr from-primary to-[#26A69A] rounded-full text-white shadow-xl shadow-primary/40 active:scale-90 transition-transform ring-4 ring-white dark:ring-dark-card group-hover:shadow-2xl">
@@ -178,9 +181,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <MessageCircle size={24} />
                 {unreadMsgCount > 0 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-dark-card"></span>}
               </div>
-            } label="Tin nhắn" active={path.startsWith('/messages')} />
+            } label={t("nav.messages")} active={path.startsWith('/messages')} />
 
-            <MobileNavItem to="/profile" icon={<UserIcon size={24} />} label="Cá nhân" active={path === '/profile'} />
+            <MobileNavItem to="/profile" icon={<UserIcon size={24} />} label={t("nav.profile")} active={path === '/profile'} />
           </div>
         </div>
       )}

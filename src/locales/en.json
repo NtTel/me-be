@@ -1,10 +1,8 @@
 {
-    "header": {
-        "title": "me & be",
-        "subtitle": "Family Q&A platform"
-    },
-    "auth": {
-        "login": "Log in",
-        "register": "Sign up"
+    "nav": {
+        "home": "Home",
+        "games": "Kids play",
+        "messages": "Messages",
+        "profile": "Profile"
     }
 }
