@@ -1,0 +1,10 @@
+{
+    "header": {
+        "title": "me & be",
+        "subtitle": "Семейная Q&A платформа"
+    },
+    "auth": {
+        "login": "Войти",
+        "register": "Регистрация"
+    }
+}

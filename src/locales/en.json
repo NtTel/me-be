@@ -1,0 +1,10 @@
+{
+    "header": {
+        "title": "me & be",
+        "subtitle": "Family Q&A platform"
+    },
+    "auth": {
+        "login": "Log in",
+        "register": "Sign up"
+    }
+}
