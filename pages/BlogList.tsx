@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 // @ts-ignore
 import { Link, useNavigate } from 'react-router-dom';
 import { BlogPost, BlogCategory, User } from '../types';
 import { fetchBlogCategories, fetchPublishedPosts } from '../services/blog';
 import { subscribeToAuthChanges } from '../services/auth';
-import { Loader2, BookOpen, Clock, ChevronRight, PenTool, Search, X, ArrowDown, Sparkles, AlertCircle } from 'lucide-react';
+import { 
+  Loader2, BookOpen, Clock, PenTool, Search, X, ArrowDown, 
+  Sparkles, AlertCircle, ChevronLeft, ChevronRight 
+} from 'lucide-react';
 
 const PAGE_SIZE = 9; 
 
@@ -29,6 +32,7 @@ const BlogSkeleton = () => (
 );
 
 export const BlogList: React.FC = () => {
+  // --- STATE ---
   const [categories, setCategories] = useState<BlogCategory[]>([]);
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [activeCat, setActiveCat] = useState<string>('all');
@@ -36,55 +40,79 @@ export const BlogList: React.FC = () => {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  
   const navigate = useNavigate();
+  const scrollRef = useRef<HTMLDivElement>(null);
 
+  // --- INITIAL LOAD ---
   useEffect(() => {
     const unsub = subscribeToAuthChanges(user => setCurrentUser(user));
     const init = async () => {
       setLoading(true);
-      const [catsData, postsData] = await Promise.all([
-        fetchBlogCategories(),
-        fetchPublishedPosts('all', 100) 
-      ]);
-      setCategories(catsData);
-      setPosts(postsData);
-      setLoading(false);
+      try {
+        const [catsData, postsData] = await Promise.all([
+            fetchBlogCategories(),
+            fetchPublishedPosts('all', 100) 
+        ]);
+        setCategories(catsData);
+        setPosts(postsData);
+      } catch (error) {
+        console.error("Failed to load blog data", error);
+      } finally {
+        setLoading(false);
+      }
     };
     init();
     return () => unsub();
   }, []);
 
+  // --- HANDLERS ---
   const handleFilter = async (catId: string) => {
     setActiveCat(catId);
     setLoading(true);
     setVisibleCount(PAGE_SIZE);
     setSearchTerm(''); 
-    const data = await fetchPublishedPosts(catId, 100);
-    setPosts(data);
-    setLoading(false);
+    try {
+        const data = await fetchPublishedPosts(catId, 100);
+        setPosts(data);
+    } catch (error) {
+        console.error("Filter error", error);
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  // Logic cuộn menu ngang (YouTube Style)
+  const scrollCategory = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+        const { current } = scrollRef;
+        const scrollAmount = 300; // Độ dài mỗi lần cuộn
+        if (direction === 'left') {
+            current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+        } else {
+            current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        }
+    }
   };
 
   const isExpertOrAdmin = currentUser && (currentUser.isExpert || currentUser.isAdmin);
 
-  // LOGIC LỌC
+  // Logic lọc bài viết client-side
   const filteredPosts = posts.filter(post => 
     post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (post.excerpt && post.excerpt.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  // LOGIC TÁCH BÀI HERO (BÀI NỔI BẬT)
-  // Chỉ hiện bài Hero khi: Ở trang 1 + Không đang search + Có dữ liệu
+  // Logic tách bài Hero (Bài nổi bật nhất)
   const showHero = !searchTerm && filteredPosts.length > 0;
   const heroPost = showHero ? filteredPosts[0] : null;
-  
-  // Danh sách bài còn lại (Nếu có Hero thì bỏ bài đầu tiên ra, không thì lấy hết)
   const remainingPosts = showHero ? filteredPosts.slice(1) : filteredPosts;
   const visibleGridPosts = remainingPosts.slice(0, visibleCount);
 
   return (
     <div className="min-h-screen bg-[#F7F7F5] pb-24 animate-fade-in pt-safe-top">
       
-      {/* HEADER WITH GRADIENT ACCENT */}
+      {/* --- HEADER --- */}
       <div className="bg-white border-b border-gray-100 shadow-sm sticky top-[68px] md:top-20 z-30 transition-all">
          {/* Decoration Gradient Line */}
          <div className="h-1 w-full bg-gradient-to-r from-primary via-blue-400 to-purple-500"></div>
@@ -108,10 +136,11 @@ export const BlogList: React.FC = () => {
                 )}
             </div>
 
-            {/* SEARCH & FILTER BAR */}
+            {/* --- TOOLBAR: SEARCH & CATEGORIES --- */}
             <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-                {/* Search Input */}
-                <div className="relative w-full md:w-auto md:flex-1 max-w-md group">
+                
+                {/* 1. Search Input */}
+                <div className="relative w-full md:w-auto md:flex-1 max-w-md group shrink-0">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" size={18} />
                     <input 
                       value={searchTerm} 
@@ -126,30 +155,61 @@ export const BlogList: React.FC = () => {
                     )}
                 </div>
 
-                {/* Categories Scroll */}
-                <div className="flex-1 w-full overflow-x-auto no-scrollbar pb-1">
-                    <div className="flex gap-2">
+                {/* 2. Categories Scroll (YouTube Style) */}
+                <div className="flex-1 w-full min-w-0 relative group/scroll">
+                    
+                    {/* Nút lùi: Chỉ hiện trên Desktop (hidden md:flex) khi hover */}
+                    <button 
+                        onClick={() => scrollCategory('left')}
+                        className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white/90 backdrop-blur-sm shadow-md rounded-full items-center justify-center text-gray-600 hover:text-primary border border-gray-100 opacity-0 group-hover/scroll:opacity-100 transition-all active:scale-90 disabled:opacity-0"
+                    >
+                        <ChevronLeft size={20} />
+                    </button>
+
+                    {/* Container Scroll */}
+                    <div 
+                        ref={scrollRef}
+                        className="flex gap-2 overflow-x-auto no-scrollbar pb-1 scroll-smooth px-1"
+                    >
                         <button 
                             onClick={() => handleFilter('all')}
-                            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${activeCat === 'all' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}
+                            className={`flex-shrink-0 px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
+                                activeCat === 'all' 
+                                ? 'bg-gray-900 text-white border-gray-900 shadow-md' 
+                                : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                            }`}
                         >
                             Tất cả
                         </button>
+                        
                         {categories.map(cat => (
                             <button 
                                 key={cat.id}
                                 onClick={() => handleFilter(cat.id)}
-                                className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5 ${activeCat === cat.id ? 'bg-white text-primary border-primary shadow-sm' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'}`}
+                                className={`flex-shrink-0 px-4 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5 ${
+                                    activeCat === cat.id 
+                                    ? 'bg-white text-primary border-primary shadow-sm ring-2 ring-primary/10' 
+                                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                }`}
                             >
-                                <span>{cat.iconEmoji}</span> {cat.name}
+                                <span className="text-sm">{cat.iconEmoji}</span> {cat.name}
                             </button>
                         ))}
                     </div>
+
+                    {/* Nút tiến: Chỉ hiện trên Desktop */}
+                    <button 
+                        onClick={() => scrollCategory('right')}
+                        className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white/90 backdrop-blur-sm shadow-md rounded-full items-center justify-center text-gray-600 hover:text-primary border border-gray-100 opacity-0 group-hover/scroll:opacity-100 transition-all active:scale-90"
+                    >
+                        <ChevronRight size={20} />
+                    </button>
                 </div>
             </div>
          </div>
       </div>
 
+      {/* --- MAIN CONTENT --- */}
       <div className="max-w-5xl mx-auto px-4 py-8">
          {loading ? (
              <BlogSkeleton />
@@ -175,7 +235,7 @@ export const BlogList: React.FC = () => {
                         <Link to={`/blog/${heroPost.slug}`} className="group block relative rounded-[2rem] overflow-hidden shadow-lg hover:shadow-2xl transition-all">
                              <div className="aspect-[2/1] md:aspect-[21/9] bg-gray-200 w-full relative">
                                  {heroPost.coverImageUrl ? (
-                                    <img src={heroPost.coverImageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" loading="lazy"/>
+                                    <img src={heroPost.coverImageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" loading="lazy" alt={heroPost.title} />
                                  ) : (
                                     <div className="w-full h-full flex items-center justify-center bg-gradient-to-r from-blue-500 to-purple-600 text-white text-6xl">
                                         {heroPost.iconEmoji}
@@ -186,7 +246,7 @@ export const BlogList: React.FC = () => {
                                  
                                  {/* Content Overlay */}
                                  <div className="absolute bottom-0 left-0 p-6 md:p-10 w-full md:w-3/4">
-                                     <span className="inline-flex items-center gap-1 bg-primary text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider mb-3 shadow-md">
+                                     <span className="inline-flex items-center gap-1 bg-primary text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider mb-3 shadow-md border border-white/20">
                                         <Sparkles size={10} /> Mới nhất
                                      </span>
                                      <h2 className="text-2xl md:text-4xl font-black text-white leading-tight mb-3 drop-shadow-sm group-hover:text-blue-100 transition-colors">
@@ -195,10 +255,10 @@ export const BlogList: React.FC = () => {
                                      <p className="text-gray-200 text-sm md:text-base line-clamp-2 mb-4 font-medium hidden md:block opacity-90">
                                          {heroPost.excerpt}
                                      </p>
-                                     <div className="flex items-center gap-3 text-white/80 text-xs font-bold">
-                                         <img src={heroPost.authorAvatar} className="w-8 h-8 rounded-full border-2 border-white/30" />
+                                     <div className="flex items-center gap-3 text-white/90 text-xs font-bold">
+                                         <img src={heroPost.authorAvatar || "https://cdn-icons-png.flaticon.com/512/3177/3177440.png"} className="w-8 h-8 rounded-full border-2 border-white/30" alt="avatar" />
                                          <span>{heroPost.authorName}</span>
-                                         <span>•</span>
+                                         <span className="opacity-50">•</span>
                                          <span>{new Date(heroPost.createdAt).toLocaleDateString('vi-VN')}</span>
                                      </div>
                                  </div>
@@ -213,7 +273,7 @@ export const BlogList: React.FC = () => {
                          <Link to={`/blog/${post.slug}`} key={post.id} className="group bg-white rounded-[1.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 flex flex-col h-full">
                              <div className="aspect-video bg-gray-100 relative overflow-hidden shrink-0">
                                  {post.coverImageUrl ? (
-                                     <img src={post.coverImageUrl} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" />
+                                     <img src={post.coverImageUrl} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" alt={post.title} />
                                  ) : (
                                      <div className="w-full h-full flex items-center justify-center text-5xl bg-gradient-to-br from-gray-50 to-gray-100">
                                          {post.iconEmoji || '📝'}
@@ -221,7 +281,7 @@ export const BlogList: React.FC = () => {
                                  )}
                                  <div className="absolute top-3 left-3">
                                      <span className="bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider text-textDark shadow-sm border border-gray-100">
-                                         {categories.find(c => c.id === post.categoryId)?.name || 'Blog'}
+                                         {categories.find(c => c.id === post.categoryId)?.name || 'Kiến thức'}
                                      </span>
                                  </div>
                              </div>
@@ -234,7 +294,7 @@ export const BlogList: React.FC = () => {
                                  </p>
                                  <div className="flex items-center justify-between border-t border-gray-50 pt-4 mt-auto">
                                      <div className="flex items-center gap-2">
-                                         <img src={post.authorAvatar || "https://cdn-icons-png.flaticon.com/512/3177/3177440.png"} className="w-6 h-6 rounded-full object-cover bg-gray-100" />
+                                         <img src={post.authorAvatar || "https://cdn-icons-png.flaticon.com/512/3177/3177440.png"} className="w-6 h-6 rounded-full object-cover bg-gray-100" alt="avatar" />
                                          <span className="text-xs font-bold text-gray-700 truncate max-w-[100px]">{post.authorName}</span>
                                      </div>
                                      <div className="flex items-center gap-1 text-[10px] text-gray-400 font-medium bg-gray-50 px-2 py-1 rounded-full">
