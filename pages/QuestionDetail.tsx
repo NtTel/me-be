@@ -4,7 +4,7 @@ import { useParams, useNavigate, Link as RouterLink } from 'react-router-dom';
 import { 
   ArrowLeft, Heart, MessageCircle, ShieldCheck, 
   Sparkles, Loader2, Send, MoreVertical, Trash2, Edit2, 
-  Share2, Image as ImageIcon, X, Smile, Link as LinkIcon,
+  Share2, Image as ImageIcon, X, Smile, 
   ThumbsUp, CheckCircle2, Eye, Bookmark, Filter, LogIn, AtSign, Paperclip, Flag, ExternalLink, Info
 } from 'lucide-react';
 import { Question, Answer, User, getIdFromSlug, AdConfig } from '../types';
@@ -100,15 +100,20 @@ const RichTextRenderer: React.FC<{ content: string }> = ({ content }) => {
 };
 
 // --- NATIVE AD COMPONENT (NEW) ---
+// Component hiển thị quảng cáo tùy chỉnh
 const QuestionDetailAd = ({ config }: { config: NonNullable<AdConfig['questionDetailAd']> }) => {
-    if (!config.enabled) return null;
+    if (!config || !config.enabled) return null;
     return (
         <div className="bg-white rounded-2xl border border-indigo-100 shadow-sm p-4 animate-fade-in relative overflow-hidden group hover:shadow-md transition-all">
             <div className="absolute top-0 right-0 bg-gray-100 text-gray-400 text-[9px] px-2 py-0.5 rounded-bl-lg font-bold tracking-wider">AD</div>
             <a href={config.link} target="_blank" rel="noopener noreferrer" className="flex flex-col gap-3">
                 <div className="flex gap-4 items-start">
                     <div className="w-16 h-16 rounded-xl bg-gray-50 shrink-0 overflow-hidden border border-gray-100">
-                        <img src={config.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="ad"/>
+                        {config.imageUrl ? (
+                            <img src={config.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="ad"/>
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-2xl">📢</div>
+                        )}
                     </div>
                     <div className="flex-1 min-w-0">
                         <p className="text-[10px] font-bold text-indigo-600 uppercase mb-0.5 flex items-center gap-1">
@@ -155,6 +160,7 @@ export default function QuestionDetail({
 }: DetailProps) {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  
   const questionId = getIdFromSlug(slug);
   const question = questions.find(q => q.id === questionId);
   
@@ -187,11 +193,17 @@ export default function QuestionDetail({
 
   // Load Ad Config
   useEffect(() => {
-      getAdConfig().then(setAdConfig);
+      const loadAds = async () => {
+          try {
+              const config = await getAdConfig();
+              setAdConfig(config);
+          } catch (e) {
+              console.error("Failed to load ads config", e);
+          }
+      };
+      loadAds();
   }, []);
 
-  // ... (Giữ nguyên các logic Participants, Effects, Handlers như cũ để code gọn) ...
-  // Tôi sẽ tái sử dụng lại các logic logic participants, filteredParticipants, handleClickOutside, isSaved check, auto-resize textarea
   const participants = useMemo(() => { if (!question) return []; const usersMap = new Map<string, User>(); usersMap.set(question.author.id, question.author); question.answers.forEach(a => usersMap.set(a.author.id, a.author)); if (currentUser && !currentUser.isGuest) usersMap.delete(currentUser.id); return Array.from(usersMap.values()); }, [question, currentUser]);
   const filteredParticipants = useMemo(() => { if (!mentionQuery) return participants; return participants.filter(p => p.name.toLowerCase().includes(mentionQuery.toLowerCase())); }, [participants, mentionQuery]);
   useEffect(() => { const h = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setActiveMenuId(null); }; document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, []);
@@ -203,13 +215,55 @@ export default function QuestionDetail({
   const isOwner = currentUser.id === question.author.id;
   const isAdmin = currentUser.isAdmin;
 
-  // ... (Giữ nguyên các hàm ensureAuth, handleLike, handleSave, handleImageUpload, handleInsertSticker...) ...
-  // Để tiết kiệm không gian, tôi chỉ viết lại các hàm chính cần thiết cho render
+  // Handlers
   const ensureAuth = async (): Promise<User> => { if (currentUser.isGuest) { try { return await loginAnonymously(); } catch { onOpenAuth(); throw new Error("LOGIN_REQUIRED"); } } return currentUser; };
   const handleLike = async () => { try { const user = await ensureAuth(); toggleQuestionLikeDb(question, user); } catch {} };
   const handleSave = async () => { try { const user = await ensureAuth(); const newStatus = !isSaved; setIsSaved(newStatus); await toggleSaveQuestion(user.id, question.id, newStatus); } catch (e: any) { if (e.message !== "LOGIN_REQUIRED") { setIsSaved(!isSaved); alert("Lỗi lưu."); } } };
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (!f) return; try { setUploadingImage(true); await ensureAuth(); const url = await uploadFile(f, 'answer_images'); setAnswerImage(url); } catch (e) { alert("Lỗi tải ảnh"); } finally { setUploadingImage(false); if(e.target) e.target.value=''; } };
-  const handleSubmitAnswer = async () => { if (!newAnswer.trim() && !answerImage) return; if (isSubmitting) return; setIsSubmitting(true); setShowStickers(false); try { const user = await ensureAuth(); let content = newAnswer; if (answerImage) content += `\n\n![Image](${answerImage})`; const ans: Answer = { id: Date.now().toString(), questionId: question.id, author: user, content, likes: 0, isBestAnswer: false, createdAt: new Date().toISOString(), isAi: false }; await onAddAnswer(question.id, ans); setNewAnswer(''); setAnswerImage(null); setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100); } catch (e: any) { if (e.message !== "LOGIN_REQUIRED") alert("Lỗi gửi."); } finally { setIsSubmitting(false); } };
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const val = e.target.value;
+      setNewAnswer(val);
+      setShowStickers(false);
+      const lastWord = val.split(/[\s\n]+/).pop();
+      if (lastWord && lastWord.startsWith('@')) { setShowMentions(true); setMentionQuery(lastWord.slice(1)); } else { setShowMentions(false); }
+  };
+
+  const handleSelectMention = (user: User) => {
+      const textBefore = newAnswer.substring(0, newAnswer.lastIndexOf('@'));
+      setNewAnswer(textBefore + `@${user.name} `);
+      setShowMentions(false);
+      answerInputRef.current?.focus();
+  };
+
+  const handleInsertLink = () => {
+      if (!linkUrl) { setShowLinkInput(false); return; }
+      let safeUrl = linkUrl;
+      if (!safeUrl.startsWith('http')) safeUrl = `https://${safeUrl}`;
+      setNewAnswer(prev => prev + ` ${safeUrl} `);
+      setLinkUrl('');
+      setShowLinkInput(false);
+  };
+
+  const handleInsertSticker = (sticker: string) => { setNewAnswer(prev => prev + sticker); };
+
+  const handleSubmitAnswer = async () => { 
+      if (!newAnswer.trim() && !answerImage) return; 
+      if (isSubmitting) return; 
+      setIsSubmitting(true); setShowStickers(false); 
+      try { 
+          const user = await ensureAuth(); 
+          let content = newAnswer; 
+          if (answerImage) content += `\n\n![Image](${answerImage})`; 
+          const ans: Answer = { id: Date.now().toString(), questionId: question.id, author: user, content, likes: 0, isBestAnswer: false, createdAt: new Date().toISOString(), isAi: false }; 
+          await onAddAnswer(question.id, ans); 
+          setNewAnswer(''); setAnswerImage(null); 
+          setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100); 
+      } catch (e: any) { 
+          if (e.message !== "LOGIN_REQUIRED") alert("Lỗi gửi."); 
+      } finally { setIsSubmitting(false); } 
+  };
+
   const handleAiDraft = async () => { setIsGeneratingDraft(true); const draft = await generateDraftAnswer(question.title, question.content); setNewAnswer(draft); setIsGeneratingDraft(false); };
   const handleReport = (id: string, type: 'question' | 'answer') => { setReportTarget({ id, type }); setShowReportModal(true); setActiveMenuId(null); };
   const submitReport = async (reason: string) => { if (!reportTarget) return; try { let user = currentUser; if (user.isGuest) try { user = await loginAnonymously(); } catch { onOpenAuth(); return; } await sendReport(reportTarget.id, reportTarget.type, reason, user.id); alert("Đã báo cáo."); setShowReportModal(false); } catch { alert("Lỗi."); } };
@@ -217,6 +271,13 @@ export default function QuestionDetail({
   const toggleMenu = (id: string, e: React.MouseEvent) => { e.stopPropagation(); setActiveMenuId(activeMenuId === id ? null : id); };
   const sortedAnswers = [...question.answers].sort((a, b) => { if (a.isBestAnswer) return -1; if (b.isBestAnswer) return 1; if (sortOption === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); if (sortOption === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(); if (a.isExpertVerified) return -1; if (b.isExpertVerified) return 1; return b.likes - a.likes; });
   const getTagColor = (cat: string) => { if (cat.includes('Mang thai')) return 'bg-pink-50 text-pink-600 border-pink-100'; if (cat.includes('Dinh dưỡng')) return 'bg-green-50 text-green-600 border-green-100'; return 'bg-blue-50 text-blue-600 border-blue-100'; };
+  
+  const handleToggleUseful = async (ans: Answer) => {
+      try {
+          const user = await ensureAuth();
+          await toggleAnswerUseful(question.id, ans.id, user.id);
+      } catch (e) { }
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-[#F7F7F5] pb-[240px] md:pb-[100px] selectable-text animate-fade-in">
@@ -299,7 +360,7 @@ export default function QuestionDetail({
                       </div>
                   </div>
 
-                  {/* 2. MOBILE AD (Chỉ hiện trên Mobile) */}
+                  {/* 2. MOBILE AD */}
                   <div className="lg:hidden">
                       {adConfig?.isEnabled && adConfig.questionDetailAd && <QuestionDetailAd config={adConfig.questionDetailAd} />}
                   </div>
@@ -334,7 +395,6 @@ export default function QuestionDetail({
                                     {(index === 3) && <div className="lg:hidden"><AdBanner className="mb-4" debugLabel="Mid-Feed Ad" /></div>}
                                     
                                     <div className={`bg-white p-5 rounded-3xl border transition-all ${isBest ? 'border-yellow-400 shadow-lg shadow-yellow-50 ring-1 ring-yellow-200' : 'border-gray-200 shadow-sm'}`}>
-                                        {/* Answer Header */}
                                         <div className="flex justify-between items-start mb-3">
                                             <div className="flex items-center gap-3">
                                                 <RouterLink to={`/profile/${ans.author.id}`}>
@@ -369,7 +429,6 @@ export default function QuestionDetail({
                                             </div>
                                         </div>
                                         
-                                        {/* Answer Content */}
                                         <div className="mb-3 pl-1">
                                              <div className="flex flex-wrap gap-2 mb-2">
                                                  {isBest && <div className="inline-flex items-center gap-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white px-3 py-1 rounded-full text-[11px] font-bold shadow-sm"><CheckCircle2 size={12} /> Câu trả lời hay nhất</div>}
@@ -378,7 +437,6 @@ export default function QuestionDetail({
                                              <RichTextRenderer content={ans.content} />
                                         </div>
 
-                                        {/* Answer Actions */}
                                         <div className="flex items-center gap-4 border-t border-gray-50 pt-3 mt-2">
                                             <button onClick={() => handleToggleUseful(ans)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all active:scale-95 group ${isUseful ? 'text-blue-600 bg-blue-50 font-bold' : 'text-gray-500 hover:bg-gray-100 font-medium'}`}>
                                                 <ThumbsUp size={16} className={`group-hover:scale-110 transition-transform ${isUseful ? 'fill-current scale-110' : ''}`} /> <span className="text-xs">Hữu ích {ans.likes > 0 ? `(${ans.likes})` : ''}</span>
@@ -422,7 +480,7 @@ export default function QuestionDetail({
           </div>
       </div>
 
-      {/* FOOTER INPUT (Bottom Bar) */}
+      {/* FOOTER INPUT */}
       <div className="fixed bottom-[88px] md:bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 shadow-[0_-5px_30px_rgba(0,0,0,0.06)] pb-2 md:pb-safe-bottom px-4 py-3">
           <div className="max-w-3xl mx-auto">
               {currentUser.isGuest && (
@@ -432,7 +490,6 @@ export default function QuestionDetail({
                   </div>
               )}
               
-              {/* Mentions Popup */}
               {showMentions && filteredParticipants.length > 0 && (
                   <div className="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-2xl shadow-xl border border-gray-100 max-h-48 overflow-y-auto animate-slide-up max-w-lg mx-auto">
                       <div className="bg-gray-50 px-3 py-2 text-[10px] font-bold text-gray-500 uppercase sticky top-0">Gợi ý</div>
@@ -445,7 +502,6 @@ export default function QuestionDetail({
                   </div>
               )}
 
-              {/* Link Input */}
               {showLinkInput && (
                   <div className="bg-gray-50 border border-gray-200 rounded-xl p-2 flex gap-2 mb-2 animate-slide-up">
                       <input type="url" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="Dán link..." className="flex-1 text-sm bg-white border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-primary" autoFocus />
@@ -454,7 +510,6 @@ export default function QuestionDetail({
                   </div>
               )}
 
-              {/* Image Preview */}
               {answerImage && (
                   <div className="flex items-center gap-2 mb-2 bg-gray-50 p-2 rounded-xl w-fit border border-gray-200">
                       <img src={answerImage} className="w-10 h-10 rounded-lg object-cover" />
