@@ -1,12 +1,13 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 // @ts-ignore
 import { Link, useNavigate } from 'react-router-dom';
-import { BlogPost, BlogCategory, User } from '../types';
+import { BlogPost, BlogCategory, User, AdConfig } from '../types';
 import { fetchBlogCategories, fetchPublishedPosts } from '../services/blog';
+import { getAdConfig } from '../services/ads';
 import { subscribeToAuthChanges } from '../services/auth';
 import { 
   Loader2, BookOpen, Clock, PenTool, Search, X, ArrowDown, 
-  Sparkles, AlertCircle, ChevronLeft, ChevronRight, Flame, Eye 
+  Sparkles, AlertCircle, ChevronLeft, ChevronRight, Flame, Eye, ExternalLink 
 } from 'lucide-react';
 
 const PAGE_SIZE = 9; 
@@ -35,6 +36,8 @@ export const BlogList: React.FC = () => {
   // --- STATE ---
   const [categories, setCategories] = useState<BlogCategory[]>([]);
   const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [adConfig, setAdConfig] = useState<AdConfig | null>(null); // State chứa cấu hình QC
+  
   const [activeCat, setActiveCat] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
@@ -50,13 +53,15 @@ export const BlogList: React.FC = () => {
     const init = async () => {
       setLoading(true);
       try {
-        const [catsData, postsData] = await Promise.all([
+        // Fetch song song: Danh mục, Bài viết và Cấu hình Quảng cáo
+        const [catsData, postsData, adsData] = await Promise.all([
             fetchBlogCategories(),
-            // Lấy nhiều bài hơn chút để tính toán Trending chính xác hơn nếu chưa có API riêng
-            fetchPublishedPosts('all', 100) 
+            fetchPublishedPosts('all', 100),
+            getAdConfig()
         ]);
         setCategories(catsData);
         setPosts(postsData);
+        setAdConfig(adsData);
       } catch (error) {
         console.error("Failed to load blog data", error);
       } finally {
@@ -105,20 +110,16 @@ export const BlogList: React.FC = () => {
     (post.excerpt && post.excerpt.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  // 2. Tính toán bài TRENDING (Lấy 5 bài nhiều views nhất từ danh sách hiện có)
-  // Lưu ý: Tốt nhất nên có API riêng, nhưng ở đây ta sort client-side tạm thời
+  // 2. Tính toán bài TRENDING
   const trendingPosts = useMemo(() => {
-    if (searchTerm || activeCat !== 'all') return []; // Chỉ hiện trending ở trang chủ (All) và ko search
+    if (searchTerm || activeCat !== 'all') return []; 
     return [...posts]
-        .sort((a, b) => (b.views || 0) - (a.views || 0)) // Giả sử có trường views, nếu chưa có thì dùng logic random hoặc createdAt
-        .slice(0, 5); // Lấy Top 5
+        .sort((a, b) => (b.views || 0) - (a.views || 0))
+        .slice(0, 5); 
   }, [posts, searchTerm, activeCat]);
 
   // 3. Logic bài Hero & Grid
   const showHero = !searchTerm && filteredPosts.length > 0;
-  
-  // Nếu bài Hero trùng với bài Top 1 Trending thì sao? -> Vẫn hiển thị bình thường hoặc loại trừ tùy ý.
-  // Ở đây mình giữ nguyên logic cũ cho Hero là bài mới nhất.
   const heroPost = showHero ? filteredPosts[0] : null;
   const remainingPosts = showHero ? filteredPosts.slice(1) : filteredPosts;
   const visibleGridPosts = remainingPosts.slice(0, visibleCount);
@@ -246,7 +247,7 @@ export const BlogList: React.FC = () => {
                     </div>
                  )}
 
-                 {/* 2. TRENDING SECTION (NEW) */}
+                 {/* 2. TRENDING SECTION */}
                  {trendingPosts.length > 0 && (
                      <div className="mb-12 animate-slide-up" style={{ animationDelay: '0.05s' }}>
                         <div className="flex items-center gap-2 mb-4">
@@ -263,7 +264,6 @@ export const BlogList: React.FC = () => {
                                     key={post.id} 
                                     className="snap-start flex-shrink-0 w-72 bg-white rounded-2xl p-3 border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-95 group relative overflow-hidden"
                                  >
-                                    {/* Ranking Badge */}
                                     <div className="absolute top-0 right-0 bg-gray-900/10 text-gray-900 font-black text-[4rem] leading-none -mt-2 -mr-2 opacity-10 select-none pointer-events-none group-hover:scale-110 transition-transform">
                                         {index + 1}
                                     </div>
@@ -294,47 +294,95 @@ export const BlogList: React.FC = () => {
                      </div>
                  )}
 
-                 {/* 3. MAIN GRID POSTS */}
+                 {/* 3. MAIN GRID POSTS (WITH NATIVE ADS) */}
                  <div className="flex items-center gap-2 mb-4">
                      <h3 className="font-bold text-xl text-gray-900">Bài viết mới</h3>
                  </div>
                  
                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                     {visibleGridPosts.map(post => (
-                         <Link to={`/blog/${post.slug}`} key={post.id} className="group bg-white rounded-[1.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 flex flex-col h-full">
-                             <div className="aspect-video bg-gray-100 relative overflow-hidden shrink-0">
-                                 {post.coverImageUrl ? (
-                                     <img src={post.coverImageUrl} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" alt={post.title} />
-                                 ) : (
-                                     <div className="w-full h-full flex items-center justify-center text-5xl bg-gradient-to-br from-gray-50 to-gray-100">
-                                         {post.iconEmoji || '📝'}
+                     
+                     {visibleGridPosts.map((post, index) => {
+                         // --- LOGIC QUẢNG CÁO NATIVE ---
+                         const freq = adConfig?.blogFeedAd?.frequency || 4;
+                         const shouldShowAd = adConfig?.isEnabled && 
+                                              adConfig?.blogFeedAd?.enabled && 
+                                              (index + 1) % freq === 0;
+
+                         return (
+                             <React.Fragment key={post.id}>
+                                 {/* --- BLOG POST CARD --- */}
+                                 <Link to={`/blog/${post.slug}`} className="group bg-white rounded-[1.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 flex flex-col h-full">
+                                     <div className="aspect-video bg-gray-100 relative overflow-hidden shrink-0">
+                                         {post.coverImageUrl ? (
+                                             <img src={post.coverImageUrl} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" alt={post.title} />
+                                         ) : (
+                                             <div className="w-full h-full flex items-center justify-center text-5xl bg-gradient-to-br from-gray-50 to-gray-100">
+                                                 {post.iconEmoji || '📝'}
+                                             </div>
+                                         )}
+                                         <div className="absolute top-3 left-3">
+                                             <span className="bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider text-textDark shadow-sm border border-gray-100">
+                                                 {categories.find(c => c.id === post.categoryId)?.name || 'Kiến thức'}
+                                             </span>
+                                         </div>
                                      </div>
+                                     <div className="p-5 flex flex-col flex-1">
+                                         <h2 className="font-bold text-lg text-gray-900 mb-2 leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+                                             {post.title}
+                                         </h2>
+                                         <p className="text-sm text-gray-500 line-clamp-2 mb-4 font-normal flex-1">
+                                             {post.excerpt}
+                                         </p>
+                                         <div className="flex items-center justify-between border-t border-gray-50 pt-4 mt-auto">
+                                             <div className="flex items-center gap-2">
+                                                 <img src={post.authorAvatar || "https://cdn-icons-png.flaticon.com/512/3177/3177440.png"} className="w-6 h-6 rounded-full object-cover bg-gray-100" alt="avatar" />
+                                                 <span className="text-xs font-bold text-gray-700 truncate max-w-[100px]">{post.authorName}</span>
+                                             </div>
+                                             <div className="flex items-center gap-1 text-[10px] text-gray-400 font-medium bg-gray-50 px-2 py-1 rounded-full">
+                                                 <Clock size={10} /> {new Date(post.createdAt).toLocaleDateString('vi-VN')}
+                                             </div>
+                                         </div>
+                                     </div>
+                                 </Link>
+
+                                 {/* --- NATIVE AD CARD (HIỂN THỊ XEN KẼ) --- */}
+                                 {shouldShowAd && (
+                                     <a 
+                                        href={adConfig.blogFeedAd?.link} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="group bg-white rounded-[1.5rem] overflow-hidden border border-yellow-200 shadow-md hover:shadow-xl transition-all hover:-translate-y-1 flex flex-col h-full relative"
+                                     >
+                                         <div className="aspect-video bg-gray-100 relative overflow-hidden shrink-0">
+                                             <img src={adConfig.blogFeedAd?.imageUrl} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" loading="lazy" alt="advertisement" />
+                                             <div className="absolute top-3 left-3">
+                                                 <span className="bg-yellow-400 text-black px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-sm border border-yellow-300">
+                                                     Quảng cáo
+                                                 </span>
+                                             </div>
+                                         </div>
+                                         <div className="p-5 flex flex-col flex-1 bg-yellow-50/10">
+                                             <h2 className="font-bold text-lg text-gray-900 mb-2 leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+                                                 {adConfig.blogFeedAd?.title}
+                                             </h2>
+                                             <p className="text-sm text-gray-500 line-clamp-2 mb-4 font-normal flex-1">
+                                                 {adConfig.blogFeedAd?.excerpt}
+                                             </p>
+                                             <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-auto">
+                                                 <div className="flex items-center gap-2">
+                                                     <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px]">📢</div>
+                                                     <span className="text-xs font-bold text-gray-700">{adConfig.blogFeedAd?.sponsorName || 'Tài trợ'}</span>
+                                                 </div>
+                                                 <div className="flex items-center gap-1 text-[10px] text-blue-600 font-bold bg-blue-50 px-2 py-1 rounded-full border border-blue-100">
+                                                     {adConfig.blogFeedAd?.ctaText || 'Xem ngay'} <ExternalLink size={10} />
+                                                 </div>
+                                             </div>
+                                         </div>
+                                     </a>
                                  )}
-                                 <div className="absolute top-3 left-3">
-                                     <span className="bg-white/95 backdrop-blur-md px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider text-textDark shadow-sm border border-gray-100">
-                                         {categories.find(c => c.id === post.categoryId)?.name || 'Kiến thức'}
-                                     </span>
-                                 </div>
-                             </div>
-                             <div className="p-5 flex flex-col flex-1">
-                                 <h2 className="font-bold text-lg text-gray-900 mb-2 leading-tight line-clamp-2 group-hover:text-primary transition-colors">
-                                     {post.title}
-                                 </h2>
-                                 <p className="text-sm text-gray-500 line-clamp-2 mb-4 font-normal flex-1">
-                                     {post.excerpt}
-                                 </p>
-                                 <div className="flex items-center justify-between border-t border-gray-50 pt-4 mt-auto">
-                                     <div className="flex items-center gap-2">
-                                         <img src={post.authorAvatar || "https://cdn-icons-png.flaticon.com/512/3177/3177440.png"} className="w-6 h-6 rounded-full object-cover bg-gray-100" alt="avatar" />
-                                         <span className="text-xs font-bold text-gray-700 truncate max-w-[100px]">{post.authorName}</span>
-                                     </div>
-                                     <div className="flex items-center gap-1 text-[10px] text-gray-400 font-medium bg-gray-50 px-2 py-1 rounded-full">
-                                         <Clock size={10} /> {new Date(post.createdAt).toLocaleDateString('vi-VN')}
-                                     </div>
-                                 </div>
-                             </div>
-                         </Link>
-                     ))}
+                             </React.Fragment>
+                         );
+                     })}
                  </div>
 
                  {/* LOAD MORE BUTTON */}
