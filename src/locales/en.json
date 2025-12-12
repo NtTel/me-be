@@ -3,6 +3,8 @@
         "home": "Home",
         "games": "Kids play",
         "messages": "Messages",
-        "profile": "Profile"
+        "profile": "Profile",
+        "ask": "Question",
+        "ai-chat": "AI assistant"
     }
 }

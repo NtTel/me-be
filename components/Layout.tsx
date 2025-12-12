@@ -103,7 +103,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <NavLink to="/messages" label={t("nav.messages")} active={path === '/messages'} />
 
             <Link to="/ai-chat" className="bg-gradient-to-tr from-purple-500 to-blue-500 text-white px-4 py-2 rounded-full font-bold flex items-center gap-2 shadow-md hover:shadow-lg active:scale-95 transition-all mx-2">
-              <Bot size={18} /> Trợ lý AI
+              <Bot size={18} /> {t("nav.ai-chat")}
             </Link>
 
             {/* --- NÚT DARK MODE CHO DESKTOP --- */}
@@ -125,7 +125,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <NavLink to="/profile" label={t("nav.profile")} active={path === '/profile'} />
 
             <Link to="/ask" className="ml-4 bg-primary text-white px-5 py-2.5 rounded-full hover:bg-primary/90 transition-all shadow-md hover:shadow-lg active:scale-95 select-none font-bold text-sm flex items-center gap-2">
-              <Plus size={18} strokeWidth={3} /> Đặt câu hỏi
+              <Plus size={18} strokeWidth={3} /> {t("nav.ask")}
             </Link>
           </nav>
         </div>
