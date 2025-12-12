@@ -166,8 +166,8 @@ export interface AdConfig {
   customBannerUrl?: string;
   customTargetUrl?: string;
   frequency: number;
-}
-// THÊM KHỐI NÀY:
+
+  // --- THÊM KHỐI NÀY (NẰM TRONG DẤU NGOẶC CỦA INTERFACE) ---
   sidebarAd?: {
     enabled: boolean;
     title: string;
