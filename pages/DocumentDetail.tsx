@@ -11,7 +11,8 @@ import {
   Eye, Calendar, CheckCircle2, Info, Sparkles, MousePointerClick
 } from 'lucide-react';
 import { ShareModal } from '../components/ShareModal';
-
+// IMPORT COMPONENT MỚI
+import { ExpertPromoBox } from '../components/ExpertPromoBox';
 // --- TYPES & CONSTANTS ---
 interface ExpandedReview extends DocumentReview {
     isExpanded?: boolean;
