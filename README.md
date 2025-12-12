@@ -85,25 +85,6 @@ Truy cập `http://localhost:5173` để xem kết quả.
 
 -----
 
-## 🤝 Đóng góp (Contributing)
-
-Dự án này thuộc về cộng đồng\! Chúng tôi rất hoan nghênh mọi sự đóng góp, dù là nhỏ nhất:
-
-1.  **Sửa lỗi (Bug Fixes):** AI viết code nhanh nhưng không hoàn hảo, hãy giúp chúng tôi fix bug.
-2.  **Cải thiện UI/UX:** Làm cho giao diện đẹp hơn, mượt mà hơn.
-3.  **Thêm tính năng mới:** Chat trực tiếp, Thông báo realtime, Gamification...
-4.  **Refactor Code:** Tối ưu hóa cấu trúc code để dễ bảo trì hơn.
-
-**Cách tham gia:**
-
-1.  Fork dự án này.
-2.  Tạo branch tính năng mới (`git checkout -b feature/AmazingFeature`).
-3.  Commit thay đổi (`git commit -m 'Add some AmazingFeature'`).
-4.  Push lên branch (`git push origin feature/AmazingFeature`).
-5.  Mở một **Pull Request**.
-
------
-
 ## 🗺 Lộ trình phát triển (Roadmap)
 
   * [x] Khởi tạo dự án Core bằng AI.
@@ -114,10 +95,6 @@ Dự án này thuộc về cộng đồng\! Chúng tôi rất hoan nghênh mọi
   * [ ] Dark Mode.
 
 -----
-
-## 📜 Giấy phép (License)
-
-Dự án được phân phối dưới giấy phép **MIT License**. Bạn được tự do sử dụng, sửa đổi và phân phối lại mã nguồn này cho mục đích cá nhân hoặc thương mại.
 
 -----
 
