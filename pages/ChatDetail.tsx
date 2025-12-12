@@ -1,9 +1,7 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 // @ts-ignore
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Send, Image as ImageIcon, MoreVertical, ShieldCheck, Loader2, Plus, X, ChevronDown } from 'lucide-react';
-import { db } from '../firebaseConfig';
 import { sendMessage, subscribeToMessages, getChatId, subscribeToUser } from '../services/db';
 import { loginAnonymously } from '../services/auth';
 import { uploadFile } from '../services/storage';
@@ -186,41 +184,42 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ currentUser, onOpenAuth 
         }
     };
 
-    if (!targetUser) return <div className="p-10 text-center flex items-center justify-center h-screen"><Loader2 className="animate-spin text-primary" size={32} /></div>;
+    if (!targetUser) return <div className="p-10 text-center flex items-center justify-center h-screen bg-white dark:bg-dark-bg"><Loader2 className="animate-spin text-primary" size={32} /></div>;
 
     const isOnline = targetUser.isOnline;
     const statusText = isOnline ? 'Đang hoạt động' : getTimeStatus(targetUser.lastActiveAt);
-    const dotColor = isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-300';
+    const dotColor = isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-300 dark:bg-gray-500';
 
     return (
-        <div className="flex flex-col h-[100dvh] bg-[#E5DDD5] fixed inset-0 z-50 overflow-hidden">
+        // THAY ĐỔI: bg-[#E5DDD5] -> dark:bg-slate-900 (Màu nền tối cho chat)
+        <div className="flex flex-col h-[100dvh] bg-[#E5DDD5] dark:bg-slate-900 fixed inset-0 z-50 overflow-hidden transition-colors duration-300">
             
-            {/* Background Pattern */}
-            <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ 
+            {/* Background Pattern - Giảm opacity ở dark mode để không rối */}
+            <div className="absolute inset-0 opacity-10 dark:opacity-5 pointer-events-none" style={{ 
                 backgroundImage: "url('https://www.transparenttextures.com/patterns/cubes.png')" 
             }}></div>
 
             {/* Header */}
-            <div className="bg-white px-4 py-2.5 flex items-center justify-between border-b border-gray-200 shadow-sm pt-safe-top shrink-0 relative z-10">
+            <div className="bg-white dark:bg-dark-card px-4 py-2.5 flex items-center justify-between border-b border-gray-200 dark:border-dark-border shadow-sm pt-safe-top shrink-0 relative z-10 transition-colors">
                 <div className="flex items-center gap-2">
-                    <button onClick={() => navigate(-1)} className="text-primary hover:bg-gray-50 p-2 rounded-full -ml-2 active:scale-95 transition-transform">
+                    <button onClick={() => navigate(-1)} className="text-primary hover:bg-gray-50 dark:hover:bg-slate-700 p-2 rounded-full -ml-2 active:scale-95 transition-transform">
                         <ArrowLeft size={24} />
                     </button>
                     <div className="relative">
-                        <img src={targetUser.avatar} className="w-10 h-10 rounded-full object-cover border border-gray-100" />
-                        {targetUser.isExpert && <div className="absolute -bottom-0.5 -right-0.5 bg-blue-500 text-white rounded-full p-0.5 border-2 border-white"><ShieldCheck size={12} /></div>}
+                        <img src={targetUser.avatar} className="w-10 h-10 rounded-full object-cover border border-gray-100 dark:border-slate-600" />
+                        {targetUser.isExpert && <div className="absolute -bottom-0.5 -right-0.5 bg-blue-500 text-white rounded-full p-0.5 border-2 border-white dark:border-dark-card"><ShieldCheck size={12} /></div>}
                     </div>
                     <div className="ml-1">
-                        <h2 className="font-bold text-textDark text-[16px] leading-tight flex items-center gap-1">
+                        <h2 className="font-bold text-textDark dark:text-white text-[16px] leading-tight flex items-center gap-1">
                             {targetUser.name}
                         </h2>
-                        <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 mt-0.5 transition-colors ${isOnline ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'}`}>
+                        <span className={`text-[11px] font-bold px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 mt-0.5 transition-colors ${isOnline ? 'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-gray-400'}`}>
                             <span className={`w-1.5 h-1.5 rounded-full ${dotColor}`}></span>
                             {statusText}
                         </span>
                     </div>
                 </div>
-                <button className="p-2 hover:bg-gray-100 rounded-full text-primary active:scale-95">
+                <button className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full text-primary active:scale-95">
                     <MoreVertical size={22} />
                 </button>
             </div>
@@ -234,9 +233,9 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ currentUser, onOpenAuth 
             >
                 {(messages.length === 0 && currentUser.isGuest) && (
                      <div className="text-center py-12 px-6">
-                        <div className="bg-white/90 backdrop-blur-sm p-6 rounded-2xl shadow-sm inline-block">
+                        <div className="bg-white/90 dark:bg-dark-card/90 backdrop-blur-sm p-6 rounded-2xl shadow-sm inline-block">
                             <p className="text-sm font-bold text-primary mb-1">Chế độ Khách 🕵️</p>
-                            <p className="text-xs text-textGray">Tin nhắn của bạn sẽ được gửi ẩn danh.</p>
+                            <p className="text-xs text-textGray dark:text-gray-400">Tin nhắn của bạn sẽ được gửi ẩn danh.</p>
                         </div>
                     </div>
                 )}
@@ -258,7 +257,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ currentUser, onOpenAuth 
                             {!isMe && (
                                 <div className="w-8 mr-2 flex flex-col justify-end">
                                     {isLastInGroup ? (
-                                        <img src={targetUser.avatar} className="w-8 h-8 rounded-full shadow-sm bg-white" />
+                                        <img src={targetUser.avatar} className="w-8 h-8 rounded-full shadow-sm bg-white dark:bg-slate-700" />
                                     ) : <div className="w-8" />}
                                 </div>
                             )}
@@ -266,10 +265,10 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ currentUser, onOpenAuth 
                             <div className={`max-w-[75%] shadow-sm relative ${radiusClass} 
                                 ${msg.type === 'image' || isSticker 
                                     ? 'p-1 bg-transparent shadow-none' 
-                                    : (isMe ? 'bg-primary text-white' : 'bg-white text-textDark')}
+                                    : (isMe ? 'bg-primary text-white' : 'bg-white dark:bg-dark-card text-textDark dark:text-white')}
                             `}>
                                 {msg.type === 'image' ? (
-                                    <img src={msg.content} className={`w-full rounded-2xl max-w-[200px] border ${isMe ? 'border-primary/30' : 'border-white'}`} loading="lazy" onClick={() => window.open(msg.content, '_blank')} />
+                                    <img src={msg.content} className={`w-full rounded-2xl max-w-[200px] border ${isMe ? 'border-primary/30' : 'border-white dark:border-slate-700'}`} loading="lazy" onClick={() => window.open(msg.content, '_blank')} />
                                 ) : isSticker ? (
                                     <div className="text-5xl md:text-6xl p-1 animate-pop-in leading-none cursor-default select-none">
                                         {msg.content}
@@ -281,7 +280,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ currentUser, onOpenAuth 
                                 )}
                                 
                                 {(isLastInGroup || msg.type === 'image' || isSticker) && (
-                                    <span className={`text-[9px] font-medium absolute bottom-1 ${isMe ? 'right-2 text-white/80' : 'left-2 text-gray-400'} 
+                                    <span className={`text-[9px] font-medium absolute bottom-1 ${isMe ? 'right-2 text-white/80' : 'left-2 text-gray-400 dark:text-gray-500'} 
                                         ${(msg.type === 'image' || isSticker) ? 'hidden' : 'opacity-0 group-hover:opacity-100 transition-opacity'}`}>
                                         {new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                     </span>
@@ -297,25 +296,25 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ currentUser, onOpenAuth 
             {showScrollDown && (
                 <button 
                     onClick={scrollToBottom}
-                    className="absolute bottom-20 right-4 z-30 bg-white/90 backdrop-blur text-primary p-2 rounded-full shadow-lg border border-gray-100 animate-bounce-small"
+                    className="absolute bottom-20 right-4 z-30 bg-white/90 dark:bg-slate-700/90 backdrop-blur text-primary p-2 rounded-full shadow-lg border border-gray-100 dark:border-slate-600 animate-bounce-small"
                 >
                     <ChevronDown size={24} />
                 </button>
             )}
 
             {/* Input Area */}
-            <div className="bg-white px-3 py-2 border-t border-gray-200 shrink-0 w-full relative z-20 pb-safe-bottom flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+            <div className="bg-white dark:bg-dark-card px-3 py-2 border-t border-gray-200 dark:border-dark-border shrink-0 w-full relative z-20 pb-safe-bottom flex flex-col shadow-[0_-4px_20px_rgba(0,0,0,0.05)] transition-colors">
                 <form onSubmit={handleTextSubmit} className="flex items-end gap-2">
                     <div className="flex items-center gap-1 pb-2">
                         <button 
                             type="button" 
                             onClick={() => setShowStickers(!showStickers)} 
-                            className={`p-2 rounded-full transition-colors active:scale-95 ${showStickers ? 'bg-orange-100 text-orange-500' : 'text-primary hover:bg-gray-100'}`}
+                            className={`p-2 rounded-full transition-colors active:scale-95 ${showStickers ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-500' : 'text-primary hover:bg-gray-100 dark:hover:bg-slate-700'}`}
                         >
                             {showStickers ? <X size={24} /> : <Plus size={24} />}
                         </button>
                         
-                        <button type="button" onClick={triggerFileUpload} className="text-primary p-2 hover:bg-gray-100 rounded-full transition-colors active:scale-95">
+                        <button type="button" onClick={triggerFileUpload} className="text-primary p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-full transition-colors active:scale-95">
                             {isUploading ? <Loader2 size={24} className="animate-spin" /> : <ImageIcon size={24} />}
                         </button>
 
@@ -329,7 +328,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ currentUser, onOpenAuth 
                         />
                     </div>
 
-                    <div className="flex-1 bg-gray-100 rounded-[1.5rem] px-4 py-2 flex items-center focus-within:ring-2 focus-within:ring-primary/20 focus-within:bg-white border border-transparent focus-within:border-primary/30 transition-all">
+                    <div className="flex-1 bg-gray-100 dark:bg-slate-800 rounded-[1.5rem] px-4 py-2 flex items-center focus-within:ring-2 focus-within:ring-primary/20 focus-within:bg-white dark:focus-within:bg-slate-900 border border-transparent focus-within:border-primary/30 transition-all">
                         <textarea 
                             ref={textareaRef}
                             value={newMessage}
@@ -340,7 +339,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ currentUser, onOpenAuth 
                             onKeyDown={handleKeyDown}
                             onClick={() => setShowStickers(false)}
                             placeholder="Nhắn tin..." 
-                            className="w-full bg-transparent border-none outline-none text-[15px] text-textDark placeholder-gray-400 resize-none max-h-[120px] py-1"
+                            className="w-full bg-transparent border-none outline-none text-[15px] text-textDark dark:text-white placeholder-gray-400 dark:placeholder-gray-500 resize-none max-h-[120px] py-1"
                             rows={1}
                         />
                     </div>
@@ -356,10 +355,10 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({ currentUser, onOpenAuth 
                 
                 {/* Sticker Drawer */}
                 {showStickers && (
-                    <div className="h-64 overflow-y-auto bg-gray-50 border-t border-gray-100 p-4 animate-slide-up rounded-t-2xl mt-2 select-none">
+                    <div className="h-64 overflow-y-auto bg-gray-50 dark:bg-slate-800 border-t border-gray-100 dark:border-slate-700 p-4 animate-slide-up rounded-t-2xl mt-2 select-none transition-colors">
                         {Object.entries(STICKER_PACKS).map(([category, emojis]) => (
                             <div key={category} className="mb-4">
-                                <h4 className="text-xs font-bold text-gray-400 uppercase mb-2 tracking-wider sticky top-0 bg-gray-50 py-1 z-10">{category}</h4>
+                                <h4 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase mb-2 tracking-wider sticky top-0 bg-gray-50 dark:bg-slate-800 py-1 z-10">{category}</h4>
                                 <div className="grid grid-cols-5 md:grid-cols-8 gap-4">
                                     {emojis.map(emoji => (
                                         <button 
