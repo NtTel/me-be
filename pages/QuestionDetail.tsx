@@ -6,7 +6,7 @@ import {
   Sparkles, Loader2, Send, MoreVertical, Trash2, Edit2, 
   Share2, Image as ImageIcon, X, Smile, 
   ThumbsUp, CheckCircle2, Eye, Bookmark, Filter, LogIn, AtSign, Paperclip, Flag, ExternalLink, Info,
-  TrendingUp // Đã thêm icon TrendingUp
+  TrendingUp 
 } from 'lucide-react';
 import { Question, Answer, User, getIdFromSlug, AdConfig, toSlug } from '../types';
 import { generateDraftAnswer } from '../services/gemini';
@@ -61,12 +61,15 @@ const FBImageGridDetail: React.FC<{ images: string[]; onImageClick: (url: string
       <img src={src} className="w-full h-full object-cover cursor-pointer active:opacity-90 hover:opacity-95 transition-opacity" onClick={() => onImageClick(src)} loading="lazy" />
   );
 
-  if (count === 1) return <div className="mt-4 rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 shadow-sm"><img src={images[0]} className="w-full max-h-[500px] object-cover cursor-pointer hover:opacity-95 transition-opacity" onClick={() => onImageClick(images[0])} /></div>;
-  if (count === 2) return <div className="mt-4 grid grid-cols-2 gap-1 rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 h-72"><ImageItem src={images[0]} /><ImageItem src={images[1]} /></div>;
-  if (count === 3) return <div className="mt-4 grid grid-cols-2 gap-1 rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 h-72"><div className="row-span-2"><ImageItem src={images[0]} /></div><div className="grid grid-rows-2 gap-1 h-full"><ImageItem src={images[1]} /><ImageItem src={images[2]} /></div></div>;
+  // Thêm dark mode cho border và background
+  const containerClass = "mt-4 rounded-2xl overflow-hidden border border-gray-100 dark:border-dark-border bg-gray-50 dark:bg-slate-800 shadow-sm";
+
+  if (count === 1) return <div className={containerClass}><img src={images[0]} className="w-full max-h-[500px] object-cover cursor-pointer hover:opacity-95 transition-opacity" onClick={() => onImageClick(images[0])} /></div>;
+  if (count === 2) return <div className={`${containerClass} grid grid-cols-2 gap-1 h-72`}><ImageItem src={images[0]} /><ImageItem src={images[1]} /></div>;
+  if (count === 3) return <div className={`${containerClass} grid grid-cols-2 gap-1 h-72`}><div className="row-span-2"><ImageItem src={images[0]} /></div><div className="grid grid-rows-2 gap-1 h-full"><ImageItem src={images[1]} /><ImageItem src={images[2]} /></div></div>;
   
   return (
-    <div className="mt-4 grid grid-cols-2 gap-1 rounded-2xl overflow-hidden border border-gray-100 bg-gray-50 h-72">
+    <div className={`${containerClass} grid grid-cols-2 gap-1 h-72`}>
        <ImageItem src={images[0]} />
        <div className="grid grid-rows-2 gap-1 h-full">
           <ImageItem src={images[1]} />
@@ -85,14 +88,14 @@ const RichTextRenderer: React.FC<{ content: string }> = ({ content }) => {
 
   const parts = content.split(/(!\[.*?\]\(https?:\/\/[^\s)]+\))/g);
   return (
-    <div className="text-[15px] md:text-[16px] text-gray-800 leading-relaxed whitespace-pre-wrap break-words">
+    <div className="text-[15px] md:text-[16px] text-gray-800 dark:text-gray-100 leading-relaxed whitespace-pre-wrap break-words">
       {parts.map((part, i) => {
         const imgMatch = part.match(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/);
-        if (imgMatch) return <img key={i} src={imgMatch[2]} alt={imgMatch[1]} className="max-w-full h-auto rounded-xl my-4 border border-gray-100 shadow-sm block cursor-zoom-in" onClick={() => window.open(imgMatch[2], '_blank')}/>;
+        if (imgMatch) return <img key={i} src={imgMatch[2]} alt={imgMatch[1]} className="max-w-full h-auto rounded-xl my-4 border border-gray-100 dark:border-slate-700 shadow-sm block cursor-zoom-in" onClick={() => window.open(imgMatch[2], '_blank')}/>;
         
         return <span key={i}>{part.split(/((?:https?:\/\/[^\s]+)|(?:@[\w\p{L}]+))/gu).map((sub, j) => {
-            if (sub.match(/^https?:\/\//)) return <a key={j} href={sub} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline font-medium break-all">{sub}</a>;
-            if (sub.startsWith('@')) return <span key={j} className="font-bold text-blue-600 bg-blue-50 px-1 rounded cursor-pointer">{sub}</span>;
+            if (sub.match(/^https?:\/\//)) return <a key={j} href={sub} target="_blank" rel="noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline font-medium break-all">{sub}</a>;
+            if (sub.startsWith('@')) return <span key={j} className="font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-1 rounded cursor-pointer">{sub}</span>;
             return sub;
         })}</span>;
       })}
@@ -104,11 +107,11 @@ const RichTextRenderer: React.FC<{ content: string }> = ({ content }) => {
 const QuestionDetailAd = ({ config }: { config: NonNullable<AdConfig['questionDetailAd']> }) => {
     if (!config || !config.enabled) return null;
     return (
-        <div className="bg-white rounded-2xl border border-indigo-100 shadow-sm p-4 animate-fade-in relative overflow-hidden group hover:shadow-md transition-all">
-            <div className="absolute top-0 right-0 bg-gray-100 text-gray-400 text-[9px] px-2 py-0.5 rounded-bl-lg font-bold tracking-wider">AD</div>
+        <div className="bg-white dark:bg-dark-card rounded-2xl border border-indigo-100 dark:border-indigo-900/30 shadow-sm dark:shadow-none p-4 animate-fade-in relative overflow-hidden group hover:shadow-md transition-all">
+            <div className="absolute top-0 right-0 bg-gray-100 dark:bg-slate-700 text-gray-400 dark:text-gray-300 text-[9px] px-2 py-0.5 rounded-bl-lg font-bold tracking-wider">AD</div>
             <a href={config.link} target="_blank" rel="noopener noreferrer" className="flex flex-col gap-3">
                 <div className="flex gap-4 items-start">
-                    <div className="w-16 h-16 rounded-xl bg-gray-50 shrink-0 overflow-hidden border border-gray-100">
+                    <div className="w-16 h-16 rounded-xl bg-gray-50 dark:bg-slate-800 shrink-0 overflow-hidden border border-gray-100 dark:border-slate-700">
                         {config.imageUrl ? (
                             <img src={config.imageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="ad"/>
                         ) : (
@@ -116,18 +119,18 @@ const QuestionDetailAd = ({ config }: { config: NonNullable<AdConfig['questionDe
                         )}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-bold text-indigo-600 uppercase mb-0.5 flex items-center gap-1">
+                        <p className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase mb-0.5 flex items-center gap-1">
                             <Sparkles size={10} /> {config.sponsorName}
                         </p>
-                        <h4 className="text-sm font-bold text-gray-900 leading-tight mb-1 group-hover:text-indigo-600 transition-colors line-clamp-2">
+                        <h4 className="text-sm font-bold text-gray-900 dark:text-white leading-tight mb-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors line-clamp-2">
                             {config.title}
                         </h4>
-                        <p className="text-xs text-gray-500 line-clamp-2 leading-snug">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 leading-snug">
                             {config.description}
                         </p>
                     </div>
                 </div>
-                <button className="w-full py-2 bg-indigo-50 text-indigo-600 font-bold text-xs rounded-lg hover:bg-indigo-100 transition-colors flex items-center justify-center gap-1">
+                <button className="w-full py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 font-bold text-xs rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors flex items-center justify-center gap-1">
                     {config.ctaText} <ExternalLink size={12}/>
                 </button>
             </a>
@@ -141,12 +144,18 @@ const ReportModal: React.FC<{ isOpen: boolean; onClose: () => void; onSubmit: (r
     if (!isOpen) return null;
     return (
         <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4 animate-fade-in backdrop-blur-sm">
-            <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-pop-in">
-                <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2"><Flag className="text-red-500" size={20} /> Báo cáo vi phạm</h3>
-                <p className="text-sm text-gray-500 mb-4">Giúp chúng tôi giữ cộng đồng trong sạch.</p>
-                <textarea className="w-full p-3 border border-gray-200 rounded-xl mb-4 text-sm focus:border-red-500 outline-none bg-gray-50 focus:bg-white transition-colors" rows={4} placeholder="Nhập lý do..." value={reason} onChange={(e) => setReason(e.target.value)} />
+            <div className="bg-white dark:bg-dark-card rounded-3xl w-full max-w-sm p-6 shadow-2xl animate-pop-in border border-gray-100 dark:border-dark-border">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2"><Flag className="text-red-500" size={20} /> Báo cáo vi phạm</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Giúp chúng tôi giữ cộng đồng trong sạch.</p>
+                <textarea 
+                    className="w-full p-3 border border-gray-200 dark:border-slate-700 rounded-xl mb-4 text-sm focus:border-red-500 outline-none bg-gray-50 dark:bg-slate-800 dark:text-white focus:bg-white dark:focus:bg-slate-900 transition-colors" 
+                    rows={4} 
+                    placeholder="Nhập lý do..." 
+                    value={reason} 
+                    onChange={(e) => setReason(e.target.value)} 
+                />
                 <div className="flex justify-end gap-2">
-                    <button onClick={onClose} className="px-4 py-2 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors">Hủy</button>
+                    <button onClick={onClose} className="px-4 py-2 text-gray-600 dark:text-gray-300 font-bold hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl transition-colors">Hủy</button>
                     <button onClick={() => onSubmit(reason)} disabled={!reason.trim()} className="px-4 py-2 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 disabled:opacity-50 transition-colors">Gửi báo cáo</button>
                 </div>
             </div>
@@ -203,13 +212,13 @@ export default function QuestionDetail({
       loadAds();
   }, []);
 
-  // Filter Trending Questions (exclude current question)
+  // Filter Trending Questions
   const trendingQuestions = useMemo(() => {
     if (!questions || !question) return [];
     return questions
-        .filter(q => q.id !== question.id) // Loại bỏ câu hỏi hiện tại
-        .sort((a, b) => ((b.views || 0) + (b.likes || 0)) - ((a.views || 0) + (a.likes || 0))) // Sort theo tương tác
-        .slice(0, 5); // Lấy Top 5
+        .filter(q => q.id !== question.id)
+        .sort((a, b) => ((b.views || 0) + (b.likes || 0)) - ((a.views || 0) + (a.likes || 0)))
+        .slice(0, 5); 
   }, [questions, question]);
 
   const participants = useMemo(() => { if (!question) return []; const usersMap = new Map<string, User>(); usersMap.set(question.author.id, question.author); question.answers.forEach(a => usersMap.set(a.author.id, a.author)); if (currentUser && !currentUser.isGuest) usersMap.delete(currentUser.id); return Array.from(usersMap.values()); }, [question, currentUser]);
@@ -278,7 +287,7 @@ export default function QuestionDetail({
   
   const toggleMenu = (id: string, e: React.MouseEvent) => { e.stopPropagation(); setActiveMenuId(activeMenuId === id ? null : id); };
   const sortedAnswers = [...question.answers].sort((a, b) => { if (a.isBestAnswer) return -1; if (b.isBestAnswer) return 1; if (sortOption === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); if (sortOption === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(); if (a.isExpertVerified) return -1; if (b.isExpertVerified) return 1; return b.likes - a.likes; });
-  const getTagColor = (cat: string) => { if (cat.includes('Mang thai')) return 'bg-pink-50 text-pink-600 border-pink-100'; if (cat.includes('Dinh dưỡng')) return 'bg-green-50 text-green-600 border-green-100'; return 'bg-blue-50 text-blue-600 border-blue-100'; };
+  const getTagColor = (cat: string) => { if (cat.includes('Mang thai')) return 'bg-pink-50 text-pink-600 border-pink-100 dark:bg-pink-900/30 dark:text-pink-400 dark:border-pink-900'; if (cat.includes('Dinh dưỡng')) return 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/30 dark:text-green-400 dark:border-green-900'; return 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-900'; };
   
   const handleToggleUseful = async (ans: Answer) => {
       try {
@@ -288,24 +297,25 @@ export default function QuestionDetail({
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F7F7F5] pb-[240px] md:pb-[100px] selectable-text animate-fade-in">
+    // THAY ĐỔI: bg-[#F7F7F5] -> dark:bg-dark-bg
+    <div className="flex flex-col min-h-screen bg-[#F7F7F5] dark:bg-dark-bg pb-[240px] md:pb-[100px] selectable-text animate-fade-in transition-colors duration-300">
       {previewImage && <ImageViewer url={previewImage} onClose={() => setPreviewImage(null)} />}
 
       {/* HEADER */}
-      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-md px-4 py-3 border-b border-gray-100 flex items-center justify-between pt-safe-top shadow-sm transition-all">
-         <button onClick={() => navigate('/')} className="p-2 -ml-2 hover:bg-gray-50 rounded-full active:scale-95 transition-all text-gray-600"><ArrowLeft size={22} /></button>
-         <h1 className="font-bold text-textDark truncate max-w-[200px] text-sm">{question.category}</h1>
+      <div className="sticky top-0 z-40 bg-white/95 dark:bg-dark-card/95 backdrop-blur-md px-4 py-3 border-b border-gray-100 dark:border-dark-border flex items-center justify-between pt-safe-top shadow-sm transition-colors">
+         <button onClick={() => navigate('/')} className="p-2 -ml-2 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-full active:scale-95 transition-all text-gray-600 dark:text-gray-300"><ArrowLeft size={22} /></button>
+         <h1 className="font-bold text-textDark dark:text-white truncate max-w-[200px] text-sm">{question.category}</h1>
          <div className="flex gap-1">
-             <button onClick={() => setShowShareModal(true)} className="p-2 hover:bg-gray-50 rounded-full text-blue-600"><Share2 size={20} /></button>
+             <button onClick={() => setShowShareModal(true)} className="p-2 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-full text-blue-600 dark:text-blue-400"><Share2 size={20} /></button>
              <div className="relative">
-                <button onClick={(e) => toggleMenu('q_menu', e)} className="p-2 hover:bg-gray-50 rounded-full text-gray-600"><MoreVertical size={20} /></button>
+                <button onClick={(e) => toggleMenu('q_menu', e)} className="p-2 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-full text-gray-600 dark:text-gray-300"><MoreVertical size={20} /></button>
                 {activeMenuId === 'q_menu' && (
-                    <div ref={menuRef} className="absolute right-0 top-full mt-2 bg-white rounded-xl shadow-xl border border-gray-100 w-48 overflow-hidden z-30 animate-pop-in">
+                    <div ref={menuRef} className="absolute right-0 top-full mt-2 bg-white dark:bg-dark-card rounded-xl shadow-xl border border-gray-100 dark:border-dark-border w-48 overflow-hidden z-30 animate-pop-in">
                         {(isOwner || isAdmin) && (<>
-                            <button onClick={() => {setIsEditingQuestion(true); setEditQTitle(question.title); setEditQContent(question.content); setActiveMenuId(null);}} className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 flex items-center gap-2"><Edit2 size={16} /> Chỉnh sửa</button>
-                            <button onClick={() => onDeleteQuestion(question.id)} className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-red-50 text-red-600 flex items-center gap-2"><Trash2 size={16} /> Xóa</button>
+                            <button onClick={() => {setIsEditingQuestion(true); setEditQTitle(question.title); setEditQContent(question.content); setActiveMenuId(null);}} className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-700 dark:text-white flex items-center gap-2"><Edit2 size={16} /> Chỉnh sửa</button>
+                            <button onClick={() => onDeleteQuestion(question.id)} className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 flex items-center gap-2"><Trash2 size={16} /> Xóa</button>
                         </>)}
-                        <button onClick={() => handleReport(question.id, 'question')} className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 text-gray-600 flex items-center gap-2 border-t border-gray-50"><Flag size={16} /> Báo cáo</button>
+                        <button onClick={() => handleReport(question.id, 'question')} className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-600 dark:text-gray-300 flex items-center gap-2 border-t border-gray-50 dark:border-dark-border"><Flag size={16} /> Báo cáo</button>
                     </div>
                 )}
             </div>
@@ -319,16 +329,16 @@ export default function QuestionDetail({
               <main className="lg:col-span-8 space-y-6">
                   
                   {/* 1. QUESTION CARD */}
-                  <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 relative">
+                  <div className="bg-white dark:bg-dark-card p-6 rounded-[2rem] shadow-sm dark:shadow-none border border-gray-100 dark:border-dark-border relative transition-colors">
                       <div className="flex items-center justify-between mb-4">
                          <RouterLink to={`/profile/${question.author.id}`} className="flex items-center gap-3 group">
                              <div className="relative">
-                                <img src={question.author.avatar} className="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm group-hover:scale-105 transition-transform" />
-                                {question.author.isExpert && <div className="absolute -bottom-0.5 -right-0.5 bg-blue-500 text-white rounded-full p-0.5 border-2 border-white"><ShieldCheck size={12} /></div>}
+                                <img src={question.author.avatar} className="w-12 h-12 rounded-full object-cover border-2 border-white dark:border-dark-border shadow-sm group-hover:scale-105 transition-transform" />
+                                {question.author.isExpert && <div className="absolute -bottom-0.5 -right-0.5 bg-blue-500 text-white rounded-full p-0.5 border-2 border-white dark:border-dark-card"><ShieldCheck size={12} /></div>}
                              </div>
                              <div>
-                                 <h3 className="font-bold text-textDark text-[16px] leading-tight group-hover:text-blue-600 transition-colors">{question.author.name}</h3>
-                                 <div className="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
+                                 <h3 className="font-bold text-textDark dark:text-white text-[16px] leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{question.author.name}</h3>
+                                 <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                                      <span>{new Date(question.createdAt).toLocaleDateString('vi-VN')}</span>
                                      <span>•</span>
                                      <span className="flex items-center gap-0.5"><Eye size={12}/> {question.views || 0}</span>
@@ -340,31 +350,31 @@ export default function QuestionDetail({
 
                       {isEditingQuestion ? (
                           <div className="space-y-3 mb-4">
-                             <input value={editQTitle} onChange={e => setEditQTitle(e.target.value)} className="w-full font-bold text-lg border-b border-gray-200 p-2 outline-none" />
-                             <textarea value={editQContent} onChange={e => setEditQContent(e.target.value)} className="w-full p-3 bg-gray-50 rounded-xl min-h-[120px] outline-none" />
+                             <input value={editQTitle} onChange={e => setEditQTitle(e.target.value)} className="w-full font-bold text-lg border-b border-gray-200 dark:border-slate-700 bg-transparent text-textDark dark:text-white p-2 outline-none" />
+                             <textarea value={editQContent} onChange={e => setEditQContent(e.target.value)} className="w-full p-3 bg-gray-50 dark:bg-slate-800 text-textDark dark:text-white rounded-xl min-h-[120px] outline-none" />
                              <div className="flex justify-end gap-2">
-                                 <button onClick={() => setIsEditingQuestion(false)} className="px-4 py-2 text-sm font-bold text-gray-500">Hủy</button>
+                                 <button onClick={() => setIsEditingQuestion(false)} className="px-4 py-2 text-sm font-bold text-gray-500 dark:text-gray-400">Hủy</button>
                                  <button onClick={() => { onEditQuestion(question.id, editQTitle, editQContent); setIsEditingQuestion(false); }} className="px-4 py-2 text-sm font-bold bg-primary text-white rounded-lg">Lưu</button>
                              </div>
                           </div>
                       ) : (
                           <div className="mb-6">
-                              <h2 className="text-xl font-bold text-textDark mb-3 leading-snug">{question.title}</h2>
+                              <h2 className="text-xl font-bold text-textDark dark:text-white mb-3 leading-snug">{question.title}</h2>
                               <RichTextRenderer content={question.content} />
                               <FBImageGridDetail images={question.images || []} onImageClick={setPreviewImage} />
                           </div>
                       )}
 
-                      <div className="flex items-center justify-between py-3 border-t border-gray-50">
+                      <div className="flex items-center justify-between py-3 border-t border-gray-50 dark:border-slate-800">
                           <div className="flex items-center gap-6">
-                              <button onClick={handleLike} className={`flex items-center gap-2 text-sm font-bold transition-all active:scale-90 ${question.likes > 0 ? 'text-red-500' : 'text-gray-500 hover:text-red-500'}`}>
+                              <button onClick={handleLike} className={`flex items-center gap-2 text-sm font-bold transition-all active:scale-90 ${question.likes > 0 ? 'text-red-500' : 'text-gray-500 dark:text-gray-400 hover:text-red-500'}`}>
                                   <Heart size={20} className={question.likes > 0 ? "fill-red-500" : ""} /><span>{question.likes || 'Thích'}</span>
                               </button>
-                              <button onClick={() => answerInputRef.current?.focus()} className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-blue-500 transition-all active:scale-90">
+                              <button onClick={() => answerInputRef.current?.focus()} className="flex items-center gap-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-blue-500 transition-all active:scale-90">
                                   <MessageCircle size={20} /><span>{question.answers.length || 'Trả lời'}</span>
                               </button>
                           </div>
-                          <button onClick={handleSave} className={`transition-colors active:scale-90 ${isSaved ? 'text-orange-500' : 'text-gray-400 hover:text-orange-500'}`}><Bookmark size={20} className={isSaved ? "fill-current" : ""} /></button>
+                          <button onClick={handleSave} className={`transition-colors active:scale-90 ${isSaved ? 'text-orange-500' : 'text-gray-400 dark:text-gray-500 hover:text-orange-500'}`}><Bookmark size={20} className={isSaved ? "fill-current" : ""} /></button>
                       </div>
                   </div>
 
@@ -376,19 +386,19 @@ export default function QuestionDetail({
                   {/* 3. ANSWERS LIST */}
                   <div>
                       <div className="flex items-center justify-between mb-4 px-2">
-                          <h3 className="font-bold text-textDark text-lg">Trả lời ({question.answers.length})</h3>
-                          <div className="flex bg-white rounded-lg p-1 shadow-sm border border-gray-200">
-                              <button onClick={() => setSortOption('best')} className={`p-1.5 rounded-md transition-all ${sortOption === 'best' ? 'bg-orange-50 text-orange-600' : 'text-gray-400'}`}><Sparkles size={16}/></button>
-                              <button onClick={() => setSortOption('newest')} className={`p-1.5 rounded-md transition-all ${sortOption === 'newest' ? 'bg-blue-50 text-blue-600' : 'text-gray-400'}`}><Filter size={16}/></button>
+                          <h3 className="font-bold text-textDark dark:text-white text-lg">Trả lời ({question.answers.length})</h3>
+                          <div className="flex bg-white dark:bg-dark-card rounded-lg p-1 shadow-sm border border-gray-200 dark:border-slate-700">
+                              <button onClick={() => setSortOption('best')} className={`p-1.5 rounded-md transition-all ${sortOption === 'best' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' : 'text-gray-400'}`}><Sparkles size={16}/></button>
+                              <button onClick={() => setSortOption('newest')} className={`p-1.5 rounded-md transition-all ${sortOption === 'newest' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-400'}`}><Filter size={16}/></button>
                           </div>
                       </div>
 
                       <div className="space-y-4">
                           {question.answers.length === 0 && (
-                              <div className="bg-white rounded-3xl p-10 text-center border border-dashed border-gray-300">
-                                  <div className="w-16 h-16 bg-blue-50 text-blue-400 rounded-full flex items-center justify-center mx-auto mb-4"><MessageCircle size={32} /></div>
-                                  <p className="text-textDark font-bold text-lg mb-1">Chưa có thảo luận</p>
-                                  <p className="text-sm text-textGray">Hãy là người đầu tiên chia sẻ kiến thức nhé!</p>
+                              <div className="bg-white dark:bg-dark-card rounded-3xl p-10 text-center border border-dashed border-gray-300 dark:border-slate-700">
+                                  <div className="w-16 h-16 bg-blue-50 dark:bg-slate-800 text-blue-400 rounded-full flex items-center justify-center mx-auto mb-4"><MessageCircle size={32} /></div>
+                                  <p className="text-textDark dark:text-white font-bold text-lg mb-1">Chưa có thảo luận</p>
+                                  <p className="text-sm text-textGray dark:text-gray-400">Hãy là người đầu tiên chia sẻ kiến thức nhé!</p>
                               </div>
                           )}
                           
@@ -402,19 +412,19 @@ export default function QuestionDetail({
                                 <React.Fragment key={ans.id}>
                                     {(index === 3) && <div className="lg:hidden"><AdBanner className="mb-4" debugLabel="Mid-Feed Ad" /></div>}
                                     
-                                    <div className={`bg-white p-5 rounded-3xl border transition-all ${isBest ? 'border-yellow-400 shadow-lg shadow-yellow-50 ring-1 ring-yellow-200' : 'border-gray-200 shadow-sm'}`}>
+                                    <div className={`bg-white dark:bg-dark-card p-5 rounded-3xl border transition-all ${isBest ? 'border-yellow-400 shadow-lg shadow-yellow-50 dark:shadow-none ring-1 ring-yellow-200 dark:ring-yellow-700' : 'border-gray-200 dark:border-dark-border shadow-sm dark:shadow-none'}`}>
                                         <div className="flex justify-between items-start mb-3">
                                             <div className="flex items-center gap-3">
                                                 <RouterLink to={`/profile/${ans.author.id}`}>
                                                    <div className="relative">
-                                                      <img src={ans.author.avatar} className="w-10 h-10 rounded-full object-cover border border-gray-100 bg-gray-50" />
-                                                      {ans.author.isExpert && <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-0.5 border-2 border-white"><ShieldCheck size={10} /></div>}
+                                                      <img src={ans.author.avatar} className="w-10 h-10 rounded-full object-cover border border-gray-100 dark:border-slate-600 bg-gray-50 dark:bg-slate-700" />
+                                                      {ans.author.isExpert && <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-0.5 border-2 border-white dark:border-dark-card"><ShieldCheck size={10} /></div>}
                                                    </div>
                                                 </RouterLink>
                                                 <div>
                                                     <div className="flex items-center gap-1.5">
-                                                        <span className="font-bold text-sm text-textDark">{ans.author.name}</span>
-                                                        {ans.author.isExpert && <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-md">Chuyên gia</span>}
+                                                        <span className="font-bold text-sm text-textDark dark:text-white">{ans.author.name}</span>
+                                                        {ans.author.isExpert && <span className="bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[10px] font-bold px-2 py-0.5 rounded-md">Chuyên gia</span>}
                                                     </div>
                                                     <span className="text-[11px] text-gray-400">{new Date(ans.createdAt).toLocaleDateString('vi-VN')}</span>
                                                 </div>
@@ -424,13 +434,13 @@ export default function QuestionDetail({
                                                     <button onClick={() => onMarkBestAnswer(question.id, ans.id)} className="text-gray-300 hover:text-yellow-500 transition-colors p-1" title="Chọn hay nhất"><Sparkles size={18} /></button>
                                                 )}
                                                 <div className="relative">
-                                                    <button onClick={(e) => toggleMenu(ans.id, e)} className="text-gray-400 p-1 hover:bg-gray-50 rounded-full"><MoreVertical size={18} /></button>
+                                                    <button onClick={(e) => toggleMenu(ans.id, e)} className="text-gray-400 p-1 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-full"><MoreVertical size={18} /></button>
                                                     {activeMenuId === ans.id && (
-                                                        <div ref={menuRef} className="absolute right-0 mt-2 bg-white rounded-xl shadow-lg border border-gray-100 w-40 overflow-hidden z-20 animate-pop-in">
+                                                        <div ref={menuRef} className="absolute right-0 mt-2 bg-white dark:bg-dark-card rounded-xl shadow-lg border border-gray-100 dark:border-dark-border w-40 overflow-hidden z-20 animate-pop-in">
                                                             {(isAnsOwner || isAdmin) && (
-                                                                <button onClick={() => onDeleteAnswer(question.id, ans.id)} className="w-full text-left px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2"><Trash2 size={14} /> Xóa</button>
+                                                                <button onClick={() => onDeleteAnswer(question.id, ans.id)} className="w-full text-left px-4 py-3 text-xs font-bold text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 flex items-center gap-2"><Trash2 size={14} /> Xóa</button>
                                                             )}
-                                                            <button onClick={() => handleReport(ans.id, 'answer')} className="w-full text-left px-4 py-3 text-xs font-bold text-gray-600 hover:bg-gray-50 flex items-center gap-2 border-t border-gray-50"><Flag size={14} /> Báo cáo</button>
+                                                            <button onClick={() => handleReport(ans.id, 'answer')} className="w-full text-left px-4 py-3 text-xs font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2 border-t border-gray-50 dark:border-dark-border"><Flag size={14} /> Báo cáo</button>
                                                         </div>
                                                     )}
                                                 </div>
@@ -440,16 +450,16 @@ export default function QuestionDetail({
                                         <div className="mb-3 pl-1">
                                              <div className="flex flex-wrap gap-2 mb-2">
                                                  {isBest && <div className="inline-flex items-center gap-1 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white px-3 py-1 rounded-full text-[11px] font-bold shadow-sm"><CheckCircle2 size={12} /> Câu trả lời hay nhất</div>}
-                                                 {isVerified && <span className="inline-flex items-center gap-1 bg-green-50 text-green-700 px-3 py-1 rounded-full text-[11px] font-bold border border-green-100"><ShieldCheck size={12} /> Đã xác thực y khoa</span>}
+                                                 {isVerified && <span className="inline-flex items-center gap-1 bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-3 py-1 rounded-full text-[11px] font-bold border border-green-100 dark:border-green-900/30"><ShieldCheck size={12} /> Đã xác thực y khoa</span>}
                                              </div>
                                              <RichTextRenderer content={ans.content} />
                                         </div>
 
-                                        <div className="flex items-center gap-4 border-t border-gray-50 pt-3 mt-2">
-                                            <button onClick={() => handleToggleUseful(ans)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all active:scale-95 group ${isUseful ? 'text-blue-600 bg-blue-50 font-bold' : 'text-gray-500 hover:bg-gray-100 font-medium'}`}>
+                                        <div className="flex items-center gap-4 border-t border-gray-50 dark:border-slate-800 pt-3 mt-2">
+                                            <button onClick={() => handleToggleUseful(ans)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all active:scale-95 group ${isUseful ? 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 font-bold' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 font-medium'}`}>
                                                 <ThumbsUp size={16} className={`group-hover:scale-110 transition-transform ${isUseful ? 'fill-current scale-110' : ''}`} /> <span className="text-xs">Hữu ích {ans.likes > 0 ? `(${ans.likes})` : ''}</span>
                                             </button>
-                                            {isAdmin && !isVerified && <button onClick={() => onVerifyAnswer(question.id, ans.id)} className="text-xs font-bold text-gray-400 hover:text-green-600 ml-auto flex items-center gap-1"><ShieldCheck size={14} /> Xác thực</button>}
+                                            {isAdmin && !isVerified && <button onClick={() => onVerifyAnswer(question.id, ans.id)} className="text-xs font-bold text-gray-400 hover:text-green-600 dark:hover:text-green-400 ml-auto flex items-center gap-1"><ShieldCheck size={14} /> Xác thực</button>}
                                         </div>
                                     </div>
                                 </React.Fragment>
@@ -463,11 +473,11 @@ export default function QuestionDetail({
               <aside className="hidden lg:block lg:col-span-4 space-y-6">
                   <div className="sticky top-24 space-y-6">
                       
-                      {/* 1. TRENDING QUESTIONS SECTION (MỚI THÊM) */}
+                      {/* 1. TRENDING QUESTIONS SECTION */}
                       {trendingQuestions.length > 0 && (
-                          <div className="bg-white p-5 rounded-[1.5rem] border border-gray-200 shadow-sm">
-                               <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                                  <span className="bg-orange-100 text-orange-600 p-1.5 rounded-lg"><TrendingUp size={18} /></span>
+                          <div className="bg-white dark:bg-dark-card p-5 rounded-[1.5rem] border border-gray-200 dark:border-dark-border shadow-sm">
+                               <h3 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+                                  <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 p-1.5 rounded-lg"><TrendingUp size={18} /></span>
                                   Đáng quan tâm
                               </h3>
                               <div className="flex flex-col gap-4">
@@ -476,10 +486,10 @@ export default function QuestionDetail({
                                            <span className={`text-xl font-black leading-none mt-0.5 ${
                                               idx === 0 ? 'text-orange-500' : 
                                               idx === 1 ? 'text-blue-500' : 
-                                              idx === 2 ? 'text-green-500' : 'text-gray-300'
+                                              idx === 2 ? 'text-green-500' : 'text-gray-300 dark:text-slate-600'
                                           }`}>0{idx + 1}</span>
                                           <div className="flex-1 min-w-0">
-                                              <h4 className="font-bold text-sm text-gray-700 leading-snug group-hover:text-blue-600 transition-colors line-clamp-2">{q.title}</h4>
+                                              <h4 className="font-bold text-sm text-gray-700 dark:text-gray-200 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2">{q.title}</h4>
                                               <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-1">
                                                   <span>{q.answers.length} trả lời</span>
                                                   <span>•</span>
@@ -494,16 +504,16 @@ export default function QuestionDetail({
 
                       {/* 2. DESKTOP AD */}
                       {adConfig?.isEnabled && adConfig.questionDetailAd && (
-                          <div className="bg-white p-4 rounded-[1.5rem] border border-gray-200 shadow-sm">
+                          <div className="bg-white dark:bg-dark-card p-4 rounded-[1.5rem] border border-gray-200 dark:border-dark-border shadow-sm">
                               <h4 className="text-xs font-bold text-gray-400 uppercase mb-3 tracking-wider flex items-center gap-1"><Info size={12}/> Gợi ý cho bạn</h4>
                               <QuestionDetailAd config={adConfig.questionDetailAd} />
                           </div>
                       )}
 
                       {/* 3. GUIDELINES BOX */}
-                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-5 rounded-[1.5rem] border border-blue-100">
-                          <h4 className="font-bold text-blue-800 mb-3 flex items-center gap-2 text-sm"><ShieldCheck size={16}/> Lưu ý cộng đồng</h4>
-                          <ul className="text-xs text-blue-700 space-y-2 list-disc pl-4 leading-relaxed font-medium">
+                      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-5 rounded-[1.5rem] border border-blue-100 dark:border-blue-900/30">
+                          <h4 className="font-bold text-blue-800 dark:text-blue-300 mb-3 flex items-center gap-2 text-sm"><ShieldCheck size={16}/> Lưu ý cộng đồng</h4>
+                          <ul className="text-xs text-blue-700 dark:text-blue-400 space-y-2 list-disc pl-4 leading-relaxed font-medium">
                               <li>Chia sẻ kinh nghiệm thực tế, khách quan.</li>
                               <li>Tôn trọng ý kiến khác biệt của các mẹ.</li>
                               <li>Không quảng cáo hoặc spam link lạ.</li>
@@ -518,56 +528,56 @@ export default function QuestionDetail({
       </div>
 
       {/* FOOTER INPUT */}
-      <div className="fixed bottom-[88px] md:bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-100 shadow-[0_-5px_30px_rgba(0,0,0,0.06)] pb-2 md:pb-safe-bottom px-4 py-3">
+      <div className="fixed bottom-[88px] md:bottom-0 left-0 right-0 z-40 bg-white dark:bg-dark-card border-t border-gray-100 dark:border-dark-border shadow-[0_-5px_30px_rgba(0,0,0,0.06)] dark:shadow-none pb-2 md:pb-safe-bottom px-4 py-3 transition-colors">
           <div className="max-w-3xl mx-auto">
               {currentUser.isGuest && (
-                  <div className="bg-blue-50 px-4 py-2 rounded-xl flex justify-between items-center text-xs text-blue-700 mb-2 border border-blue-100">
+                  <div className="bg-blue-50 dark:bg-blue-900/30 px-4 py-2 rounded-xl flex justify-between items-center text-xs text-blue-700 dark:text-blue-300 mb-2 border border-blue-100 dark:border-blue-900/30">
                       <span className="font-bold flex items-center gap-1"><LogIn size={14} /> Bạn đang là Khách</span>
-                      <button onClick={onOpenAuth} className="font-bold underline hover:text-blue-900">Đăng nhập để bình luận</button>
+                      <button onClick={onOpenAuth} className="font-bold underline hover:text-blue-900 dark:hover:text-blue-100">Đăng nhập để bình luận</button>
                   </div>
               )}
               
               {showMentions && filteredParticipants.length > 0 && (
-                  <div className="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-2xl shadow-xl border border-gray-100 max-h-48 overflow-y-auto animate-slide-up max-w-lg mx-auto">
-                      <div className="bg-gray-50 px-3 py-2 text-[10px] font-bold text-gray-500 uppercase sticky top-0">Gợi ý</div>
+                  <div className="absolute bottom-full left-4 right-4 mb-2 bg-white dark:bg-dark-card rounded-2xl shadow-xl border border-gray-100 dark:border-dark-border max-h-48 overflow-y-auto animate-slide-up max-w-lg mx-auto">
+                      <div className="bg-gray-50 dark:bg-slate-800 px-3 py-2 text-[10px] font-bold text-gray-500 uppercase sticky top-0">Gợi ý</div>
                       {filteredParticipants.map(p => (
-                          <button key={p.id} onClick={() => handleSelectMention(p)} className="w-full flex items-center gap-3 p-3 hover:bg-blue-50 text-left border-b border-gray-50">
-                              <img src={p.avatar} className="w-8 h-8 rounded-full border border-gray-200" />
-                              <div><p className="font-bold text-sm">{p.name}</p><p className="text-[10px] text-gray-400">{p.isExpert ? 'Chuyên gia' : 'Thành viên'}</p></div>
+                          <button key={p.id} onClick={() => handleSelectMention(p)} className="w-full flex items-center gap-3 p-3 hover:bg-blue-50 dark:hover:bg-slate-700 text-left border-b border-gray-50 dark:border-slate-800">
+                              <img src={p.avatar} className="w-8 h-8 rounded-full border border-gray-200 dark:border-slate-600" />
+                              <div><p className="font-bold text-sm text-textDark dark:text-white">{p.name}</p><p className="text-[10px] text-gray-400">{p.isExpert ? 'Chuyên gia' : 'Thành viên'}</p></div>
                           </button>
                       ))}
                   </div>
               )}
 
               {showLinkInput && (
-                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-2 flex gap-2 mb-2 animate-slide-up">
-                      <input type="url" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="Dán link..." className="flex-1 text-sm bg-white border border-gray-200 rounded-lg px-3 py-1.5 outline-none focus:border-primary" autoFocus />
+                  <div className="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-2 flex gap-2 mb-2 animate-slide-up">
+                      <input type="url" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="Dán link..." className="flex-1 text-sm bg-white dark:bg-dark-card border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 outline-none focus:border-primary text-textDark dark:text-white" autoFocus />
                       <button onClick={handleInsertLink} className="bg-primary text-white text-xs font-bold px-3 rounded-lg">Thêm</button>
                       <button onClick={() => setShowLinkInput(false)} className="text-gray-400 p-1"><X size={16}/></button>
                   </div>
               )}
 
               {answerImage && (
-                  <div className="flex items-center gap-2 mb-2 bg-gray-50 p-2 rounded-xl w-fit border border-gray-200">
+                  <div className="flex items-center gap-2 mb-2 bg-gray-50 dark:bg-slate-800 p-2 rounded-xl w-fit border border-gray-200 dark:border-slate-700">
                       <img src={answerImage} className="w-10 h-10 rounded-lg object-cover" />
-                      <span className="text-xs text-green-600 font-bold">Đã tải ảnh</span>
-                      <button onClick={() => setAnswerImage(null)} className="bg-white text-gray-400 p-1 rounded-full hover:text-red-500 shadow-sm"><X size={12}/></button>
+                      <span className="text-xs text-green-600 dark:text-green-400 font-bold">Đã tải ảnh</span>
+                      <button onClick={() => setAnswerImage(null)} className="bg-white dark:bg-slate-700 text-gray-400 p-1 rounded-full hover:text-red-500 shadow-sm"><X size={12}/></button>
                   </div>
               )}
 
               <div className="flex items-end gap-2">
                   <div className="flex items-center gap-1">
-                      <button onClick={handleAiDraft} disabled={isGeneratingDraft} className="p-2.5 rounded-full bg-gradient-to-tr from-purple-100 to-indigo-100 text-indigo-600 active:scale-90 transition-transform" title="AI Gợi ý">
+                      <button onClick={handleAiDraft} disabled={isGeneratingDraft} className="p-2.5 rounded-full bg-gradient-to-tr from-purple-100 to-indigo-100 dark:from-purple-900/40 dark:to-indigo-900/40 text-indigo-600 dark:text-indigo-400 active:scale-90 transition-transform" title="AI Gợi ý">
                           {isGeneratingDraft ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
                       </button>
-                      <button onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-full text-gray-500 hover:bg-gray-100 active:scale-90 transition-transform"><ImageIcon size={20} /></button>
+                      <button onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 active:scale-90 transition-transform"><ImageIcon size={20} /></button>
                       <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                      <button onClick={() => {setShowStickers(!showStickers); setShowLinkInput(false)}} className={`p-2.5 rounded-full active:scale-90 transition-transform ${showStickers ? 'bg-yellow-100 text-yellow-600' : 'text-gray-500 hover:bg-gray-100'}`}><Smile size={20} /></button>
-                      <button onClick={() => {setShowLinkInput(!showLinkInput); setShowStickers(false)}} className={`hidden md:block p-2.5 rounded-full active:scale-90 transition-transform ${showLinkInput ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}><Paperclip size={20} /></button>
+                      <button onClick={() => {setShowStickers(!showStickers); setShowLinkInput(false)}} className={`p-2.5 rounded-full active:scale-90 transition-transform ${showStickers ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700'}`}><Smile size={20} /></button>
+                      <button onClick={() => {setShowLinkInput(!showLinkInput); setShowStickers(false)}} className={`hidden md:block p-2.5 rounded-full active:scale-90 transition-transform ${showLinkInput ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700'}`}><Paperclip size={20} /></button>
                   </div>
 
-                  <div className="flex-1 bg-gray-50 rounded-[1.5rem] flex items-center px-4 py-2 border border-transparent focus-within:border-primary/30 focus-within:bg-white transition-all">
-                      <textarea ref={answerInputRef} value={newAnswer} onChange={handleInputChange} onClick={() => {setShowStickers(false); setShowLinkInput(false)}} placeholder="Viết câu trả lời..." className="w-full bg-transparent border-none outline-none text-[15px] resize-none max-h-[120px] py-1 placeholder-gray-400" rows={1} />
+                  <div className="flex-1 bg-gray-50 dark:bg-slate-800 rounded-[1.5rem] flex items-center px-4 py-2 border border-transparent focus-within:border-primary/30 focus-within:bg-white dark:focus-within:bg-dark-card transition-all">
+                      <textarea ref={answerInputRef} value={newAnswer} onChange={handleInputChange} onClick={() => {setShowStickers(false); setShowLinkInput(false)}} placeholder="Viết câu trả lời..." className="w-full bg-transparent border-none outline-none text-[15px] resize-none max-h-[120px] py-1 placeholder-gray-400 dark:placeholder-gray-500 text-textDark dark:text-white" rows={1} />
                       <button onClick={() => setNewAnswer(prev => prev + "@")} className="text-gray-400 hover:text-blue-500 p-1 md:hidden"><AtSign size={18} /></button>
                   </div>
 
@@ -577,10 +587,10 @@ export default function QuestionDetail({
               </div>
 
               {showStickers && (
-                  <div className="h-48 overflow-y-auto bg-gray-50 border border-gray-200 rounded-xl mt-2 p-3 animate-slide-up shadow-inner">
+                  <div className="h-48 overflow-y-auto bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl mt-2 p-3 animate-slide-up shadow-inner">
                       {Object.entries(STICKER_PACKS).map(([category, emojis]) => (
                           <div key={category} className="mb-3">
-                              <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-2 sticky top-0 bg-gray-50 py-1">{category}</h4>
+                              <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-2 sticky top-0 bg-gray-50 dark:bg-slate-800 py-1">{category}</h4>
                               <div className="grid grid-cols-8 gap-2">
                                   {emojis.map(emoji => <button key={emoji} onClick={() => handleInsertSticker(emoji)} className="text-2xl hover:scale-125 transition-transform">{emoji}</button>)}
                               </div>
