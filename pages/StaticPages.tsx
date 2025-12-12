@@ -1,5 +1,4 @@
 import React from 'react';
-// Đã thêm HelpCircle vào đây
 import { ArrowLeft, Mail, MapPin, Phone, Shield, Users, FileText, Heart, HelpCircle } from 'lucide-react';
 // @ts-ignore
 import { useNavigate, Link } from 'react-router-dom';
@@ -8,23 +7,29 @@ const PageContainer: React.FC<{ title: string; icon: React.ReactNode; children: 
   const navigate = useNavigate();
   
   return (
+    // THAY ĐỔI: bg-white -> dark:bg-dark-card, border-gray-100 -> dark:border-dark-border
     <div className="max-w-4xl mx-auto px-4 py-8 md:py-12 animate-fade-in">
       <button 
         onClick={() => navigate(-1)} 
-        className="mb-6 flex items-center text-textGray hover:text-primary transition-colors font-medium"
+        className="mb-6 flex items-center text-textGray dark:text-gray-400 hover:text-primary dark:hover:text-primary transition-colors font-medium"
       >
         <ArrowLeft size={20} className="mr-1" /> Quay lại
       </button>
       
-      <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 p-6 md:p-10">
-        <div className="flex items-center gap-3 mb-8 border-b border-gray-100 pb-6">
-          <div className="w-12 h-12 rounded-full bg-secondary/30 flex items-center justify-center text-primary">
+      <div className="bg-white dark:bg-dark-card rounded-[2rem] shadow-sm dark:shadow-none border border-gray-100 dark:border-dark-border p-6 md:p-10 transition-colors">
+        <div className="flex items-center gap-3 mb-8 border-b border-gray-100 dark:border-slate-700 pb-6">
+          <div className="w-12 h-12 rounded-full bg-secondary/30 dark:bg-secondary/20 flex items-center justify-center text-primary">
             {icon}
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-textDark">{title}</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-textDark dark:text-white">{title}</h1>
         </div>
         
-        <div className="prose prose-lg text-textDark/80 max-w-none prose-headings:text-primary prose-a:text-primary hover:prose-a:text-accent">
+        {/* THAY ĐỔI: Thêm các class dark:... để xử lý văn bản */}
+        <div className="prose prose-lg text-textDark/80 dark:text-gray-300 max-w-none 
+            prose-headings:text-primary dark:prose-headings:text-white 
+            prose-a:text-primary dark:prose-a:text-blue-400 hover:prose-a:text-accent 
+            prose-strong:text-textDark dark:prose-strong:text-white
+            prose-li:marker:text-gray-400">
           {children}
         </div>
       </div>
@@ -46,20 +51,20 @@ export const About: React.FC = () => (
     
     <h3>Giá trị cốt lõi</h3>
     <div className="grid md:grid-cols-3 gap-6 my-8 not-prose">
-      <div className="bg-cream p-6 rounded-2xl text-center">
-        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-2xl">🤝</div>
-        <h4 className="font-bold text-textDark mb-2">Tin cậy</h4>
-        <p className="text-sm text-textGray">Thông tin được kiểm chứng bởi chuyên gia và cộng đồng.</p>
+      <div className="bg-cream dark:bg-slate-800 p-6 rounded-2xl text-center border border-transparent dark:border-slate-700">
+        <div className="w-10 h-10 bg-white dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-2xl">🤝</div>
+        <h4 className="font-bold text-textDark dark:text-white mb-2">Tin cậy</h4>
+        <p className="text-sm text-textGray dark:text-gray-400">Thông tin được kiểm chứng bởi chuyên gia và cộng đồng.</p>
       </div>
-      <div className="bg-cream p-6 rounded-2xl text-center">
-        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-2xl">❤️</div>
-        <h4 className="font-bold text-textDark mb-2">Thấu hiểu</h4>
-        <p className="text-sm text-textGray">Luôn lắng nghe và chia sẻ với tâm thế của một người mẹ.</p>
+      <div className="bg-cream dark:bg-slate-800 p-6 rounded-2xl text-center border border-transparent dark:border-slate-700">
+        <div className="w-10 h-10 bg-white dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-2xl">❤️</div>
+        <h4 className="font-bold text-textDark dark:text-white mb-2">Thấu hiểu</h4>
+        <p className="text-sm text-textGray dark:text-gray-400">Luôn lắng nghe và chia sẻ với tâm thế của một người mẹ.</p>
       </div>
-      <div className="bg-cream p-6 rounded-2xl text-center">
-        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-2xl">🌱</div>
-        <h4 className="font-bold text-textDark mb-2">Đồng hành</h4>
-        <p className="text-sm text-textGray">Cùng con khôn lớn mỗi ngày qua từng giai đoạn phát triển.</p>
+      <div className="bg-cream dark:bg-slate-800 p-6 rounded-2xl text-center border border-transparent dark:border-slate-700">
+        <div className="w-10 h-10 bg-white dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm text-2xl">🌱</div>
+        <h4 className="font-bold text-textDark dark:text-white mb-2">Đồng hành</h4>
+        <p className="text-sm text-textGray dark:text-gray-400">Cùng con khôn lớn mỗi ngày qua từng giai đoạn phát triển.</p>
       </div>
     </div>
   </PageContainer>
@@ -110,7 +115,7 @@ export const Privacy: React.FC = () => (
       <li>Bảo vệ cộng đồng khỏi spam và nội dung xấu.</li>
     </ul>
     
-    <p className="bg-blue-50 p-4 rounded-xl border-l-4 border-primary text-sm">
+    <p className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border-l-4 border-primary dark:border-blue-500 text-sm">
       <strong>Lưu ý:</strong> Chúng tôi KHÔNG BAO GIỜ chia sẻ hoặc bán dữ liệu cá nhân của bạn cho bên thứ ba vì mục đích thương mại.
     </p>
   </PageContainer>
@@ -123,84 +128,84 @@ export const Contact: React.FC = () => (
     </p>
     
     <div className="space-y-6 not-prose">
-      <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-white hover:shadow-md transition-all border border-transparent hover:border-gray-100">
-        <div className="w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center">
+      <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800 rounded-xl hover:bg-white dark:hover:bg-slate-700 hover:shadow-md transition-all border border-transparent hover:border-gray-100 dark:hover:border-slate-600">
+        <div className="w-12 h-12 bg-primary/10 dark:bg-primary/20 text-primary rounded-full flex items-center justify-center">
           <Mail size={24} />
         </div>
         <div>
-          <h5 className="font-bold text-textDark">Email</h5>
+          <h5 className="font-bold text-textDark dark:text-white">Email</h5>
           <a href="mailto:hotro@asking.vn" className="text-primary hover:underline">hotro@asking.vn</a>
         </div>
       </div>
       
-      <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-white hover:shadow-md transition-all border border-transparent hover:border-gray-100">
-        <div className="w-12 h-12 bg-secondary/30 text-teal-600 rounded-full flex items-center justify-center">
+      <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800 rounded-xl hover:bg-white dark:hover:bg-slate-700 hover:shadow-md transition-all border border-transparent hover:border-gray-100 dark:hover:border-slate-600">
+        <div className="w-12 h-12 bg-secondary/30 dark:bg-secondary/20 text-teal-600 dark:text-teal-400 rounded-full flex items-center justify-center">
           <Phone size={24} />
         </div>
         <div>
-          <h5 className="font-bold text-textDark">Hotline</h5>
+          <h5 className="font-bold text-textDark dark:text-white">Hotline</h5>
           <a href="tel:0912.434.666" className="text-primary hover:underline">0912.434.666 (8h - 20h)</a>
         </div>
       </div>
       
-      <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-white hover:shadow-md transition-all border border-transparent hover:border-gray-100">
-        <div className="w-12 h-12 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center">
+      <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-slate-800 rounded-xl hover:bg-white dark:hover:bg-slate-700 hover:shadow-md transition-all border border-transparent hover:border-gray-100 dark:hover:border-slate-600">
+        <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900/30 text-orange-500 rounded-full flex items-center justify-center">
           <MapPin size={24} />
         </div>
         <div>
-          <h5 className="font-bold text-textDark">Văn phòng</h5>
-          <p className="text-textGray m-0">Tầng 12, Tòa nhà Asking, Quận 1, TP.HCM</p>
+          <h5 className="font-bold text-textDark dark:text-white">Văn phòng</h5>
+          <p className="text-textGray dark:text-gray-400 m-0">Tầng 12, Tòa nhà Asking, Quận 1, TP.HCM</p>
         </div>
       </div>
     </div>
   </PageContainer>
 );
 
-// --- PHẦN MỚI THÊM: CÂU HỎI THƯỜNG GẶP (FAQ) ---
+// --- CÂU HỎI THƯỜNG GẶP (FAQ) ---
 export const FAQ: React.FC = () => (
   <PageContainer title="Câu hỏi thường gặp" icon={<HelpCircle size={24} />}>
     <div className="space-y-6">
-      <div className="border-b border-gray-100 pb-4">
-        <h4 className="text-lg font-bold text-textDark mb-2 flex items-center gap-2">
+      <div className="border-b border-gray-100 dark:border-slate-700 pb-4">
+        <h4 className="text-lg font-bold text-textDark dark:text-white mb-2 flex items-center gap-2">
           <span className="text-primary">Q.</span> Asking.vn có hoàn toàn miễn phí không?
         </h4>
-        <p className="text-textGray pl-6">
+        <p className="text-textGray dark:text-gray-300 pl-6">
           Có. Asking.vn là nền tảng cộng đồng hoàn toàn miễn phí dành cho các mẹ bỉm sữa để chia sẻ kiến thức và kết nối.
         </p>
       </div>
 
-      <div className="border-b border-gray-100 pb-4">
-        <h4 className="text-lg font-bold text-textDark mb-2 flex items-center gap-2">
+      <div className="border-b border-gray-100 dark:border-slate-700 pb-4">
+        <h4 className="text-lg font-bold text-textDark dark:text-white mb-2 flex items-center gap-2">
           <span className="text-primary">Q.</span> Làm thế nào để tôi nhận biết đâu là Chuyên gia thật?
         </h4>
-        <p className="text-textGray pl-6">
-          Các tài khoản Chuyên gia (Bác sĩ, Dược sĩ, Chuyên gia dinh dưỡng...) trên Asking.vn đều phải trải qua quy trình xác minh bằng cấp nghiêm ngặt. Khi được duyệt, họ sẽ có huy hiệu <span className="inline-flex items-center bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded text-xs font-bold mx-1">Chuyên gia</span> hoặc tích xanh bên cạnh tên.
+        <p className="text-textGray dark:text-gray-300 pl-6">
+          Các tài khoản Chuyên gia (Bác sĩ, Dược sĩ, Chuyên gia dinh dưỡng...) trên Asking.vn đều phải trải qua quy trình xác minh bằng cấp nghiêm ngặt. Khi được duyệt, họ sẽ có huy hiệu <span className="inline-flex items-center bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded text-xs font-bold mx-1">Chuyên gia</span> hoặc tích xanh bên cạnh tên.
         </p>
       </div>
 
-      <div className="border-b border-gray-100 pb-4">
-        <h4 className="text-lg font-bold text-textDark mb-2 flex items-center gap-2">
+      <div className="border-b border-gray-100 dark:border-slate-700 pb-4">
+        <h4 className="text-lg font-bold text-textDark dark:text-white mb-2 flex items-center gap-2">
           <span className="text-primary">Q.</span> Tôi có thể xóa câu hỏi đã đăng không?
         </h4>
-        <p className="text-textGray pl-6">
+        <p className="text-textGray dark:text-gray-300 pl-6">
           Có. Bạn có thể xóa câu hỏi của mình bằng cách vào trang chi tiết câu hỏi, bấm vào dấu 3 chấm góc phải và chọn "Xóa câu hỏi". Tuy nhiên, nếu câu hỏi đã có nhiều câu trả lời hữu ích, chúng tôi khuyến khích bạn giữ lại để giúp ích cho các mẹ khác.
         </p>
       </div>
 
-      <div className="border-b border-gray-100 pb-4">
-        <h4 className="text-lg font-bold text-textDark mb-2 flex items-center gap-2">
+      <div className="border-b border-gray-100 dark:border-slate-700 pb-4">
+        <h4 className="text-lg font-bold text-textDark dark:text-white mb-2 flex items-center gap-2">
           <span className="text-primary">Q.</span> Làm sao để báo cáo nội dung không phù hợp?
         </h4>
-        <p className="text-textGray pl-6">
+        <p className="text-textGray dark:text-gray-300 pl-6">
           Asking.vn đề cao môi trường văn minh. Nếu thấy nội dung spam, quảng cáo rác hoặc ngôn từ thiếu văn hóa, bạn hãy bấm vào dấu 3 chấm góc phải và chọn <strong>Báo cáo</strong> (hình lá cờ) ở mỗi bài viết hoặc câu trả lời. Đội ngũ admin sẽ xử lý trong vòng 24h.
         </p>
       </div>
 
       <div>
-        <h4 className="text-lg font-bold text-textDark mb-2 flex items-center gap-2">
+        <h4 className="text-lg font-bold text-textDark dark:text-white mb-2 flex items-center gap-2">
           <span className="text-primary">Q.</span> Tôi muốn đăng ký làm Chuyên gia thì phải làm sao?
         </h4>
-        <p className="text-textGray pl-6">
+        <p className="text-textGray dark:text-gray-300 pl-6">
           Rất hoan nghênh bạn! Hãy truy cập trang <Link to="/expert-register" className="text-primary hover:underline font-bold">Đăng ký Chuyên gia</Link>, điền thông tin và tải lên ảnh chụp bằng cấp/chứng chỉ hành nghề. Chúng tôi sẽ liên hệ lại sớm nhất.
         </p>
       </div>
