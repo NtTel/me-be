@@ -199,6 +199,16 @@ export interface AdConfig {
     link: string;
     sponsorName: string;
   };
+// THÊM KHỐI NÀY:
+  questionDetailAd?: {
+    enabled: boolean;
+    title: string;
+    description: string; // Nội dung ngắn
+    imageUrl: string;
+    ctaText: string;
+    link: string;
+    sponsorName: string;
+  };
 }
 // --- BLOG MODULE TYPES ---
 export interface BlogCategory {
