@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 // @ts-ignore
 import { Link, useNavigate } from 'react-router-dom';
 import { BlogPost, BlogCategory, User } from '../types';
@@ -6,12 +6,12 @@ import { fetchBlogCategories, fetchPublishedPosts } from '../services/blog';
 import { subscribeToAuthChanges } from '../services/auth';
 import { 
   Loader2, BookOpen, Clock, PenTool, Search, X, ArrowDown, 
-  Sparkles, AlertCircle, ChevronLeft, ChevronRight 
+  Sparkles, AlertCircle, ChevronLeft, ChevronRight, Flame, Eye 
 } from 'lucide-react';
 
 const PAGE_SIZE = 9; 
 
-// --- COMPONENT: SKELETON LOADER (Hiệu ứng tải trang đẹp) ---
+// --- COMPONENT: SKELETON LOADER ---
 const BlogSkeleton = () => (
   <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
     {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -52,6 +52,7 @@ export const BlogList: React.FC = () => {
       try {
         const [catsData, postsData] = await Promise.all([
             fetchBlogCategories(),
+            // Lấy nhiều bài hơn chút để tính toán Trending chính xác hơn nếu chưa có API riêng
             fetchPublishedPosts('all', 100) 
         ]);
         setCategories(catsData);
@@ -82,11 +83,10 @@ export const BlogList: React.FC = () => {
     }
   };
 
-  // Logic cuộn menu ngang (YouTube Style)
   const scrollCategory = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
         const { current } = scrollRef;
-        const scrollAmount = 300; // Độ dài mỗi lần cuộn
+        const scrollAmount = 300;
         if (direction === 'left') {
             current.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
         } else {
@@ -97,14 +97,28 @@ export const BlogList: React.FC = () => {
 
   const isExpertOrAdmin = currentUser && (currentUser.isExpert || currentUser.isAdmin);
 
-  // Logic lọc bài viết client-side
+  // --- LOGIC FILTER & SORT ---
+
+  // 1. Lọc theo từ khóa
   const filteredPosts = posts.filter(post => 
     post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (post.excerpt && post.excerpt.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  // Logic tách bài Hero (Bài nổi bật nhất)
+  // 2. Tính toán bài TRENDING (Lấy 5 bài nhiều views nhất từ danh sách hiện có)
+  // Lưu ý: Tốt nhất nên có API riêng, nhưng ở đây ta sort client-side tạm thời
+  const trendingPosts = useMemo(() => {
+    if (searchTerm || activeCat !== 'all') return []; // Chỉ hiện trending ở trang chủ (All) và ko search
+    return [...posts]
+        .sort((a, b) => (b.views || 0) - (a.views || 0)) // Giả sử có trường views, nếu chưa có thì dùng logic random hoặc createdAt
+        .slice(0, 5); // Lấy Top 5
+  }, [posts, searchTerm, activeCat]);
+
+  // 3. Logic bài Hero & Grid
   const showHero = !searchTerm && filteredPosts.length > 0;
+  
+  // Nếu bài Hero trùng với bài Top 1 Trending thì sao? -> Vẫn hiển thị bình thường hoặc loại trừ tùy ý.
+  // Ở đây mình giữ nguyên logic cũ cho Hero là bài mới nhất.
   const heroPost = showHero ? filteredPosts[0] : null;
   const remainingPosts = showHero ? filteredPosts.slice(1) : filteredPosts;
   const visibleGridPosts = remainingPosts.slice(0, visibleCount);
@@ -114,7 +128,6 @@ export const BlogList: React.FC = () => {
       
       {/* --- HEADER --- */}
       <div className="bg-white border-b border-gray-100 shadow-sm sticky top-[68px] md:top-20 z-30 transition-all">
-         {/* Decoration Gradient Line */}
          <div className="h-1 w-full bg-gradient-to-r from-primary via-blue-400 to-purple-500"></div>
          
          <div className="max-w-5xl mx-auto px-4 py-4">
@@ -136,10 +149,8 @@ export const BlogList: React.FC = () => {
                 )}
             </div>
 
-            {/* --- TOOLBAR: SEARCH & CATEGORIES --- */}
             <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-                
-                {/* 1. Search Input */}
+                {/* Search */}
                 <div className="relative w-full md:w-auto md:flex-1 max-w-md group shrink-0">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-primary transition-colors" size={18} />
                     <input 
@@ -155,10 +166,8 @@ export const BlogList: React.FC = () => {
                     )}
                 </div>
 
-                {/* 2. Categories Scroll (YouTube Style) */}
+                {/* Categories */}
                 <div className="flex-1 w-full min-w-0 relative group/scroll">
-                    
-                    {/* Nút lùi: Chỉ hiện trên Desktop (hidden md:flex) khi hover */}
                     <button 
                         onClick={() => scrollCategory('left')}
                         className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white/90 backdrop-blur-sm shadow-md rounded-full items-center justify-center text-gray-600 hover:text-primary border border-gray-100 opacity-0 group-hover/scroll:opacity-100 transition-all active:scale-90 disabled:opacity-0"
@@ -166,38 +175,24 @@ export const BlogList: React.FC = () => {
                         <ChevronLeft size={20} />
                     </button>
 
-                    {/* Container Scroll */}
-                    <div 
-                        ref={scrollRef}
-                        className="flex gap-2 overflow-x-auto no-scrollbar pb-1 scroll-smooth px-1"
-                    >
+                    <div ref={scrollRef} className="flex gap-2 overflow-x-auto no-scrollbar pb-1 scroll-smooth px-1">
                         <button 
                             onClick={() => handleFilter('all')}
-                            className={`flex-shrink-0 px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${
-                                activeCat === 'all' 
-                                ? 'bg-gray-900 text-white border-gray-900 shadow-md' 
-                                : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                            }`}
+                            className={`flex-shrink-0 px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border ${activeCat === 'all' ? 'bg-gray-900 text-white border-gray-900 shadow-md' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}
                         >
                             Tất cả
                         </button>
-                        
                         {categories.map(cat => (
                             <button 
                                 key={cat.id}
                                 onClick={() => handleFilter(cat.id)}
-                                className={`flex-shrink-0 px-4 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5 ${
-                                    activeCat === cat.id 
-                                    ? 'bg-white text-primary border-primary shadow-sm ring-2 ring-primary/10' 
-                                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                                }`}
+                                className={`flex-shrink-0 px-4 py-2.5 rounded-full text-xs font-bold whitespace-nowrap transition-all border flex items-center gap-1.5 ${activeCat === cat.id ? 'bg-white text-primary border-primary shadow-sm ring-2 ring-primary/10' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}
                             >
                                 <span className="text-sm">{cat.iconEmoji}</span> {cat.name}
                             </button>
                         ))}
                     </div>
 
-                    {/* Nút tiến: Chỉ hiện trên Desktop */}
                     <button 
                         onClick={() => scrollCategory('right')}
                         className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-white/90 backdrop-blur-sm shadow-md rounded-full items-center justify-center text-gray-600 hover:text-primary border border-gray-100 opacity-0 group-hover/scroll:opacity-100 transition-all active:scale-90"
@@ -214,47 +209,31 @@ export const BlogList: React.FC = () => {
          {loading ? (
              <BlogSkeleton />
          ) : filteredPosts.length === 0 ? (
-             /* EMPTY STATE */
              <div className="flex flex-col items-center justify-center py-24 text-center">
-                 <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-gray-300">
-                     <AlertCircle size={40} />
-                 </div>
+                 <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-gray-300"><AlertCircle size={40} /></div>
                  <h3 className="text-lg font-bold text-gray-900">Không tìm thấy bài viết</h3>
-                 <p className="text-gray-500 text-sm mt-1 max-w-xs mx-auto">
-                     {searchTerm ? `Chúng tôi không tìm thấy kết quả nào cho "${searchTerm}".` : 'Chưa có bài viết nào trong chủ đề này.'}
-                 </p>
-                 {searchTerm && (
-                     <button onClick={() => setSearchTerm('')} className="mt-4 text-primary font-bold text-sm hover:underline">Xóa bộ lọc tìm kiếm</button>
-                 )}
+                 <p className="text-gray-500 text-sm mt-1 max-w-xs mx-auto">{searchTerm ? `Chúng tôi không tìm thấy kết quả nào cho "${searchTerm}".` : 'Chưa có bài viết nào trong chủ đề này.'}</p>
+                 {searchTerm && <button onClick={() => setSearchTerm('')} className="mt-4 text-primary font-bold text-sm hover:underline">Xóa bộ lọc tìm kiếm</button>}
              </div>
          ) : (
              <>
-                 {/* --- HERO POST (FEATURED) --- */}
+                 {/* 1. HERO POST */}
                  {heroPost && (
-                    <div className="mb-8 animate-slide-up">
+                    <div className="mb-10 animate-slide-up">
                         <Link to={`/blog/${heroPost.slug}`} className="group block relative rounded-[2rem] overflow-hidden shadow-lg hover:shadow-2xl transition-all">
                              <div className="aspect-[2/1] md:aspect-[21/9] bg-gray-200 w-full relative">
                                  {heroPost.coverImageUrl ? (
                                     <img src={heroPost.coverImageUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" loading="lazy" alt={heroPost.title} />
                                  ) : (
-                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-r from-blue-500 to-purple-600 text-white text-6xl">
-                                        {heroPost.iconEmoji}
-                                    </div>
+                                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-r from-blue-500 to-purple-600 text-white text-6xl">{heroPost.iconEmoji}</div>
                                  )}
-                                 {/* Gradient Overlay */}
                                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                                 
-                                 {/* Content Overlay */}
                                  <div className="absolute bottom-0 left-0 p-6 md:p-10 w-full md:w-3/4">
                                      <span className="inline-flex items-center gap-1 bg-primary text-white text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider mb-3 shadow-md border border-white/20">
                                         <Sparkles size={10} /> Mới nhất
                                      </span>
-                                     <h2 className="text-2xl md:text-4xl font-black text-white leading-tight mb-3 drop-shadow-sm group-hover:text-blue-100 transition-colors">
-                                         {heroPost.title}
-                                     </h2>
-                                     <p className="text-gray-200 text-sm md:text-base line-clamp-2 mb-4 font-medium hidden md:block opacity-90">
-                                         {heroPost.excerpt}
-                                     </p>
+                                     <h2 className="text-2xl md:text-4xl font-black text-white leading-tight mb-3 drop-shadow-sm group-hover:text-blue-100 transition-colors">{heroPost.title}</h2>
+                                     <p className="text-gray-200 text-sm md:text-base line-clamp-2 mb-4 font-medium hidden md:block opacity-90">{heroPost.excerpt}</p>
                                      <div className="flex items-center gap-3 text-white/90 text-xs font-bold">
                                          <img src={heroPost.authorAvatar || "https://cdn-icons-png.flaticon.com/512/3177/3177440.png"} className="w-8 h-8 rounded-full border-2 border-white/30" alt="avatar" />
                                          <span>{heroPost.authorName}</span>
@@ -267,7 +246,59 @@ export const BlogList: React.FC = () => {
                     </div>
                  )}
 
-                 {/* --- GRID POSTS --- */}
+                 {/* 2. TRENDING SECTION (NEW) */}
+                 {trendingPosts.length > 0 && (
+                     <div className="mb-12 animate-slide-up" style={{ animationDelay: '0.05s' }}>
+                        <div className="flex items-center gap-2 mb-4">
+                             <div className="p-1.5 bg-orange-100 rounded-lg text-orange-600">
+                                <Flame size={20} fill="currentColor" />
+                             </div>
+                             <h3 className="font-bold text-xl text-gray-900">Được quan tâm nhất</h3>
+                        </div>
+                        
+                        <div className="flex gap-4 overflow-x-auto no-scrollbar pb-4 snap-x -mx-4 px-4 md:mx-0 md:px-0">
+                             {trendingPosts.map((post, index) => (
+                                 <Link 
+                                    to={`/blog/${post.slug}`} 
+                                    key={post.id} 
+                                    className="snap-start flex-shrink-0 w-72 bg-white rounded-2xl p-3 border border-gray-100 shadow-sm hover:shadow-md transition-all active:scale-95 group relative overflow-hidden"
+                                 >
+                                    {/* Ranking Badge */}
+                                    <div className="absolute top-0 right-0 bg-gray-900/10 text-gray-900 font-black text-[4rem] leading-none -mt-2 -mr-2 opacity-10 select-none pointer-events-none group-hover:scale-110 transition-transform">
+                                        {index + 1}
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <div className="w-20 h-20 rounded-xl bg-gray-100 shrink-0 overflow-hidden relative">
+                                            {post.coverImageUrl ? (
+                                                <img src={post.coverImageUrl} className="w-full h-full object-cover" loading="lazy" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-2xl bg-blue-50">{post.iconEmoji}</div>
+                                            )}
+                                            <div className="absolute top-1 left-1 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-1.5 rounded-md">
+                                                #{index + 1}
+                                            </div>
+                                        </div>
+                                        <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                            <div className="text-[10px] font-bold text-orange-500 uppercase tracking-wide mb-1 flex items-center gap-1">
+                                                <Eye size={10} /> {post.views || 0} lượt xem
+                                            </div>
+                                            <h4 className="font-bold text-sm text-gray-800 line-clamp-2 leading-snug group-hover:text-primary transition-colors">
+                                                {post.title}
+                                            </h4>
+                                        </div>
+                                    </div>
+                                 </Link>
+                             ))}
+                        </div>
+                     </div>
+                 )}
+
+                 {/* 3. MAIN GRID POSTS */}
+                 <div className="flex items-center gap-2 mb-4">
+                     <h3 className="font-bold text-xl text-gray-900">Bài viết mới</h3>
+                 </div>
+                 
                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
                      {visibleGridPosts.map(post => (
                          <Link to={`/blog/${post.slug}`} key={post.id} className="group bg-white rounded-[1.5rem] overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all hover:-translate-y-1 flex flex-col h-full">
