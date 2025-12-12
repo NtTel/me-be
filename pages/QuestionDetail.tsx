@@ -18,6 +18,7 @@ import { uploadFile } from '../services/storage';
 import { AdBanner } from '../components/AdBanner';
 // IMPORT COMPONENT MỚI
 import { ExpertPromoBox } from '../components/ExpertPromoBox';
+
 interface DetailProps {
   questions: Question[];
   currentUser: User;
@@ -298,7 +299,6 @@ export default function QuestionDetail({
   };
 
   return (
-    // THAY ĐỔI: bg-[#F7F7F5] -> dark:bg-dark-bg
     <div className="flex flex-col min-h-screen bg-[#F7F7F5] dark:bg-dark-bg pb-[240px] md:pb-[100px] selectable-text animate-fade-in transition-colors duration-300">
       {previewImage && <ImageViewer url={previewImage} onClose={() => setPreviewImage(null)} />}
 
@@ -379,9 +379,14 @@ export default function QuestionDetail({
                       </div>
                   </div>
 
-                  {/* 2. MOBILE AD */}
-                  <div className="lg:hidden">
+                  {/* 2. MOBILE AD & PROMO (HIỂN THỊ TRÊN MOBILE) */}
+                  <div className="lg:hidden space-y-6">
                       {adConfig?.isEnabled && adConfig.questionDetailAd && <QuestionDetailAd config={adConfig.questionDetailAd} />}
+                      
+                      {/* Thêm ExpertPromoBox vào Mobile View */}
+                      {!currentUser?.isExpert && (
+                          <ExpertPromoBox />
+                      )}
                   </div>
 
                   {/* 3. ANSWERS LIST */}
@@ -473,12 +478,14 @@ export default function QuestionDetail({
               {/* --- SIDEBAR (RIGHT) - STICKY --- */}
               <aside className="hidden lg:block lg:col-span-4 space-y-6">
                   <div className="sticky top-24 space-y-6">
-                      {/* --- KHỐI ĐĂNG KÝ CHUYÊN GIA --- */}
-                    {!currentUser?.isExpert && (
+                      
+                      {/* --- KHỐI ĐĂNG KÝ CHUYÊN GIA (DESKTOP) --- */}
+                      {!currentUser?.isExpert && (
                         <div className="animate-slide-up">
                             <ExpertPromoBox />
                         </div>
-                    )}
+                      )}
+                      
                       {/* 1. TRENDING QUESTIONS SECTION */}
                       {trendingQuestions.length > 0 && (
                           <div className="bg-white dark:bg-dark-card p-5 rounded-[1.5rem] border border-gray-200 dark:border-dark-border shadow-sm">
