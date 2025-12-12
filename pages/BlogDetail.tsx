@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react';
 // @ts-ignore
 import { useParams, useNavigate, Link } from 'react-router-dom';
-// ĐÃ THÊM: Import AdConfig
 import { BlogPost, BlogComment, User, AdConfig } from '../types';
-// ĐÃ THÊM: Import getAdConfig
 import { fetchPostBySlug, fetchRelatedPosts, fetchBlogComments, addBlogComment, fetchPublishedPosts, fetchBlogCategories } from '../services/blog';
 import { getAdConfig } from '../services/ads'; 
 import { loginAnonymously } from '../services/auth';
 import { 
   Loader2, ArrowLeft, Calendar, Share2, MessageCircle, Send, 
-  ExternalLink, ShieldCheck, ChevronRight, Eye, Home, Clock, 
+  ExternalLink, ChevronRight, Eye, Home, Clock, 
   TrendingUp, Megaphone 
 } from 'lucide-react';
 import { AuthModal } from '../components/AuthModal';
@@ -73,7 +71,7 @@ export const BlogDetail: React.FC<{ currentUser: User; onOpenAuth: () => void }>
             fetchRelatedPosts(postData.id, postData.categoryId),
             fetchBlogComments(postData.id),
             fetchPublishedPosts('all', 5),
-            getAdConfig() // <--- Lấy cấu hình quảng cáo
+            getAdConfig()
         ]);
 
         const matchedCat = categories.find(c => c.id === postData.categoryId);
@@ -83,7 +81,7 @@ export const BlogDetail: React.FC<{ currentUser: User; onOpenAuth: () => void }>
         setRelatedPosts(related);
         setComments(initialComments as BlogCommentWithUI[]);
         setMostViewedPosts(trending);
-        setAdConfig(adSettings); // <--- Lưu cấu hình vào state
+        setAdConfig(adSettings); 
         setHasMore(initialComments.length === PAGE_SIZE); 
       }
     } catch (error) {
@@ -131,23 +129,25 @@ export const BlogDetail: React.FC<{ currentUser: User; onOpenAuth: () => void }>
     setSubmittingComment(false);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-white"><Loader2 className="animate-spin text-gray-400" size={32} /></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-white dark:bg-dark-bg"><Loader2 className="animate-spin text-gray-400" size={32} /></div>;
   
   if (!post) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white p-4 text-center">
-        <p className="text-gray-500 mb-4">Bài viết không tồn tại.</p>
-        <button onClick={() => navigate('/blog')} className="px-4 py-2 bg-gray-100 rounded-full font-bold hover:bg-gray-200 transition-colors">Quay lại Blog</button>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-dark-bg p-4 text-center">
+        <p className="text-gray-500 dark:text-gray-400 mb-4">Bài viết không tồn tại.</p>
+        <button onClick={() => navigate('/blog')} className="px-4 py-2 bg-gray-100 dark:bg-slate-700 dark:text-white rounded-full font-bold hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">Quay lại Blog</button>
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-white animate-fade-in pb-32">
+    // THAY ĐỔI: bg-white -> dark:bg-dark-bg
+    <div className="min-h-screen bg-white dark:bg-dark-bg animate-fade-in pb-32 transition-colors duration-300">
+      
       {/* HEADER */}
-      <div className="sticky top-0 z-40 bg-white/95 backdrop-blur-sm border-b border-gray-50 transition-all">
+      <div className="sticky top-0 z-40 bg-white/95 dark:bg-dark-card/95 backdrop-blur-sm border-b border-gray-50 dark:border-dark-border transition-colors">
         <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-            <button onClick={() => navigate('/blog')} className="p-2 -ml-2 hover:bg-gray-50 rounded-full text-gray-500 transition-colors"><ArrowLeft size={24} /></button>
+            <button onClick={() => navigate('/blog')} className="p-2 -ml-2 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-full text-gray-500 dark:text-gray-300 transition-colors"><ArrowLeft size={24} /></button>
             <div className="flex gap-2">
-                <button onClick={() => setShowShare(true)} className="p-2 hover:bg-gray-50 rounded-full text-gray-500 transition-colors"><Share2 size={22} /></button>
+                <button onClick={() => setShowShare(true)} className="p-2 hover:bg-gray-50 dark:hover:bg-slate-700 rounded-full text-gray-500 dark:text-gray-300 transition-colors"><Share2 size={22} /></button>
             </div>
         </div>
       </div>
@@ -158,77 +158,92 @@ export const BlogDetail: React.FC<{ currentUser: User; onOpenAuth: () => void }>
             {/* MAIN CONTENT (LEFT) */}
             <main className="lg:col-span-8">
                 {/* Breadcrumbs */}
-                <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 mb-6 font-medium">
-                    <Link to="/" className="hover:text-black flex items-center gap-1"><Home size={14}/> Trang chủ</Link>
-                    <ChevronRight size={14} className="text-gray-300" />
-                    <Link to="/blog" className="hover:text-black">Blog</Link>
-                    <ChevronRight size={14} className="text-gray-300" />
-                    <span className="text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md font-bold text-xs uppercase tracking-wide">{categoryName}</span>
+                <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 dark:text-gray-400 mb-6 font-medium">
+                    <Link to="/" className="hover:text-black dark:hover:text-white flex items-center gap-1"><Home size={14}/> Trang chủ</Link>
+                    <ChevronRight size={14} className="text-gray-300 dark:text-gray-600" />
+                    <Link to="/blog" className="hover:text-black dark:hover:text-white">Blog</Link>
+                    <ChevronRight size={14} className="text-gray-300 dark:text-gray-600" />
+                    <span className="text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-md font-bold text-xs uppercase tracking-wide">{categoryName}</span>
                 </div>
 
-                <h1 className="text-3xl md:text-5xl font-black text-gray-900 mb-6 leading-tight tracking-tight">{post.title}</h1>
+                <h1 className="text-3xl md:text-5xl font-black text-gray-900 dark:text-white mb-6 leading-tight tracking-tight">{post.title}</h1>
                 
-                <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 mb-8 pb-8 border-b border-gray-100">
+                <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400 mb-8 pb-8 border-b border-gray-100 dark:border-dark-border">
                     <div className="flex items-center gap-2">
-                        <img src={post.authorAvatar || "https://cdn-icons-png.flaticon.com/512/3177/3177440.png"} className="w-8 h-8 rounded-full object-cover border border-gray-100" />
-                        <span className="font-bold text-gray-900">{post.authorName}</span>
+                        <img src={post.authorAvatar || "https://cdn-icons-png.flaticon.com/512/3177/3177440.png"} className="w-8 h-8 rounded-full object-cover border border-gray-100 dark:border-slate-600" />
+                        <span className="font-bold text-gray-900 dark:text-white">{post.authorName}</span>
                     </div>
-                    <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                    <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
                     <span className="flex items-center gap-1"><Calendar size={14}/> {new Date(post.createdAt).toLocaleDateString('vi-VN')}</span>
-                    <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                    <span className="flex items-center gap-1 text-orange-600 font-bold bg-orange-50 px-2 py-0.5 rounded-full"><Eye size={14}/> {post.views || 0} lượt xem</span>
-                    <span className="w-1 h-1 rounded-full bg-gray-300"></span>
+                    <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                    <span className="flex items-center gap-1 text-orange-600 dark:text-orange-400 font-bold bg-orange-50 dark:bg-orange-900/30 px-2 py-0.5 rounded-full"><Eye size={14}/> {post.views || 0} lượt xem</span>
+                    <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600"></span>
                     <span className="flex items-center gap-1"><Clock size={14}/> {calculateReadingTime(post.content)} phút đọc</span>
                 </div>
 
                 {post.coverImageUrl && (
-                    <div className="w-full aspect-video rounded-3xl overflow-hidden mb-10 shadow-sm bg-gray-100">
+                    <div className="w-full aspect-video rounded-3xl overflow-hidden mb-10 shadow-sm bg-gray-100 dark:bg-slate-800">
                         <img src={post.coverImageUrl} className="w-full h-full object-cover" alt={post.title} />
                     </div>
                 )}
 
-                <div className="text-gray-800 text-lg leading-relaxed md:text-xl md:leading-[1.9] [&>p]:mb-8 [&>p]:text-justify [&>h2]:text-3xl [&>h2]:font-bold [&>h2]:text-gray-900 [&>h2]:mt-12 [&>h2]:mb-6 [&>h3]:text-2xl [&>h3]:font-bold [&>h3]:text-gray-900 [&>h3]:mt-10 [&>h3]:mb-4 [&>ul]:list-disc [&>ul]:pl-6 [&>ul]:mb-8 [&>ul>li]:mb-3 [&>ul>li]:pl-2 [&>ol]:list-decimal [&>ol]:pl-6 [&>ol]:mb-8 [&>ol>li]:mb-3 [&>ol>li]:pl-2 [&>blockquote]:border-l-4 [&>blockquote]:border-blue-500 [&>blockquote]:pl-6 [&>blockquote]:italic [&>blockquote]:text-gray-600 [&>blockquote]:mb-8 [&>blockquote]:text-xl [&>img]:rounded-2xl [&>img]:w-full [&>img]:my-10 [&>img]:shadow-md [&>a]:text-blue-600 [&>a]:underline [&>a]:font-medium [&>strong]:font-bold [&>strong]:text-gray-900">
-                    <p className="text-xl md:text-2xl text-gray-600 font-serif italic mb-10 leading-relaxed">{post.excerpt}</p>
+                {/* RICH TEXT CONTENT - ĐÃ CẬP NHẬT CLASS DARK MODE CHO CÁC THẺ CON */}
+                <div className="text-gray-800 dark:text-gray-200 text-lg leading-relaxed md:text-xl md:leading-[1.9] 
+                    [&>p]:mb-8 [&>p]:text-justify 
+                    [&>h2]:text-3xl [&>h2]:font-bold [&>h2]:text-gray-900 dark:[&>h2]:text-white [&>h2]:mt-12 [&>h2]:mb-6 
+                    [&>h3]:text-2xl [&>h3]:font-bold [&>h3]:text-gray-900 dark:[&>h3]:text-white [&>h3]:mt-10 [&>h3]:mb-4 
+                    [&>ul]:list-disc [&>ul]:pl-6 [&>ul]:mb-8 [&>ul>li]:mb-3 [&>ul>li]:pl-2 
+                    [&>ol]:list-decimal [&>ol]:pl-6 [&>ol]:mb-8 [&>ol>li]:mb-3 [&>ol>li]:pl-2 
+                    [&>blockquote]:border-l-4 [&>blockquote]:border-blue-500 dark:[&>blockquote]:border-blue-400 [&>blockquote]:pl-6 [&>blockquote]:italic [&>blockquote]:text-gray-600 dark:[&>blockquote]:text-gray-400 [&>blockquote]:mb-8 [&>blockquote]:text-xl 
+                    [&>img]:rounded-2xl [&>img]:w-full [&>img]:my-10 [&>img]:shadow-md 
+                    [&>a]:text-blue-600 dark:[&>a]:text-blue-400 [&>a]:underline [&>a]:font-medium 
+                    [&>strong]:font-bold [&>strong]:text-gray-900 dark:[&>strong]:text-white">
+                    
+                    <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 font-serif italic mb-10 leading-relaxed">{post.excerpt}</p>
+                    
                     {post.youtubeUrl && (
                         <div className="my-10 rounded-2xl overflow-hidden aspect-video bg-black shadow-lg">
                             <iframe src={`https://www.youtube.com/embed/${getYoutubeId(post.youtubeUrl)}`} className="w-full h-full border-none" allowFullScreen />
                         </div>
                     )}
+                    
                     <div dangerouslySetInnerHTML={{ __html: post.content }} />
                 </div>
 
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-8 border-t border-b border-gray-100 mt-8 mb-12">
-                     {post.sourceUrl ? <a href={post.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-base font-bold text-gray-500 hover:text-blue-600 transition-colors"><ExternalLink size={18} /> Nguồn tham khảo</a> : <span></span>}
-                    <button onClick={() => setShowShare(true)} className="inline-flex items-center gap-2 text-base font-bold text-gray-900 hover:text-blue-600 transition-colors bg-gray-50 px-5 py-2.5 rounded-full"><Share2 size={18} /> Chia sẻ bài viết</button>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-8 border-t border-b border-gray-100 dark:border-dark-border mt-8 mb-12">
+                     {post.sourceUrl ? <a href={post.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-base font-bold text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"><ExternalLink size={18} /> Nguồn tham khảo</a> : <span></span>}
+                    <button onClick={() => setShowShare(true)} className="inline-flex items-center gap-2 text-base font-bold text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors bg-gray-50 dark:bg-slate-700 px-5 py-2.5 rounded-full"><Share2 size={18} /> Chia sẻ bài viết</button>
                 </div>
 
                 {/* COMMENTS */}
-                <div className="bg-gray-50/50 rounded-[2rem] p-6 md:p-10 border border-gray-100">
-                     <h3 className="font-bold text-2xl text-gray-900 mb-8 flex items-center gap-3">Bình luận <span className="text-base font-medium text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-200">{post.commentCount || comments.length}</span></h3>
-                    <div className="bg-white p-2 rounded-3xl border border-gray-200 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all mb-10">
-                        <textarea value={commentContent} onChange={e => setCommentContent(e.target.value)} className="w-full bg-transparent border-none rounded-2xl px-4 py-3 focus:ring-0 resize-none text-base min-h-[80px] placeholder-gray-400" placeholder="Mẹ nghĩ sao về bài viết này?..." />
+                <div className="bg-gray-50/50 dark:bg-dark-card/50 rounded-[2rem] p-6 md:p-10 border border-gray-100 dark:border-dark-border">
+                     <h3 className="font-bold text-2xl text-gray-900 dark:text-white mb-8 flex items-center gap-3">Bình luận <span className="text-base font-medium text-gray-500 dark:text-gray-300 bg-white dark:bg-slate-700 px-3 py-1 rounded-full border border-gray-200 dark:border-slate-600">{post.commentCount || comments.length}</span></h3>
+                    
+                    <div className="bg-white dark:bg-slate-800 p-2 rounded-3xl border border-gray-200 dark:border-slate-700 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/10 focus-within:border-blue-500 transition-all mb-10">
+                        <textarea value={commentContent} onChange={e => setCommentContent(e.target.value)} className="w-full bg-transparent border-none rounded-2xl px-4 py-3 focus:ring-0 resize-none text-base min-h-[80px] placeholder-gray-400 dark:placeholder-gray-500 text-textDark dark:text-white" placeholder="Mẹ nghĩ sao về bài viết này?..." />
                         <div className="flex justify-between items-center px-2 pb-2 mt-2">
-                             <span className="text-xs text-gray-400 font-medium pl-2">{currentUser.isGuest ? 'Đang ẩn danh' : currentUser.name}</span>
-                            <button onClick={handleSendComment} disabled={!commentContent.trim() || submittingComment} className="bg-black text-white px-6 py-2 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-gray-800 transition-colors flex items-center gap-2">{submittingComment ? <Loader2 className="animate-spin" size={16} /> : <>Gửi <Send size={14}/></>}</button>
+                             <span className="text-xs text-gray-400 dark:text-gray-500 font-medium pl-2">{currentUser.isGuest ? 'Đang ẩn danh' : currentUser.name}</span>
+                            <button onClick={handleSendComment} disabled={!commentContent.trim() || submittingComment} className="bg-black dark:bg-primary text-white px-6 py-2 rounded-xl text-sm font-bold disabled:opacity-50 hover:bg-gray-800 dark:hover:bg-primary/80 transition-colors flex items-center gap-2">{submittingComment ? <Loader2 className="animate-spin" size={16} /> : <>Gửi <Send size={14}/></>}</button>
                         </div>
                     </div>
+
                     <div className="space-y-6">
                         {comments.map(c => (
                             <div key={c.id} className="flex gap-4 animate-fade-in">
-                                <img src={c.authorAvatar} className="w-10 h-10 rounded-full bg-gray-200 object-cover border border-white shadow-sm shrink-0" />
+                                <img src={c.authorAvatar} className="w-10 h-10 rounded-full bg-gray-200 dark:bg-slate-700 object-cover border border-white dark:border-slate-600 shadow-sm shrink-0" />
                                 <div className="flex-1">
-                                    <div className="bg-white p-4 rounded-2xl rounded-tl-none border border-gray-100 shadow-sm">
+                                    <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl rounded-tl-none border border-gray-100 dark:border-slate-700 shadow-sm">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="font-bold text-sm text-gray-900">{c.authorName}</span>
-                                            <span className="text-xs text-gray-400">{new Date(c.createdAt).toLocaleDateString('vi-VN')}</span>
+                                            <span className="font-bold text-sm text-gray-900 dark:text-white">{c.authorName}</span>
+                                            <span className="text-xs text-gray-400 dark:text-gray-500">{new Date(c.createdAt).toLocaleDateString('vi-VN')}</span>
                                         </div>
-                                        <div className="text-gray-800 text-[15px] whitespace-pre-wrap">{c.content}</div>
+                                        <div className="text-gray-800 dark:text-gray-200 text-[15px] whitespace-pre-wrap">{c.content}</div>
                                     </div>
                                 </div>
                             </div>
                         ))}
-                        {hasMore && <button onClick={handleLoadMore} disabled={isFetchingMore} className="w-full py-3 mt-4 text-sm font-bold text-gray-500 hover:bg-white hover:shadow-sm rounded-xl transition-all">{isFetchingMore ? <Loader2 className="animate-spin mx-auto" size={20} /> : "Xem thêm bình luận"}</button>}
-                        {comments.length === 0 && <p className="text-center text-gray-400 italic">Chưa có bình luận nào.</p>}
+                        {hasMore && <button onClick={handleLoadMore} disabled={isFetchingMore} className="w-full py-3 mt-4 text-sm font-bold text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm rounded-xl transition-all">{isFetchingMore ? <Loader2 className="animate-spin mx-auto" size={20} /> : "Xem thêm bình luận"}</button>}
+                        {comments.length === 0 && <p className="text-center text-gray-400 dark:text-gray-600 italic">Chưa có bình luận nào.</p>}
                     </div>
                 </div>
             </main>
@@ -239,18 +254,18 @@ export const BlogDetail: React.FC<{ currentUser: User; onOpenAuth: () => void }>
                     
                     {/* 1. MOST VIEWED */}
                     {mostViewedPosts.length > 0 && (
-                        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-                            <h3 className="font-bold text-lg text-gray-900 mb-6 flex items-center gap-2">
-                                <span className="bg-orange-100 text-orange-600 p-1.5 rounded-lg"><TrendingUp size={18} /></span>
+                        <div className="bg-white dark:bg-dark-card rounded-3xl p-6 border border-gray-100 dark:border-dark-border shadow-sm">
+                            <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+                                <span className="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 p-1.5 rounded-lg"><TrendingUp size={18} /></span>
                                 Đọc nhiều nhất
                             </h3>
                             <div className="flex flex-col gap-5">
                                 {mostViewedPosts.map((p, index) => (
                                     <Link to={`/blog/${p.slug}`} key={p.id} className="group flex gap-4 items-start">
-                                        <span className={`text-2xl font-black leading-none mt-1 ${index === 0 ? 'text-orange-500' : index === 1 ? 'text-blue-500' : index === 2 ? 'text-green-500' : 'text-gray-200'}`}>0{index + 1}</span>
+                                        <span className={`text-2xl font-black leading-none mt-1 ${index === 0 ? 'text-orange-500' : index === 1 ? 'text-blue-500' : index === 2 ? 'text-green-500' : 'text-gray-200 dark:text-slate-700'}`}>0{index + 1}</span>
                                         <div className="flex-1">
-                                            <h4 className="font-bold text-sm text-gray-900 leading-snug group-hover:text-primary transition-colors mb-1 line-clamp-2">{p.title}</h4>
-                                            <span className="text-xs text-gray-400 flex items-center gap-1 font-medium"><Eye size={12} /> {p.views || 0} lượt xem</span>
+                                            <h4 className="font-bold text-sm text-gray-900 dark:text-gray-200 leading-snug group-hover:text-primary transition-colors mb-1 line-clamp-2">{p.title}</h4>
+                                            <span className="text-xs text-gray-400 dark:text-gray-500 flex items-center gap-1 font-medium"><Eye size={12} /> {p.views || 0} lượt xem</span>
                                         </div>
                                     </Link>
                                 ))}
@@ -258,7 +273,7 @@ export const BlogDetail: React.FC<{ currentUser: User; onOpenAuth: () => void }>
                         </div>
                     )}
 
-                    {/* 2. DYNAMIC AD BANNER (Lấy từ Config) */}
+                    {/* 2. DYNAMIC AD BANNER */}
                     {adConfig?.isEnabled && adConfig.sidebarAd?.enabled && (
                         <div className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${adConfig.sidebarAd.gradient} p-6 text-white shadow-lg text-center animate-fade-in`}>
                             <div className="absolute top-0 right-0 w-24 h-24 bg-white opacity-10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
@@ -281,17 +296,17 @@ export const BlogDetail: React.FC<{ currentUser: User; onOpenAuth: () => void }>
 
                     {/* 3. RELATED POSTS */}
                     {relatedPosts.length > 0 && (
-                        <div className="bg-gray-50/50 rounded-3xl p-6 border border-gray-100">
-                             <h3 className="font-bold text-lg text-gray-900 mb-6 flex items-center gap-2"><span className="w-1 h-5 bg-blue-600 rounded-full"></span> Có thể mẹ quan tâm</h3>
+                        <div className="bg-gray-50/50 dark:bg-dark-card rounded-3xl p-6 border border-gray-100 dark:border-dark-border">
+                             <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-6 flex items-center gap-2"><span className="w-1 h-5 bg-blue-600 rounded-full"></span> Có thể mẹ quan tâm</h3>
                             <div className="flex flex-col gap-4">
                                 {relatedPosts.map(p => (
-                                    <Link to={`/blog/${p.slug}`} key={p.id} className="group flex gap-3 items-center bg-white p-2 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-                                        <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden shrink-0">
-                                            {p.coverImageUrl ? <img src={p.coverImageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xl">{p.iconEmoji}</div>}
+                                    <Link to={`/blog/${p.slug}`} key={p.id} className="group flex gap-3 items-center bg-white dark:bg-slate-800 p-2 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm hover:shadow-md transition-all">
+                                        <div className="w-16 h-16 rounded-lg bg-gray-100 dark:bg-slate-700 overflow-hidden shrink-0 flex items-center justify-center">
+                                            {p.coverImageUrl ? <img src={p.coverImageUrl} className="w-full h-full object-cover" /> : <div className="text-xl">{p.iconEmoji}</div>}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <h4 className="font-bold text-xs text-gray-900 leading-snug group-hover:text-blue-600 transition-colors line-clamp-2 mb-1">{p.title}</h4>
-                                            <span className="text-[10px] text-gray-400">{new Date(p.createdAt).toLocaleDateString('vi-VN')}</span>
+                                            <h4 className="font-bold text-xs text-gray-900 dark:text-gray-200 leading-snug group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-2 mb-1">{p.title}</h4>
+                                            <span className="text-[10px] text-gray-400 dark:text-gray-500">{new Date(p.createdAt).toLocaleDateString('vi-VN')}</span>
                                         </div>
                                     </Link>
                                 ))}
