@@ -11,7 +11,7 @@ import { suggestTitles, generateQuestionContent } from '../services/gemini';
 import { AuthModal } from '../components/AuthModal';
 import { uploadFile } from '../services/storage'; 
 import { loginAnonymously } from '../services/auth';
-// --- IMPORT MỚI: Thêm hàm addCategory để lưu danh mục người dùng tạo ---
+// --- IMPORT QUAN TRỌNG: Hàm tương tác với danh mục trên Firebase ---
 import { fetchCategories, addCategory } from '../services/admin';
 
 // --- CONFIGURATION & CONSTANTS ---
@@ -62,6 +62,7 @@ interface ToastMessage {
 }
 
 const getCategoryStyle = (catName: string) => {
+  // Tìm cấu hình style dựa trên tên, nếu không có trả về Default
   const key = Object.keys(CATEGORY_CONFIG).find(k => catName.includes(k)) || "Default";
   return CATEGORY_CONFIG[key];
 };
@@ -94,8 +95,9 @@ export const Ask: React.FC<AskProps> = ({
   const navigate = useNavigate();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
+  // State quản lý danh sách danh mục (gồm cả hardcode + DB)
   const [allCategories, setAllCategories] = useState<string[]>(categories);
-  const [isAddingCategory, setIsAddingCategory] = useState(false); // Loading state khi thêm danh mục
+  const [isAddingCategory, setIsAddingCategory] = useState(false); 
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -116,11 +118,13 @@ export const Ask: React.FC<AskProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
+  // 1. TẢI DANH MỤC TỪ FIREBASE
   useEffect(() => {
     const loadDynamicCategories = async () => {
       try {
         const dbCategories = await fetchCategories();
         const dbCategoryNames = dbCategories.map(c => c.name);
+        // Gộp danh mục từ props và DB, loại bỏ trùng lặp
         const merged = Array.from(new Set([...categories, ...dbCategoryNames]));
         setAllCategories(merged);
       } catch (error) {
@@ -221,11 +225,11 @@ export const Ask: React.FC<AskProps> = ({
     setAttachments(prev => prev.filter(att => att.id !== id));
   };
 
-  // --- XỬ LÝ THÊM DANH MỤC MỚI VÀO FIREBASE ---
+  // --- 2. XỬ LÝ THÊM DANH MỤC MỚI VÀO FIREBASE ---
   const handleAddCustomCategory = async () => {
     const newCat = customCategory.trim();
     if (newCat) {
-      // 1. Kiểm tra xem đã có chưa
+      // a. Kiểm tra xem đã có chưa
       if (allCategories.includes(newCat)) {
           setCategory(newCat);
           setCustomCategory('');
@@ -235,14 +239,14 @@ export const Ask: React.FC<AskProps> = ({
 
       setIsAddingCategory(true);
       try {
-          // 2. Lưu vào Firebase (Collection 'categories')
+          // b. Lưu vào Firebase (Collection 'categories')
           await addCategory(newCat);
           
-          // 3. Cập nhật state cục bộ để hiện ngay
+          // c. Cập nhật state cục bộ để hiện ngay
           setAllCategories(prev => [...prev, newCat]);
           setCategory(newCat);
           
-          // 4. Reset form
+          // d. Reset form
           setCustomCategory('');
           setShowCategorySheet(false);
           showToast("Đã thêm chủ đề mới!", "success");
