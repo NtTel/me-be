@@ -6,5 +6,31 @@
         "profile": "Profile",
         "ask": "Question",
         "ai-chat": "AI assistant"
+    },
+    "ask": {
+        "pageTitle": "Ask a question",
+        "categorySheetTitle": "Choose a question topic",
+        "customCategoryPlaceholder": "Or enter another topic...",
+        "aiSuggestErrorShortTitle": "Please enter at least a few words so AI can understand you.",
+        "aiBusyError": "AI is busy, please try again later.",
+        "aiNeedTitleError": "Enter a clear title first (at least 5 characters).",
+        "aiOverwriteConfirm": "AI will overwrite the current content. Do you agree?",
+        "aiWriteDone": "AI has generated the content for you.",
+        "aiOverloaded": "System is overloaded. Please write the question yourself.",
+        "aiError": "Error while calling AI.",
+        "imageLimitError": "You can upload up to 3 images.",
+        "selectedLabel": "Selected",
+        "submitButton": "Post question",
+        "submittingButton": "Posting...",
+        "categories": {
+            "Mang thai": "Pregnancy",
+            "Dinh dưỡng": "Nutrition",
+            "Sức khỏe": "Health",
+            "0-1 tuổi": "0–1 year",
+            "1-3 tuổi": "1–3 years",
+            "Tâm lý": "Psychology",
+            "Giáo dục sớm": "Education",
+            "Gia đình": "Family"
+        }
     }
 }

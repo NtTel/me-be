@@ -4,15 +4,15 @@ export interface User {
   avatar: string;
   isExpert: boolean;
   expertStatus?: 'none' | 'pending' | 'approved' | 'rejected';
-  specialty?: string; 
+  specialty?: string;
   workplace?: string;
   isAdmin?: boolean;
   isBanned?: boolean;
   bio?: string;
-  
-  username?: string; 
-  coverUrl?: string; 
-  
+
+  username?: string;
+  coverUrl?: string;
+
   points?: number;
   joinedAt?: string;
   isGuest?: boolean;
@@ -51,7 +51,7 @@ export interface Question {
   likes: number;
   views: number;
   createdAt: string;
-  images?: string[]; 
+  images?: string[];
   isHidden?: boolean;
   reportCount?: number;
   isFake?: boolean;
@@ -59,7 +59,7 @@ export interface Question {
 
 export interface Notification {
   id: string;
-  userId: string; 
+  userId: string;
   sender: { name: string; avatar: string };
   type: 'LIKE' | 'ANSWER' | 'VERIFY' | 'SYSTEM' | 'BEST_ANSWER' | 'FOLLOW' | 'MESSAGE';
   content: string;
@@ -76,14 +76,14 @@ export interface Message {
   content: string;
   createdAt: string;
   isRead: boolean;
-  type: 'text' | 'image' | 'story_reply'; 
-  storyId?: string;       
-  storySnapshotUrl?: string; 
+  type: 'text' | 'image' | 'story_reply';
+  storyId?: string;
+  storySnapshotUrl?: string;
 }
 
 export interface ChatSession {
   id: string;
-  participants: string[]; 
+  participants: string[];
   participantData: { [uid: string]: { name: string; avatar: string; isExpert?: boolean } };
   lastMessage: string;
   lastMessageTime: string;
@@ -93,20 +93,20 @@ export interface ChatSession {
 
 export interface Story {
   id: string;
-  userId: string;          
-  userName: string;        
-  userAvatar: string;      
-  userIsExpert?: boolean;  
-  mediaUrl: string;        
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  userIsExpert?: boolean;
+  mediaUrl: string;
   mediaType: 'image' | 'video';
-  caption?: string;        
-  createdAt: string;       
-  expiresAt: string;       
-  viewers: string[];       
-  likes: string[];         
+  caption?: string;
+  createdAt: string;
+  expiresAt: string;
+  viewers: string[];
+  likes: string[];
 }
 
-export type GameCategory = string; 
+export type GameCategory = string;
 export type GameType = 'quiz' | 'html5' | 'story' | 'ai-story';
 export type GameOrientation = 'portrait' | 'landscape' | 'auto';
 
@@ -287,9 +287,9 @@ export interface Document {
   title: string;
   slug: string;
   description: string;
-  isExternal?: boolean; 
-  externalLink?: string; 
-  fileUrl?: string;      
+  isExternal?: boolean;
+  externalLink?: string;
+  fileUrl?: string;
   fileType: 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'image' | 'video' | 'link' | 'other';
   fileName?: string;
   fileSize?: number;
@@ -301,7 +301,7 @@ export interface Document {
   authorIsExpert: boolean;
   views: number;
   downloads: number;
-  rating: number; 
+  rating: number;
   ratingCount: number;
   createdAt: string;
   updatedAt: string;
@@ -361,7 +361,7 @@ export const getIdFromSlug = (slug: string | undefined): string => {
   if (!slug) return '';
   const lastHyphenIndex = slug.lastIndexOf('-');
   if (lastHyphenIndex !== -1) {
-      return slug.substring(lastHyphenIndex + 1);
+    return slug.substring(lastHyphenIndex + 1);
   }
   return slug;
 };
