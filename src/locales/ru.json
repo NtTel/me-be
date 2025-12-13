@@ -31,6 +31,26 @@
             "Tâm lý": "Психология",
             "Giáo dục sớm": "Образование",
             "Gia đình": "Семья"
-        }
+        },
+        "headerTitle": "Задать вопрос",
+        "titleLabel": "Заголовок",
+        "titlePlaceholder": "Пример: Ребёнку 6 месяцев, поднялась температура — что делать?",
+        "aiSuggestButtonIdle": "Подсказать заголовок",
+        "aiSuggestButtonLoading": "AI думает...",
+        "contentLabel": "Подробное описание",
+        "aiWriteButton": "Пусть AI напишет",
+        "aiWritingOverlay": "AI пишет текст, подождите немного...",
+        "contentPlaceholder": "Опишите подробнее состояние ребёнка или проблему, с которой вы столкнулись...",
+        "toastEmptyTitleOrContent": "Пожалуйста, заполните заголовок и текст вопроса.",
+        "toastImagesUploading": "Изображения ещё загружаются, подождите немного.",
+        "toastUnknownError": "Произошла неожиданная ошибка. Попробуйте позже.",
+        "toastSubmitEmpty": "Пожалуйста, заполните все данные перед отправкой.",
+        "linkPlaceholder": "Вставьте ссылку сюда...",
+        "linkInsertButton": "Вставить",
+        "stickersSection.emotions": "Эмоции",
+        "stickersSection.love": "Любовь",
+        "stickersSection.momAndBaby": "Мама и малыш",
+        "stickersSection.animals": "Животные",
+        "stickersSection.food": "Еда"
     }
 }

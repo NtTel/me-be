@@ -31,6 +31,26 @@
             "Tâm lý": "Psychology",
             "Giáo dục sớm": "Education",
             "Gia đình": "Family"
-        }
+        },
+        "headerTitle": "Ask a question",
+        "titleLabel": "Title",
+        "titlePlaceholder": "Example: My 6‑month‑old baby has a fever, what should I do?",
+        "aiSuggestButtonIdle": "Suggest a title",
+        "aiSuggestButtonLoading": "AI is thinking...",
+        "contentLabel": "Detailed description",
+        "aiWriteButton": "Let AI write",
+        "aiWritingOverlay": "AI is writing, please wait...",
+        "contentPlaceholder": "Describe in more detail your baby’s condition or the problem you are facing...",
+        "toastEmptyTitleOrContent": "Please fill in both title and content before posting.",
+        "toastImagesUploading": "Images are still uploading, please wait a moment.",
+        "toastUnknownError": "An unexpected error occurred. Please try again later.",
+        "toastSubmitEmpty": "Please fill in all information before posting.",
+        "linkPlaceholder": "Paste the link here...",
+        "linkInsertButton": "Insert",
+        "stickersSection.emotions": "Emotions",
+        "stickersSection.love": "Love",
+        "stickersSection.momAndBaby": "Mom & Baby",
+        "stickersSection.animals": "Animals",
+        "stickersSection.food": "Food"
     }
 }
