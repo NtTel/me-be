@@ -1,6 +1,6 @@
 import { Message } from '../types';
-// SỬA LẠI DÒNG NÀY:
-import { db } from '../firebaseConfig';
+// SỬA ĐÚNG TÊN FILE CẤU HÌNH CỦA BẠN
+import { db } from '../firebaseConfig'; 
 import { 
   collection, addDoc, query, where, orderBy, getDocs 
 } from 'firebase/firestore';
@@ -42,7 +42,7 @@ export const sendMessage = async (
   const conversationId = getConversationId(senderId, receiverId);
 
   const newMessageData = {
-    conversationId,
+    conversationId, 
     senderId,
     receiverId,
     content,
@@ -54,8 +54,6 @@ export const sendMessage = async (
   };
 
   const docRef = await addDoc(collection(db, 'messages'), newMessageData);
-
-  console.log("LOG: Đã lưu tin nhắn lên Firestore:", docRef.id);
   return { id: docRef.id, ...newMessageData } as Message;
 };
 
