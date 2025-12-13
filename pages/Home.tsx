@@ -17,23 +17,25 @@ import { fetchStories, createStory, markStoryViewed } from '../services/stories'
 import { sendMessage } from '../services/chat'; 
 
 interface HomeProps {
-  questions: Question[];
-  categories: string[];
-  currentUser: User;
+  questions?: Question[]; // Thêm dấu ? để an toàn nếu parent chưa truyền
+  categories?: string[];
+  currentUser?: User;     // Thêm dấu ? để an toàn khi chưa đăng nhập
 }
 
 const PAGE_SIZE = 20;
 
 // --- COMPONENT: STORY VIEWER (XEM TIN & CHAT TRỰC TIẾP) ---
-const StoryViewer = ({ story, onClose, currentUser }: { story: Story, onClose: () => void, currentUser: User }) => {
+const StoryViewer = ({ story, onClose, currentUser }: { story: Story, onClose: () => void, currentUser?: User }) => {
   const [progress, setProgress] = useState(0);
   const [replyText, setReplyText] = useState('');
   const [isSending, setIsSending] = useState(false);
 
-  // Đánh dấu đã xem
+  // Đánh dấu đã xem (Chỉ khi có currentUser)
   useEffect(() => {
-    markStoryViewed(story.id, currentUser.id);
-  }, [story.id, currentUser.id]);
+    if (currentUser?.id) {
+      markStoryViewed(story.id, currentUser.id);
+    }
+  }, [story.id, currentUser]);
 
   // Thanh thời gian chạy tự động
   useEffect(() => {
@@ -44,18 +46,16 @@ const StoryViewer = ({ story, onClose, currentUser }: { story: Story, onClose: (
           onClose();
           return 100;
         }
-        return prev + 1; // Tốc độ chạy của story
+        return prev + 1; 
       });
     }, 50); 
     return () => clearInterval(timer);
   }, [onClose]);
 
-  // Xử lý gửi tin nhắn trả lời Story
   const handleSendReply = async () => {
-      if(!replyText.trim() || isSending) return;
+      if(!replyText.trim() || isSending || !currentUser) return;
       setIsSending(true);
       try {
-          // Gọi hàm sendMessage từ file services/chat.ts
           await sendMessage(
               currentUser.id, 
               story.userId, 
@@ -64,10 +64,9 @@ const StoryViewer = ({ story, onClose, currentUser }: { story: Story, onClose: (
               { storyId: story.id, snapshotUrl: story.mediaUrl }
           );
           setReplyText('');
-          alert('Đã gửi tin nhắn!'); // Thông báo hoặc hiệu ứng gửi thành công
+          alert('Đã gửi tin nhắn!');
       } catch (e) {
           console.error(e);
-          alert('Gửi thất bại');
       } finally {
           setIsSending(false);
       }
@@ -76,15 +75,12 @@ const StoryViewer = ({ story, onClose, currentUser }: { story: Story, onClose: (
   return (
     <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center animate-fade-in">
       <div className="relative w-full h-full md:max-w-md md:h-[90vh] md:rounded-2xl overflow-hidden bg-gray-900 shadow-2xl">
-        
-        {/* 1. Progress Bar */}
         <div className="absolute top-4 left-2 right-2 flex gap-1 z-20">
           <div className="h-1 flex-1 bg-white/30 rounded-full overflow-hidden">
             <div className="h-full bg-white transition-all duration-100 ease-linear" style={{ width: `${progress}%` }} />
           </div>
         </div>
 
-        {/* 2. Header: Info người đăng */}
         <div className="absolute top-8 left-4 right-4 flex items-center justify-between z-20 text-white">
           <div className="flex items-center gap-2">
             <img src={story.userAvatar} className="w-9 h-9 rounded-full border border-white/50 object-cover" alt="avatar"/>
@@ -96,42 +92,39 @@ const StoryViewer = ({ story, onClose, currentUser }: { story: Story, onClose: (
           <button onClick={onClose} className="p-1 hover:bg-white/20 rounded-full transition-colors"><X size={24} /></button>
         </div>
 
-        {/* 3. Nội dung ảnh/video */}
         <div className="absolute inset-0 flex items-center justify-center bg-black">
             <img src={story.mediaUrl} className="w-full h-full object-cover" alt="content" />
-            {/* Gradient để text dễ đọc hơn */}
             <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60 pointer-events-none"></div>
         </div>
 
-        {/* 4. Footer: Ô nhập tin nhắn kết nối Chat */}
-        <div className="absolute bottom-0 left-0 right-0 z-30 p-4 pb-6 flex items-center gap-3">
-          <div className="flex-1 relative">
-              <input 
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder={`Gửi tin nhắn cho ${story.userName}...`} 
-                className="w-full bg-transparent border border-white/60 rounded-full pl-5 pr-10 py-3 text-white placeholder-white/70 text-sm outline-none focus:border-white focus:bg-black/20 transition-all backdrop-blur-sm" 
-              />
+        {/* Chỉ hiện ô chat nếu đã đăng nhập */}
+        {currentUser && (
+          <div className="absolute bottom-0 left-0 right-0 z-30 p-4 pb-6 flex items-center gap-3">
+            <div className="flex-1 relative">
+                <input 
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  placeholder={`Gửi tin nhắn cho ${story.userName}...`} 
+                  className="w-full bg-transparent border border-white/60 rounded-full pl-5 pr-10 py-3 text-white placeholder-white/70 text-sm outline-none focus:border-white focus:bg-black/20 transition-all backdrop-blur-sm" 
+                />
+            </div>
+            {replyText.trim() ? (
+                <button onClick={handleSendReply} disabled={isSending} className="p-3 bg-primary text-white rounded-full hover:bg-primary/90 transition-transform active:scale-95 disabled:opacity-50">
+                    {isSending ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} className="ml-0.5" />}
+                </button>
+            ) : (
+                <button className="p-3 hover:bg-white/10 rounded-full text-white transition-colors active:scale-90">
+                    <Heart size={28} />
+                </button>
+            )}
           </div>
-          
-          {replyText.trim() ? (
-              <button onClick={handleSendReply} disabled={isSending} className="p-3 bg-primary text-white rounded-full hover:bg-primary/90 transition-transform active:scale-95 disabled:opacity-50">
-                  {isSending ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} className="ml-0.5" />}
-              </button>
-          ) : (
-              <button className="p-3 hover:bg-white/10 rounded-full text-white transition-colors active:scale-90">
-                  <Heart size={28} />
-              </button>
-          )}
-        </div>
-
+        )}
       </div>
     </div>
   );
 };
 
-// --- CÁC COMPONENT PHỤ (Giữ nguyên style cũ) ---
-
+// --- CÁC COMPONENT PHỤ ---
 const FBImageGrid: React.FC<{ images: string[] }> = ({ images }) => {
   if (!images || images.length === 0) return null;
   const count = images.length;
@@ -173,7 +166,8 @@ const SearchTabs = ({ activeTab, onChange, counts }: { activeTab: string, onChan
   );
 };
 
-export const Home: React.FC<HomeProps> = ({ questions, categories, currentUser }) => {
+// --- MAIN COMPONENT: HOME ---
+export const Home: React.FC<HomeProps> = ({ questions = [], categories = [], currentUser }) => {
   const [activeCategory, setActiveCategory] = useState<string>('Tất cả');
   const [viewFilter, setViewFilter] = useState<'newest' | 'active' | 'unanswered'>('newest');
   
@@ -192,24 +186,31 @@ export const Home: React.FC<HomeProps> = ({ questions, categories, currentUser }
 
   useEffect(() => {
       const unsub = subscribeToAdConfig(config => setAdConfig(config));
-      Promise.all([
-          fetchPublishedPosts('all', 50),
-          fetchDocuments('all', 50),
-          getAdConfig(),
-          fetchStories(currentUser) // Fetch stories từ service
-      ]).then(([blogs, docs, ads, fetchedStories]) => {
+      
+      const fetchData = async () => {
+          const [blogs, docs, ads] = await Promise.all([
+              fetchPublishedPosts('all', 50),
+              fetchDocuments('all', 50),
+              getAdConfig()
+          ]);
           if (blogs) setBlogPosts(blogs);
           if (docs) setDocuments(docs);
           if (ads) setAdConfig(ads);
-          if (fetchedStories) setStories(fetchedStories);
-      });
+          
+          // Chỉ fetch story khi đã đăng nhập
+          if (currentUser) {
+              const fetchedStories = await fetchStories(currentUser);
+              if (fetchedStories) setStories(fetchedStories);
+          }
+      };
+      
+      fetchData();
       return () => unsub();
-  }, [currentUser]); // Chạy lại khi user thay đổi để lấy story của người mình follow
+  }, [currentUser]); 
 
-  // Xử lý tạo tin mới
   const handleCreateStory = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (!file) return;
+      if (!file || !currentUser) return; // Bảo vệ: Không có user thì không đăng được
 
       setIsUploadingStory(true);
       try {
@@ -228,53 +229,58 @@ export const Home: React.FC<HomeProps> = ({ questions, categories, currentUser }
     setVisibleCount(PAGE_SIZE);
   }, [activeCategory, viewFilter, searchQuery, searchTab]);
 
-  // --- LOGIC SEARCH (Giữ nguyên) ---
+  // --- LOGIC SEARCH (An toàn với mảng rỗng) ---
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return { questions: [], blogs: [], docs: [], users: [] };
     const query = searchQuery.toLowerCase().trim();
 
-    const matchedQuestions = questions.filter(q => {
-      const matchMain = q.title.toLowerCase().includes(query) || q.content.toLowerCase().includes(query);
-      const matchAuthor = q.author.name.toLowerCase().includes(query);
-      const matchAnswers = q.answers.some(a => 
-        a.content.toLowerCase().includes(query) || a.author.name.toLowerCase().includes(query)
+    // Dùng toán tử ?. và || [] để tránh lỗi undefined
+    const safeQuestions = questions || [];
+    
+    const matchedQuestions = safeQuestions.filter(q => {
+      if (!q) return false;
+      const matchMain = q.title?.toLowerCase().includes(query) || q.content?.toLowerCase().includes(query);
+      const matchAuthor = q.author?.name?.toLowerCase().includes(query);
+      const matchAnswers = q.answers?.some(a => 
+        a.content?.toLowerCase().includes(query) || a.author?.name?.toLowerCase().includes(query)
       );
       return matchMain || matchAuthor || matchAnswers;
     });
 
     const matchedBlogs = blogPosts.filter(p => 
-       p.title.toLowerCase().includes(query) || 
+       p.title?.toLowerCase().includes(query) || 
        p.excerpt?.toLowerCase().includes(query) ||
-       p.authorName.toLowerCase().includes(query)
+       p.authorName?.toLowerCase().includes(query)
     );
 
     const matchedDocs = documents.filter(d => 
-       d.title.toLowerCase().includes(query) ||
-       d.authorName.toLowerCase().includes(query)
+       d.title?.toLowerCase().includes(query) ||
+       d.authorName?.toLowerCase().includes(query)
     );
 
     const usersMap = new Map<string, User>();
-    questions.forEach(q => {
-        if (q.author.name.toLowerCase().includes(query)) usersMap.set(q.author.id, q.author);
-        q.answers.forEach(a => {
-            if (a.author.name.toLowerCase().includes(query)) usersMap.set(a.author.id, a.author);
+    safeQuestions.forEach(q => {
+        if (q?.author?.name?.toLowerCase().includes(query)) usersMap.set(q.author.id, q.author);
+        q?.answers?.forEach(a => {
+            if (a?.author?.name?.toLowerCase().includes(query)) usersMap.set(a.author.id, a.author);
         });
     });
     
     return { questions: matchedQuestions, blogs: matchedBlogs, docs: matchedDocs, users: Array.from(usersMap.values()) };
   }, [searchQuery, questions, blogPosts, documents]);
 
-  // --- LOGIC FILTER (Giữ nguyên) ---
-  let displayList = [...questions];
+  // --- LOGIC FILTER (An toàn) ---
+  let displayList = [...(questions || [])]; // Bảo vệ mảng rỗng
+  
   if (!searchQuery) {
       if (activeCategory !== 'Tất cả') {
-          displayList = displayList.filter(q => q.category === activeCategory);
+          displayList = displayList.filter(q => q && q.category === activeCategory);
       }
       switch (viewFilter) {
         case 'newest': displayList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()); break;
-        case 'active': displayList.sort((a, b) => (b.answers.length * 2 + b.likes) - (a.answers.length * 2 + a.likes)); break;
+        case 'active': displayList.sort((a, b) => ((b.answers?.length || 0) * 2 + (b.likes || 0)) - ((a.answers?.length || 0) * 2 + (a.likes || 0))); break;
         case 'unanswered': 
-            displayList = displayList.filter(q => q.answers.length === 0); 
+            displayList = displayList.filter(q => (q.answers?.length || 0) === 0); 
             displayList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
             break;
       }
@@ -286,50 +292,40 @@ export const Home: React.FC<HomeProps> = ({ questions, categories, currentUser }
   const paginatedList = displayList.slice(0, visibleCount);
 
   // --- RENDER HELPERS ---
-  const renderUserCard = (user: User) => (
-    <Link to={`/profile/${user.username || user.id}`} key={user.id} 
-      className="flex-shrink-0 bg-white dark:bg-dark-card p-3 pr-5 rounded-2xl border border-gray-100 dark:border-dark-border shadow-sm flex items-center gap-3 min-w-[160px] active:scale-95 transition-transform hover:border-blue-200 dark:hover:border-blue-500/50">
-        <div className="relative">
-          <img src={user.avatar} className="w-10 h-10 rounded-full object-cover border border-gray-100 dark:border-slate-600" />
-          {user.isExpert && <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-0.5 border border-white dark:border-dark-card"><ShieldCheck size={10} /></div>}
-        </div>
-        <div className="flex flex-col">
-          <span className="text-sm font-bold text-textDark dark:text-dark-text truncate max-w-[100px]">{user.name}</span>
-          <span className="text-[10px] text-primary font-medium">Xem trang</span>
-        </div>
-    </Link>
-  );
-
-  const renderBlogCard = (post: BlogPost) => (
-     <Link to={`/blog/${post.slug}`} key={post.id} 
-        className="flex gap-4 bg-white dark:bg-dark-card p-4 rounded-2xl border border-gray-100 dark:border-dark-border shadow-sm hover:shadow-md transition-all active:scale-[0.99]">
-        <div className="w-24 h-24 rounded-xl bg-gray-100 dark:bg-slate-700 shrink-0 overflow-hidden flex items-center justify-center">
-            {post.coverImageUrl ? <img src={post.coverImageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-3xl text-gray-400">{post.iconEmoji || '📝'}</div>}
-        </div>
-        <div className="flex-1 min-w-0">
-            <h4 className="font-bold text-textDark dark:text-dark-text line-clamp-2 mb-1">{post.title}</h4>
-            <p className="text-xs text-textGray dark:text-dark-muted line-clamp-2 mb-2">{post.excerpt}</p>
-            <div className="flex items-center gap-2 text-[10px] text-gray-400 dark:text-gray-500">
-                <span>{post.authorName}</span> • <span>{new Date(post.createdAt).toLocaleDateString('vi-VN')}</span>
+  const renderUserCard = (user: User) => {
+    if (!user) return null;
+    return (
+        <Link to={`/profile/${user.username || user.id}`} key={user.id} 
+        className="flex-shrink-0 bg-white dark:bg-dark-card p-3 pr-5 rounded-2xl border border-gray-100 dark:border-dark-border shadow-sm flex items-center gap-3 min-w-[160px] active:scale-95 transition-transform hover:border-blue-200 dark:hover:border-blue-500/50">
+            <div className="relative">
+            <img src={user.avatar} className="w-10 h-10 rounded-full object-cover border border-gray-100 dark:border-slate-600" alt="" />
+            {user.isExpert && <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-0.5 border border-white dark:border-dark-card"><ShieldCheck size={10} /></div>}
             </div>
-        </div>
-     </Link>
-  );
+            <div className="flex flex-col">
+            <span className="text-sm font-bold text-textDark dark:text-dark-text truncate max-w-[100px]">{user.name}</span>
+            <span className="text-[10px] text-primary font-medium">Xem trang</span>
+            </div>
+        </Link>
+    );
+  };
 
-  const renderDocCard = (doc: Document) => (
-    <Link to={`/documents/${doc.slug}`} key={doc.id} 
-       className="flex items-center gap-4 bg-white dark:bg-dark-card p-3 rounded-2xl border border-gray-100 dark:border-dark-border shadow-sm active:scale-[0.98] transition-transform group hover:border-green-200 dark:hover:border-green-500/50">
-        <div className="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center text-2xl shrink-0">
-            {doc.fileType === 'pdf' ? '📕' : doc.fileType === 'image' ? '🖼️' : '📄'}
-        </div>
-        <div className="flex-1 min-w-0">
-            <h4 className="font-bold text-sm text-textDark dark:text-dark-text line-clamp-1 group-hover:text-green-600 dark:group-hover:text-green-400">{doc.title}</h4>
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 line-clamp-1 flex items-center gap-2">
-                <span>{doc.authorName}</span> • <span className="flex items-center gap-0.5"><Download size={10}/> {doc.downloads}</span>
-            </p>
-        </div>
-    </Link>
-  );
+  const renderDocCard = (doc: Document) => {
+    if (!doc) return null;
+    return (
+        <Link to={`/documents/${doc.slug}`} key={doc.id} 
+        className="flex items-center gap-4 bg-white dark:bg-dark-card p-3 rounded-2xl border border-gray-100 dark:border-dark-border shadow-sm active:scale-[0.98] transition-transform group hover:border-green-200 dark:hover:border-green-500/50">
+            <div className="w-12 h-12 bg-green-50 dark:bg-green-900/20 rounded-xl flex items-center justify-center text-2xl shrink-0">
+                {doc.fileType === 'pdf' ? '📕' : doc.fileType === 'image' ? '🖼️' : '📄'}
+            </div>
+            <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-sm text-textDark dark:text-dark-text line-clamp-1 group-hover:text-green-600 dark:group-hover:text-green-400">{doc.title}</h4>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 line-clamp-1 flex items-center gap-2">
+                    <span>{doc.authorName}</span> • <span className="flex items-center gap-0.5"><Download size={10}/> {doc.downloads}</span>
+                </p>
+            </div>
+        </Link>
+    );
+  };
 
   return (
     <div className="space-y-4 animate-fade-in min-h-screen">
@@ -337,25 +333,19 @@ export const Home: React.FC<HomeProps> = ({ questions, categories, currentUser }
       {/* 1. MỞ MODAL STORY (KHOẢNH KHẮC) NẾU CÓ ACTIVE */}
       {activeStory && <StoryViewer story={activeStory} onClose={() => setActiveStory(null)} currentUser={currentUser} />}
 
-      {/* 2. SEARCH BAR (Sticky Header) */}
+      {/* 2. SEARCH BAR */}
       <div className="px-4 md:px-0 sticky top-[68px] md:top-20 z-30 py-2 md:pt-0 -mx-4 md:mx-0 bg-[#F7F7F5]/95 dark:bg-dark-bg/95 md:bg-transparent backdrop-blur-sm transition-all">
-        <div className="relative group shadow-[0_4px_20px_rgba(0,0,0,0.05)] rounded-2xl mx-4 md:mx-0">
+         <div className="relative group shadow-[0_4px_20px_rgba(0,0,0,0.05)] rounded-2xl mx-4 md:mx-0">
             <div className="absolute inset-0 bg-white/80 dark:bg-dark-card/80 backdrop-blur-xl rounded-2xl"></div>
-            <div className={`relative flex items-center bg-white/90 dark:bg-dark-card/90 rounded-2xl border transition-all overflow-hidden 
-                ${searchQuery ? 'border-primary ring-2 ring-primary/10' : 'border-gray-100 dark:border-dark-border focus-within:ring-2 focus-within:ring-primary/20'}`}>
-                <div className="pl-4 text-primary"><Search size={20} /></div>
+            <div className={`relative flex items-center bg-white/90 dark:bg-dark-card/90 rounded-2xl border border-gray-100 dark:border-dark-border px-3 py-3.5`}>
+                <Search size={20} className="text-primary mr-2" />
                 <input 
-                    type="text" 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Tìm kiếm câu hỏi, chuyên gia, tài liệu..." 
-                    className="w-full py-3.5 px-3 bg-transparent text-textDark dark:text-dark-text placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none text-[15px] font-medium"
+                    value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                    placeholder="Tìm kiếm..." 
+                    className="w-full bg-transparent outline-none text-textDark dark:text-white"
                 />
-                {searchQuery && (
-                    <button onClick={() => { setSearchQuery(''); setSearchTab('all'); }} className="pr-4 text-gray-400 hover:text-textDark dark:hover:text-white"><X size={16} /></button>
-                )}
             </div>
-        </div>
+         </div>
       </div>
 
       {/* --- CONTENT RENDER --- */}
@@ -381,35 +371,33 @@ export const Home: React.FC<HomeProps> = ({ questions, categories, currentUser }
                 {/* Search Result Questions */}
                 {(searchTab === 'all' || searchTab === 'questions') && (
                     <div className="space-y-4">
-                        {paginatedList.map(q => (
-                            <Link to={`/question/${toSlug(q.title, q.id)}`} key={q.id} className="block group">
-                                <div className="bg-white dark:bg-dark-card p-5 rounded-[1.5rem] shadow-sm dark:shadow-none border border-gray-100 dark:border-dark-border hover:border-primary/30 transition-all">
-                                    <h3 className="text-[16px] font-bold text-textDark dark:text-dark-text mb-2 leading-snug">{q.title}</h3>
-                                    <p className="text-textGray dark:text-dark-muted text-sm line-clamp-2 mb-3">{q.content}</p>
-                                    <div className="flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
-                                        <img src={q.author.avatar} className="w-5 h-5 rounded-full border border-gray-100 dark:border-slate-700" />
-                                        <span>{q.author.name}</span>
+                        {paginatedList.map(q => {
+                            if (!q) return null;
+                            return (
+                                <Link to={`/question/${toSlug(q.title, q.id)}`} key={q.id} className="block group">
+                                    <div className="bg-white dark:bg-dark-card p-5 rounded-[1.5rem] shadow-sm dark:shadow-none border border-gray-100 dark:border-dark-border hover:border-primary/30 transition-all">
+                                        <h3 className="text-[16px] font-bold text-textDark dark:text-dark-text mb-2 leading-snug">{q.title}</h3>
+                                        <p className="text-textGray dark:text-dark-muted text-sm line-clamp-2 mb-3">{q.content}</p>
                                     </div>
-                                </div>
-                            </Link>
-                        ))}
+                                </Link>
+                            );
+                        })}
                     </div>
                 )}
-                {/* Logic render docs/blogs trong search tương tự */}
              </div>
          </div>
       ) : (
       /* --- HOME FEED --- */
       <div className="space-y-4">
            
-           {/* --- 3. STORIES BAR (NEW) --- */}
+           {/* --- 3. STORIES BAR (ĐÃ FIX LỖI CRASH) --- */}
            <div className="px-4 md:px-0">
               <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 snap-x">
                  
                  {/* Card 1: Tạo Tin Mới */}
-                 <div className="snap-start shrink-0 relative group cursor-pointer w-[85px] h-[130px] md:w-[100px] md:h-[150px]" onClick={() => fileInputRef.current?.click()}>
+                 <div className="snap-start shrink-0 relative group cursor-pointer w-[85px] h-[130px] md:w-[100px] md:h-[150px]" onClick={() => currentUser ? fileInputRef.current?.click() : alert("Vui lòng đăng nhập để đăng tin!")}>
                     <div className="w-full h-full rounded-2xl overflow-hidden relative border border-gray-200 dark:border-slate-700 bg-white dark:bg-dark-card shadow-sm">
-                       <img src={currentUser?.avatar || 'https://via.placeholder.com/150'} className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-500" />
+                       <img src={currentUser?.avatar || 'https://via.placeholder.com/150'} className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-500" alt="me" />
                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                        
                        {/* Input File Ẩn */}
@@ -430,17 +418,18 @@ export const Home: React.FC<HomeProps> = ({ questions, categories, currentUser }
                     </div>
                  </div>
 
-                 {/* Danh sách Tin (Load từ API) */}
+                 {/* Danh sách Tin */}
                  {stories.map((story) => {
-                    const isViewed = story.viewers.includes(currentUser.id);
+                    // FIX: Kiểm tra currentUser tồn tại trước khi check viewers
+                    const isViewed = currentUser?.id ? story.viewers.includes(currentUser.id) : false;
                     return (
                         <div key={story.id} onClick={() => setActiveStory(story)} className="snap-start shrink-0 relative group cursor-pointer w-[85px] h-[130px] md:w-[100px] md:h-[150px]">
                            <div className={`w-full h-full rounded-2xl overflow-hidden relative border-[2px] p-[2px] transition-all ${isViewed ? 'border-gray-200 dark:border-slate-700' : 'border-blue-500'}`}>
                               <div className="w-full h-full rounded-xl overflow-hidden relative">
-                                 <img src={story.mediaUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                 <img src={story.mediaUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="story" />
                                  <div className="absolute inset-0 bg-black/20 hover:bg-black/10 transition-colors"></div>
                                  <div className="absolute top-2 left-2 w-8 h-8 rounded-full border-2 border-blue-500 overflow-hidden shadow-md">
-                                    <img src={story.userAvatar} className="w-full h-full object-cover" />
+                                    <img src={story.userAvatar} className="w-full h-full object-cover" alt="avatar" />
                                  </div>
                                  <span className="absolute bottom-2 left-2 right-2 text-[10px] font-bold text-white truncate text-shadow">{story.userName}</span>
                               </div>
@@ -481,7 +470,7 @@ export const Home: React.FC<HomeProps> = ({ questions, categories, currentUser }
                             <Link to={`/blog/${post.slug}`} key={post.id} 
                                 className="snap-start flex-shrink-0 w-64 bg-white dark:bg-dark-card rounded-2xl p-3 border border-gray-100 dark:border-dark-border shadow-sm hover:shadow-md transition-all active:scale-95 flex flex-col">
                                 <div className="aspect-[2/1] rounded-xl bg-gray-100 dark:bg-slate-700 mb-3 overflow-hidden relative shrink-0 flex items-center justify-center">
-                                    {post.coverImageUrl ? <img src={post.coverImageUrl} className="w-full h-full object-cover" loading="lazy" /> : <div className="w-full h-full flex items-center justify-center text-3xl bg-gradient-to-br from-blue-50 to-purple-50 dark:from-slate-700 dark:to-slate-600">{post.iconEmoji || '📝'}</div>}
+                                    {post.coverImageUrl ? <img src={post.coverImageUrl} className="w-full h-full object-cover" loading="lazy" alt="" /> : <div className="w-full h-full flex items-center justify-center text-3xl bg-gradient-to-br from-blue-50 to-purple-50 dark:from-slate-700 dark:to-slate-600">{post.iconEmoji || '📝'}</div>}
                                 </div>
                                 <h4 className="font-bold text-sm text-textDark dark:text-dark-text line-clamp-2 mb-1 leading-snug flex-1">{post.title}</h4>
                                 <div className="flex items-center gap-1 mt-auto pt-2">
@@ -491,19 +480,6 @@ export const Home: React.FC<HomeProps> = ({ questions, categories, currentUser }
                                 </div>
                             </Link>
                         ))}
-                    </div>
-                </div>
-           )}
-
-           {/* DOCUMENT CARDS */}
-           {documents.length > 0 && (
-                <div className="space-y-3 pt-2 px-4 md:px-0">
-                      <div className="flex justify-between items-center px-1">
-                        <div className="flex items-center gap-2"><FileText size={18} className="text-green-600 dark:text-green-400" /><h3 className="font-bold text-textDark dark:text-dark-text text-sm uppercase tracking-wide">Tài liệu chia sẻ</h3></div>
-                        <Link to="/documents" className="text-xs font-bold text-green-500 hover:underline">Xem tất cả</Link>
-                    </div>
-                    <div className="space-y-3">
-                        {documents.slice(0, 3).map(renderDocCard)}
                     </div>
                 </div>
            )}
@@ -523,7 +499,7 @@ export const Home: React.FC<HomeProps> = ({ questions, categories, currentUser }
                         }`}>
                         Tất cả
                     </button>
-                    {categories.map(cat => (
+                    {(categories || []).map(cat => (
                         <button key={cat} onClick={() => setActiveCategory(cat)} 
                             className={`snap-start flex-shrink-0 px-5 py-2.5 rounded-2xl text-sm font-bold whitespace-nowrap transition-all active:scale-95 
                             ${activeCategory === cat 
@@ -548,6 +524,7 @@ export const Home: React.FC<HomeProps> = ({ questions, categories, currentUser }
 
            <div className="px-4 md:px-0 space-y-4 pb-10">
               {paginatedList.map((q, index) => {
+                  if (!q) return null; // Safety Check
                   const frequency = adConfig?.frequency || 5;
                   const shouldShowAd = adConfig?.isEnabled && (index + 1) % frequency === 0;
 
@@ -601,12 +578,12 @@ export const Home: React.FC<HomeProps> = ({ questions, categories, currentUser }
                         {/* --- RENDER CÂU HỎI THẬT --- */}
                         <Link to={`/question/${toSlug(q.title, q.id)}`} className="block group">
                             <div className="bg-white dark:bg-dark-card p-5 rounded-[1.5rem] shadow-[0_2px_15px_rgba(0,0,0,0.03)] dark:shadow-none border border-gray-100 dark:border-dark-border active:scale-[0.98] transition-all relative overflow-hidden">
-                                {q.answers.length === 0 && <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-orange-100 to-transparent dark:from-orange-900/10 rounded-bl-full -mr-8 -mt-8"></div>}
+                                {(q.answers?.length || 0) === 0 && <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-bl from-orange-100 to-transparent dark:from-orange-900/10 rounded-bl-full -mr-8 -mt-8"></div>}
                                 <div className="flex items-start justify-between mb-3 relative z-10">
                                     <div className="flex items-center gap-2">
-                                        <img src={q.author.avatar} className="w-8 h-8 rounded-full border border-gray-100 dark:border-slate-700 object-cover" />
+                                        <img src={q.author?.avatar} className="w-8 h-8 rounded-full border border-gray-100 dark:border-slate-700 object-cover" alt="" />
                                         <div>
-                                            <p className="text-xs font-bold text-textDark dark:text-dark-text flex items-center gap-1">{q.author.name} {q.author.isExpert && <ShieldCheck size={10} className="text-blue-500" />}</p>
+                                            <p className="text-xs font-bold text-textDark dark:text-dark-text flex items-center gap-1">{q.author?.name} {q.author?.isExpert && <ShieldCheck size={10} className="text-blue-500" />}</p>
                                             <p className="text-[10px] text-gray-400">{new Date(q.createdAt).toLocaleDateString('vi-VN')}</p>
                                         </div>
                                     </div>
@@ -618,10 +595,10 @@ export const Home: React.FC<HomeProps> = ({ questions, categories, currentUser }
                                 
                                 <div className="flex items-center justify-between pt-3 border-t border-gray-50 dark:border-slate-800 mt-3">
                                     <div className="flex items-center gap-4 text-xs font-bold text-gray-400 dark:text-gray-500">
-                                        <span className="flex items-center gap-1.5"><Heart size={14} className={q.likes > 0 ? "text-red-500 fill-red-500" : ""} /> {q.likes}</span>
-                                        <span className="flex items-center gap-1.5"><MessageCircle size={14} className={q.answers.length > 0 ? "text-blue-500 fill-blue-500" : ""} /> {q.answers.length}</span>
+                                        <span className="flex items-center gap-1.5"><Heart size={14} className={(q.likes || 0) > 0 ? "text-red-500 fill-red-500" : ""} /> {q.likes}</span>
+                                        <span className="flex items-center gap-1.5"><MessageCircle size={14} className={(q.answers?.length || 0) > 0 ? "text-blue-500 fill-blue-500" : ""} /> {q.answers?.length || 0}</span>
                                     </div>
-                                    {q.answers.length === 0 && <span className="text-[10px] font-bold text-orange-500 bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded-full">Chưa có trả lời</span>}
+                                    {(q.answers?.length || 0) === 0 && <span className="text-[10px] font-bold text-orange-500 bg-orange-50 dark:bg-orange-900/20 px-2 py-1 rounded-full">Chưa có trả lời</span>}
                                 </div>
                             </div>
                         </Link>
