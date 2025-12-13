@@ -2,7 +2,6 @@
 import { Message, ChatSession, User } from '../types';
 
 // MOCK DATA (Dữ liệu giả để chạy thử giao diện)
-// Sau này bạn sẽ thay thế bằng code gọi Firebase/API thật
 let MOCK_CHATS: ChatSession[] = [];
 let MOCK_MESSAGES: Message[] = [];
 
@@ -13,9 +12,14 @@ export const getMessages = async (currentUserId: string, otherUserId: string): P
   // Giả lập delay mạng
   await new Promise(resolve => setTimeout(resolve, 300));
 
+  // --- SỬA LOGIC LỌC ---
+  // Lấy tin nhắn mà:
+  // 1. Tôi gửi cho Bạn (sender = me, receiver = you)
+  // HOẶC
+  // 2. Bạn gửi cho Tôi (sender = you, receiver = me)
   return MOCK_MESSAGES.filter(msg => 
-    (msg.senderId === currentUserId && msg.senderId === otherUserId) || 
-    (msg.senderId === otherUserId && msg.senderId === currentUserId)
+    (msg.senderId === currentUserId && msg.receiverId === otherUserId) || 
+    (msg.senderId === otherUserId && msg.receiverId === currentUserId)
   ).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 };
 
@@ -35,6 +39,7 @@ export const sendMessage = async (
   const newMessage: Message = {
     id: `msg_${Date.now()}`,
     senderId,
+    receiverId, // <--- QUAN TRỌNG: Đã thêm trường này để lưu người nhận
     content,
     createdAt: new Date().toISOString(),
     isRead: false,
@@ -48,7 +53,7 @@ export const sendMessage = async (
   // Cập nhật hoặc tạo mới Chat Session
   await updateChatSession(senderId, receiverId, newMessage);
 
-  console.log("LOG: Đã gửi tin nhắn:", newMessage);
+  console.log("LOG: Đã gửi tin nhắn (Saved):", newMessage);
   return newMessage;
 };
 
@@ -56,9 +61,9 @@ export const sendMessage = async (
  * Tạo hoặc cập nhật phiên chat (Chat Session) để hiển thị ở danh sách tin nhắn
  */
 const updateChatSession = async (senderId: string, receiverId: string, lastMessage: Message) => {
-    // Logic tìm chat session tồn tại
-    // ... (Giả lập logic cập nhật MOCK_CHATS)
-    console.log("LOG: Đã cập nhật Chat Session");
+    // Logic tìm chat session tồn tại (Giả lập)
+    // Trong thực tế, bạn sẽ update document 'chats' trong Firebase tại đây
+    console.log("LOG: Đã cập nhật Chat Session giữa", senderId, "và", receiverId);
 };
 
 /**
