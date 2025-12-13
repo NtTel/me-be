@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Volume2, Star, Trophy, Sparkles, Play, Loader2, RotateCcw, ArrowDown } from 'lucide-react';
 import { Game, GameLevel, GameCategory, CategoryDef, GameAsset } from '../types';
-// ĐÃ SỬA DÒNG DƯỚI NÀY (games -> game)
+// Import từ service (đã sửa đúng đường dẫn không có chữ 's')
 import { fetchAllGames, fetchCategories } from '../services/game';
 import { generateStory } from '../services/gemini';
 import confetti from 'canvas-confetti';
@@ -348,3 +348,41 @@ export const GameZone: React.FC = () => {
                     <BouncyButton key={cat.id} onClick={() => setActiveCategory(cat.id)} className={`aspect-square rounded-[2.5rem] flex flex-col items-center justify-center gap-3 shadow-lg ${cat.color} text-white border-b-8 border-black/10`}>
                         <span className="text-5xl drop-shadow-md">{cat.icon}</span>
                         <span className="font-bold text-xl">{cat.label}</span>
+                    </BouncyButton>
+                ))}
+            </div>
+        </div>
+      ) : (
+        <div className="px-4 pb-32 w-full max-w-6xl mx-auto">
+            <div className="flex items-center gap-3 mb-6 px-2 justify-center md:justify-start">
+                <span className="text-4xl">{categories.find(c => c.id === activeCategory)?.icon}</span>
+                <h2 className="text-3xl font-black text-blue-800 dark:text-blue-300">{categories.find(c => c.id === activeCategory)?.label}</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {visibleGames.map(game => (
+                    <div key={game.id} onClick={() => setActiveGame(game)} className="cursor-pointer bg-white dark:bg-slate-800 p-5 rounded-[2.5rem] shadow-sm border-2 border-blue-50 dark:border-slate-700 flex items-center gap-5 hover:shadow-xl hover:border-blue-300 transition-all group">
+                        <div className={`w-20 h-20 rounded-2xl ${game.color} flex items-center justify-center text-4xl shadow-inner group-hover:rotate-12 transition-transform`}>
+                            {game.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <h3 className="font-black text-gray-800 dark:text-white text-xl truncate group-hover:text-blue-600 transition-colors">{game.title}</h3>
+                            <div className="flex gap-2 mt-1">
+                                <span className="bg-gray-100 dark:bg-slate-700 text-xs font-bold px-2 py-1 rounded text-gray-500 uppercase">{game.gameType}</span>
+                            </div>
+                        </div>
+                        <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                            <Play fill="currentColor" />
+                        </div>
+                    </div>
+                ))}
+            </div>
+            {visibleCount < filteredGames.length && (
+                <div className="flex justify-center mt-10">
+                    <button onClick={() => setVisibleCount(p => p + PAGE_SIZE)} className="bg-white px-6 py-3 rounded-full font-bold text-blue-600 shadow-md">Xem thêm</button>
+                </div>
+            )}
+        </div>
+      )}
+    </div>
+  );
+};
