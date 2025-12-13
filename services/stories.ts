@@ -1,6 +1,6 @@
 import { Story, User } from '../types';
-// SỬA LẠI DÒNG NÀY:
-import { db } from '../firebaseConfig';
+// SỬA ĐÚNG TÊN FILE CẤU HÌNH
+import { db } from '../firebaseConfig'; 
 import { uploadFile } from './storage';
 import { 
   collection, addDoc, getDocs, query, where, orderBy, doc, updateDoc, arrayUnion 
@@ -18,7 +18,6 @@ export const fetchStories = async (currentUser: User): Promise<Story[]> => {
     );
 
     const snapshot = await getDocs(q);
-    
     const stories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Story));
     return stories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   } catch (error) {
@@ -45,17 +44,12 @@ export const createStory = async (user: User, file: File): Promise<Story> => {
   };
 
   const docRef = await addDoc(collection(db, 'stories'), newStoryData);
-  
   return { id: docRef.id, ...newStoryData };
 };
 
 export const markStoryViewed = async (storyId: string, userId: string) => {
   try {
     const storyRef = doc(db, 'stories', storyId);
-    await updateDoc(storyRef, {
-      viewers: arrayUnion(userId)
-    });
-  } catch (error) {
-    console.error("Lỗi mark view:", error);
-  }
+    await updateDoc(storyRef, { viewers: arrayUnion(userId) });
+  } catch (error) { console.error("Lỗi mark view:", error); }
 };
