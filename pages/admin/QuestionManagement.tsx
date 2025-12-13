@@ -1,26 +1,61 @@
 import React, { useEffect, useState } from 'react';
-import { Question, Category, toSlug } from '../../types'; // Nhớ import Category
-// Import các hàm từ service
+import { Question, Category, toSlug } from '../../types';
 import { 
   fetchAllQuestionsAdmin, 
   bulkUpdateQuestions, 
   bulkDeleteQuestions,
-  fetchCategories,
-  addCategory,
-  updateCategory,
+  fetchCategories, 
+  addCategory, 
+  updateCategory, 
   deleteCategory,
-  syncCategoriesFromCode // <-- Hàm đồng bộ mới
+  syncCategoriesFromCode 
 } from '../../services/admin';
-import { Search, Eye, EyeOff, Trash2, Filter, Plus, X, Edit2, List, Save, RefreshCw } from 'lucide-react';
+import { 
+  Search, Eye, EyeOff, Trash2, Filter, Plus, X, Edit2, List, Save, RefreshCw,
+  // Import các icon mẫu để làm bộ chọn
+  Baby, Heart, Utensils, Brain, BookOpen, Users, Stethoscope, Smile, Tag, Star, Music, Sun, Cloud
+} from 'lucide-react';
 // @ts-ignore
 import { Link } from 'react-router-dom';
+
+// --- CẤU HÌNH ICON & MÀU SẮC CHO ADMIN CHỌN ---
+const ICON_LIST = [
+  { id: 'Baby', component: Baby },
+  { id: 'Heart', component: Heart },
+  { id: 'Utensils', component: Utensils },
+  { id: 'Brain', component: Brain },
+  { id: 'BookOpen', component: BookOpen },
+  { id: 'Users', component: Users },
+  { id: 'Stethoscope', component: Stethoscope },
+  { id: 'Smile', component: Smile },
+  { id: 'Tag', component: Tag },
+  { id: 'Star', component: Star },
+  { id: 'Music', component: Music },
+  { id: 'Sun', component: Sun },
+  { id: 'Cloud', component: Cloud },
+];
+
+const COLOR_PRESETS = [
+  { name: 'Hồng', color: 'text-pink-600', bg: 'bg-pink-50' },
+  { name: 'Xanh lá', color: 'text-green-600', bg: 'bg-green-50' },
+  { name: 'Xanh dương', color: 'text-blue-600', bg: 'bg-blue-50' },
+  { name: 'Tím', color: 'text-purple-600', bg: 'bg-purple-50' },
+  { name: 'Vàng', color: 'text-yellow-600', bg: 'bg-yellow-50' },
+  { name: 'Cam', color: 'text-orange-600', bg: 'bg-orange-50' },
+  { name: 'Đỏ', color: 'text-red-600', bg: 'bg-red-50' },
+  { name: 'Xám', color: 'text-gray-600', bg: 'bg-gray-50' },
+];
 
 // --- COMPONENT CON: Modal Quản lý Danh mục ---
 const CategoryModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [categories, setCategories] = useState<Category[]>([]);
-  const [newCatName, setNewCatName] = useState('');
+  
+  // Form State
+  const [catName, setCatName] = useState('');
+  const [selectedIcon, setSelectedIcon] = useState('Tag');
+  const [selectedColorIdx, setSelectedColorIdx] = useState(0); // Mặc định màu hồng (index 0)
+  
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => { loadData(); }, []);
@@ -30,7 +65,6 @@ const CategoryModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     setCategories(data);
   };
 
-  // Hàm đồng bộ danh mục từ code cũ
   const handleSync = async () => {
       setLoading(true);
       try {
@@ -44,20 +78,42 @@ const CategoryModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       }
   };
 
-  const handleAdd = async () => {
-    if (!newCatName.trim()) return;
-    setLoading(true);
-    await addCategory(newCatName);
-    setNewCatName('');
-    await loadData();
-    setLoading(false);
+  const resetForm = () => {
+    setCatName('');
+    setSelectedIcon('Tag');
+    setSelectedColorIdx(0);
+    setEditingId(null);
   };
 
-  const handleUpdate = async (id: string) => {
-    if (!editName.trim()) return;
+  const startEdit = (cat: Category) => {
+    setEditingId(cat.id);
+    setCatName(cat.name);
+    setSelectedIcon(cat.icon || 'Tag');
+    // Tìm lại index màu dựa trên class text
+    const idx = COLOR_PRESETS.findIndex(c => c.color === cat.color);
+    setSelectedColorIdx(idx >= 0 ? idx : 7); // Nếu ko tìm thấy thì về màu xám (7)
+  };
+
+  const handleSave = async () => {
+    if (!catName.trim()) return;
     setLoading(true);
-    await updateCategory(id, editName);
-    setEditingId(null);
+    
+    // Lấy thông tin style từ state
+    const styleData = {
+        icon: selectedIcon,
+        color: COLOR_PRESETS[selectedColorIdx].color,
+        bg: COLOR_PRESETS[selectedColorIdx].bg
+    };
+
+    if (editingId) {
+        // Gọi hàm update (đã cập nhật bên service)
+        await updateCategory(editingId, catName, styleData);
+    } else {
+        // Gọi hàm add (đã cập nhật bên service)
+        await addCategory(catName, styleData);
+    }
+    
+    resetForm();
     await loadData();
     setLoading(false);
   };
@@ -72,60 +128,113 @@ const CategoryModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-pop-in">
-        <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+      <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden animate-pop-in flex flex-col max-h-[90vh]">
+        <div className="p-4 border-b bg-gray-50 flex justify-between items-center shrink-0">
           <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2"><List size={20}/> Quản lý Danh mục</h3>
           <button onClick={onClose}><X size={20} className="text-gray-500 hover:text-red-500"/></button>
         </div>
         
-        <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3">
+        <div className="p-6 overflow-y-auto flex-1">
           
-          {/* NÚT ĐỒNG BỘ (MỚI THÊM) */}
-          <div className="mb-4 p-3 bg-blue-50 rounded-xl border border-blue-100 flex justify-between items-center">
-             <span className="text-xs text-blue-800 font-medium">Bạn có danh mục cũ trong code?</span>
-             <button onClick={handleSync} disabled={loading} className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1 hover:bg-blue-700 transition-colors disabled:opacity-50">
-                <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> Đồng bộ ngay
+          {/* KHU VỰC NHẬP LIỆU (Thêm/Sửa) - ĐÃ THÊM ICON PICKER & COLOR PICKER */}
+          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6 transition-all">
+             <h4 className="text-sm font-bold text-gray-700 mb-3 flex justify-between items-center">
+                {editingId ? '✏️ Chỉnh sửa danh mục' : '➕ Thêm danh mục mới'}
+                {editingId && <button onClick={resetForm} className="text-xs text-red-500 font-normal hover:underline">Hủy bỏ</button>}
+             </h4>
+             
+             {/* Tên danh mục */}
+             <div className="mb-4">
+                <input 
+                  value={catName} 
+                  onChange={e => setCatName(e.target.value)}
+                  placeholder="Nhập tên danh mục (VD: Đồ chơi)..." 
+                  className="w-full border p-2.5 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 outline-none bg-white font-medium"
+                />
+             </div>
+
+             {/* Chọn Icon (MỚI) */}
+             <div className="mb-4">
+                <label className="text-xs font-bold text-gray-500 block mb-2 uppercase">Chọn biểu tượng</label>
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    {ICON_LIST.map(item => (
+                        <button 
+                            key={item.id} 
+                            onClick={() => setSelectedIcon(item.id)}
+                            className={`p-2 rounded-lg border flex items-center justify-center transition-all min-w-[40px] ${selectedIcon === item.id ? 'bg-blue-100 border-blue-500 text-blue-600 shadow-sm ring-2 ring-blue-200' : 'bg-white border-gray-200 text-gray-400 hover:bg-gray-100'}`}
+                            title={item.id}
+                        >
+                            <item.component size={20} />
+                        </button>
+                    ))}
+                </div>
+             </div>
+
+             {/* Chọn Màu (MỚI) */}
+             <div className="mb-4">
+                <label className="text-xs font-bold text-gray-500 block mb-2 uppercase">Chọn màu sắc</label>
+                <div className="flex gap-3 flex-wrap">
+                    {COLOR_PRESETS.map((preset, idx) => (
+                        <button 
+                            key={idx} 
+                            onClick={() => setSelectedColorIdx(idx)}
+                            className={`w-8 h-8 rounded-full flex items-center justify-center transition-all relative ${selectedColorIdx === idx ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : 'hover:scale-105'}`}
+                            title={preset.name}
+                        >
+                            <div className={`w-full h-full rounded-full ${preset.bg.replace('/20', '')} border border-black/5`}></div>
+                            {selectedColorIdx === idx && <div className="absolute inset-0 flex items-center justify-center"><div className="w-2 h-2 bg-white rounded-full shadow-sm"></div></div>}
+                        </button>
+                    ))}
+                </div>
+             </div>
+
+             {/* Nút Lưu */}
+             <button 
+                onClick={handleSave} 
+                disabled={loading || !catName} 
+                className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-bold text-sm disabled:opacity-50 hover:bg-blue-700 transition-all shadow-md flex items-center justify-center gap-2"
+             >
+                {editingId ? <Save size={16}/> : <Plus size={16}/>}
+                {editingId ? 'Lưu thay đổi' : 'Thêm mới'}
              </button>
           </div>
 
-          {/* Form thêm mới */}
-          <div className="flex gap-2 mb-4">
-            <input 
-              value={newCatName} 
-              onChange={e => setNewCatName(e.target.value)}
-              placeholder="Tên danh mục mới..." 
-              className="flex-1 border p-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 outline-none"
-            />
-            <button onClick={handleAdd} disabled={loading || !newCatName} className="bg-blue-600 text-white px-3 py-2 rounded-lg font-bold text-sm disabled:opacity-50 hover:bg-blue-700 transition-colors">Thêm</button>
+          {/* Header Danh sách */}
+          <div className="flex justify-between items-center mb-3 px-1">
+             <span className="text-sm font-bold text-gray-500">Danh sách hiện có ({categories.length})</span>
+             <button onClick={handleSync} disabled={loading} className="text-xs text-blue-600 flex items-center gap-1 hover:underline bg-blue-50 px-2 py-1 rounded">
+                <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> Đồng bộ Code cũ
+             </button>
           </div>
 
-          {/* Danh sách */}
-          <div className="space-y-2">
-            {categories.map(cat => (
-              <div key={cat.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100 group">
-                {editingId === cat.id ? (
-                  <div className="flex gap-2 flex-1">
-                    <input 
-                      value={editName} 
-                      onChange={e => setEditName(e.target.value)} 
-                      className="flex-1 border p-1 rounded text-sm outline-none focus:border-blue-500"
-                      autoFocus
-                    />
-                    <button onClick={() => handleUpdate(cat.id)} className="text-green-600 hover:bg-green-50 p-1 rounded"><Save size={18}/></button>
-                    <button onClick={() => setEditingId(null)} className="text-gray-400 hover:bg-gray-200 p-1 rounded"><X size={18}/></button>
-                  </div>
-                ) : (
-                  <>
-                    <span className="font-medium text-gray-700">{cat.name}</span>
-                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => { setEditingId(cat.id); setEditName(cat.name); }} className="text-blue-500 hover:bg-white p-1 rounded transition-colors"><Edit2 size={16}/></button>
-                      <button onClick={() => handleDelete(cat.id)} className="text-red-500 hover:bg-white p-1 rounded transition-colors"><Trash2 size={16}/></button>
+          {/* DANH SÁCH (Đã cập nhật hiển thị Icon động) */}
+          <div className="space-y-2 pb-4">
+            {categories.map(cat => {
+               // Render Icon động dựa trên ID lưu trong DB
+               const IconComp = ICON_LIST.find(i => i.id === cat.icon)?.component || Tag;
+               // Màu mặc định nếu thiếu
+               const colorClass = cat.color || 'text-gray-600';
+               const bgClass = cat.bg || 'bg-gray-100';
+
+               return (
+                  <div key={cat.id} className={`flex justify-between items-center p-3 rounded-xl border transition-colors ${editingId === cat.id ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-200' : 'border-gray-100 hover:border-gray-300 bg-white'}`}>
+                    <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-sm ${bgClass} ${colorClass}`}>
+                            <IconComp size={20} />
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="font-bold text-gray-800 text-sm">{cat.name}</span>
+                            <span className="text-[10px] text-gray-400">/{cat.slug}</span>
+                        </div>
                     </div>
-                  </>
-                )}
-              </div>
-            ))}
-            {categories.length === 0 && <p className="text-center text-gray-400 text-sm">Chưa có danh mục nào.</p>}
+                    <div className="flex gap-1">
+                      <button onClick={() => startEdit(cat)} className="text-blue-500 hover:bg-blue-100 p-2 rounded-lg transition-colors" title="Sửa"><Edit2 size={16}/></button>
+                      <button onClick={() => handleDelete(cat.id)} className="text-red-500 hover:bg-red-100 p-2 rounded-lg transition-colors" title="Xóa"><Trash2 size={16}/></button>
+                    </div>
+                  </div>
+               )
+            })}
+            {categories.length === 0 && <p className="text-center text-gray-400 text-sm py-8 italic border-2 border-dashed border-gray-100 rounded-xl">Chưa có danh mục nào.</p>}
           </div>
         </div>
       </div>
@@ -133,7 +242,7 @@ const CategoryModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   );
 };
 
-// --- COMPONENT CHÍNH ---
+// --- COMPONENT CHÍNH (Giữ nguyên logic cũ) ---
 export const QuestionManagement: React.FC = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
