@@ -34,7 +34,7 @@
         },
         "headerTitle": "Задать вопрос",
         "titleLabel": "Заголовок",
-        "titlePlaceholder": "Пример: Ребёнку 6 месяцев, поднялась температура — что делать?",
+        "titlePlaceholder": "Пример: Ребёнку 6 месяцев, температура — что делать?",
         "aiSuggestButtonIdle": "Подсказать заголовок",
         "aiSuggestButtonLoading": "AI думает...",
         "contentLabel": "Подробное описание",

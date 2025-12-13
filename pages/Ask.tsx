@@ -38,6 +38,13 @@ const CATEGORY_CONFIG: Record<string, { icon: any, color: string, bg: string, bo
   [AskCategoryKey.Default]: { icon: Tag, color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-50 dark:bg-orange-900/20", border: "border-orange-100 dark:border-orange-900/30" }
 };
 
+const STICKER_LABEL_KEYS: Record<string, string> = {
+  "Cảm xúc": "emotions",
+  "Yêu thương": "love",
+  "Mẹ & Bé": "momAndBaby",
+  "Động vật": "animals",
+  "Đồ ăn": "food",
+};
 const STICKER_PACKS = {
   "Cảm xúc": ["😀", "😂", "🥰", "😎", "😭", "😡", "😱", "🥳", "😴", "🤔"],
   "Yêu thương": ["❤️", "🧡", "💛", "💚", "💙", "💜", "💖", "💝", "💋", "💌"],
@@ -267,11 +274,11 @@ export const Ask: React.FC<AskProps> = ({
 
   const finalizeSubmission = async (user: User) => {
     if (!title.trim() || !content.trim()) {
-      showToast("Mẹ ơi, đừng để trống tiêu đề hoặc nội dung nhé!", "error");
+      showToast(t("ask.toastEmptyTitleOrContent"), "error");
       return;
     }
     if (attachments.some(a => a.uploading)) {
-      showToast("Ảnh đang tải lên, đợi xíu xong ngay thôi!", "info");
+      showToast(t("ask.toastImagesUploading"), "info");
       return;
     }
 
@@ -298,14 +305,14 @@ export const Ask: React.FC<AskProps> = ({
       if (error.code === 'permission-denied') {
         setShowAuthModal(true);
       } else {
-        showToast("Có lỗi lạ quá. Mẹ thử lại sau nhé!", "error");
+        showToast(t("ask.toastUnknownError"), "error");
       }
     }
   };
 
   const handleSubmit = async () => {
     if (!title || !content) {
-      showToast("Vui lòng nhập đủ thông tin trước khi đăng.", "error");
+      showToast(t("ask.toastSubmitEmpty"), "error");
       return;
     }
     if (currentUser.isGuest) {
@@ -352,7 +359,7 @@ export const Ask: React.FC<AskProps> = ({
           >
             <ArrowLeft size={24} />
           </button>
-          <span className="font-bold text-lg text-gray-800 dark:text-white">Đặt câu hỏi</span>
+          <span className="font-bold text-lg text-gray-800 dark:text-white">{t("ask.headerTitle")}</span>
           <div className="w-10"></div>
         </div>
       </div>
@@ -384,21 +391,21 @@ export const Ask: React.FC<AskProps> = ({
           {/* Title Section */}
           <div className="space-y-2">
             <div className="flex justify-between items-end">
-              <label className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider ml-1">Tiêu đề</label>
+              <label className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider ml-1">{t("ask.titleLabel")}</label>
               <button
                 onClick={handleAiSuggest}
                 disabled={isSuggesting}
                 className="text-xs font-bold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 px-3 py-1.5 rounded-lg flex items-center gap-1.5 hover:bg-orange-100 dark:hover:bg-orange-900/40 transition-all border border-orange-100 dark:border-orange-900/30 active:scale-95 disabled:opacity-50"
               >
                 {isSuggesting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-                {isSuggesting ? 'AI đang nghĩ...' : 'Gợi ý tiêu đề'}
+                {isSuggesting ? t("ask.aiSuggestButtonLoading") : t("ask.aiSuggestButtonIdle")}
               </button>
             </div>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="VD: Bé 6 tháng tuổi bị sốt, mẹ nên làm gì?..."
+              placeholder={t("ask.titlePlaceholder")}
               className="w-full text-xl md:text-2xl font-bold text-gray-800 dark:text-white placeholder-gray-300 dark:placeholder-gray-600 border-none p-0 focus:ring-0 bg-transparent leading-tight"
               autoFocus
             />
@@ -432,13 +439,13 @@ export const Ask: React.FC<AskProps> = ({
           {/* Main Content Section */}
           <div className="relative min-h-[200px] group">
             <div className="flex justify-between items-center mb-2">
-              <label className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider ml-1">Nội dung chi tiết</label>
+              <label className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider ml-1">{t("ask.contentLabel")}</label>
               {title.length > 5 && !content && !isGeneratingContent && (
                 <button
                   onClick={handleAiContent}
                   className="text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 px-3 py-1.5 rounded-full flex items-center gap-1.5 hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-all border border-purple-100 dark:border-purple-900/30 shadow-sm animate-fade-in active:scale-95"
                 >
-                  <Sparkles size={14} /> AI Viết hộ
+                  <Sparkles size={14} /> {t("ask.aiWriteButton")}
                 </button>
               )}
             </div>
@@ -447,14 +454,14 @@ export const Ask: React.FC<AskProps> = ({
               {isGeneratingContent && (
                 <div className="absolute inset-0 bg-white/80 dark:bg-dark-card/80 z-20 flex flex-col items-center justify-center rounded-lg backdrop-blur-[1px]">
                   <Loader2 size={24} className="animate-spin text-purple-600 dark:text-purple-400 mb-2" />
-                  <span className="text-purple-600 dark:text-purple-400 font-bold text-sm animate-pulse">AI đang viết, mẹ đợi xíu nhé...</span>
+                  <span className="text-purple-600 dark:text-purple-400 font-bold text-sm animate-pulse">{t("ask.aiWritingOverlay")}</span>
                 </div>
               )}
               <textarea
                 ref={textareaRef}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Mô tả kỹ hơn về tình trạng của bé hoặc vấn đề mẹ đang gặp..."
+                placeholder={t("ask.contentPlaceholder")}
                 className="w-full text-base md:text-lg text-gray-800 dark:text-dark-text placeholder-gray-400 dark:placeholder-gray-600 border-none p-0 focus:ring-0 bg-transparent resize-none leading-relaxed min-h-[200px]"
               />
             </div>
@@ -491,19 +498,21 @@ export const Ask: React.FC<AskProps> = ({
                 type="url"
                 value={linkUrl}
                 onChange={(e) => setLinkUrl(e.target.value)}
-                placeholder="Dán đường link vào đây..."
+                placeholder={t("ask.linkPlaceholder")}
                 className="flex-1 text-sm bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 text-textDark dark:text-white"
                 autoFocus
               />
-              <button onClick={handleInsertLink} className="bg-blue-600 text-white text-xs font-bold px-4 rounded-lg hover:bg-blue-700 active:scale-95 transition-all">Chèn</button>
+              <button onClick={handleInsertLink} className="bg-blue-600 text-white text-xs font-bold px-4 rounded-lg hover:bg-blue-700 active:scale-95 transition-all">{t("ask.linkInsertButton")}</button>
               <button onClick={() => setShowLinkInput(false)} className="text-gray-400 p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg"><X size={18} /></button>
             </div>
           )}
           {showStickers && (
             <div className="h-48 overflow-y-auto bg-white dark:bg-dark-card border border-gray-100 dark:border-dark-border rounded-xl p-3 animate-slide-up mb-2 shadow-lg scroll-smooth">
-              {Object.entries(STICKER_PACKS).map(([category, emojis]) => (
-                <div key={category} className="mb-4 last:mb-0">
-                  <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-2 sticky top-0 bg-white dark:bg-dark-card py-1">{category}</h4>
+              {Object.entries(STICKER_PACKS).map(([categoryKey, emojis]) => (
+                <div key={categoryKey} className="mb-4 last:mb-0">
+                  <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-2 sticky top-0 bg-white dark:bg-dark-card py-1">
+                    {t(`ask.stickersSection.${STICKER_LABEL_KEYS[categoryKey]}`)}
+                  </h4>
                   <div className="grid grid-cols-6 gap-3">
                     {emojis.map(emoji => (
                       <button key={emoji} onClick={() => handleInsertSticker(emoji)} className="text-3xl hover:scale-125 transition-transform p-1 active:scale-90">{emoji}</button>
