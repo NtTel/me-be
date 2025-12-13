@@ -1,12 +1,11 @@
 import { Story, User } from '../types';
-// SỬA DÒNG NÀY: Dùng ../firebase
-import { db } from '../firebase'; 
+// SỬA LẠI DÒNG NÀY:
+import { db } from '../firebaseConfig';
 import { uploadFile } from './storage';
 import { 
   collection, addDoc, getDocs, query, where, orderBy, doc, updateDoc, arrayUnion 
 } from 'firebase/firestore';
 
-// 1. Lấy danh sách Story từ Firebase
 export const fetchStories = async (currentUser: User): Promise<Story[]> => {
   try {
     const now = new Date().toISOString();
@@ -28,7 +27,6 @@ export const fetchStories = async (currentUser: User): Promise<Story[]> => {
   }
 };
 
-// 2. Đăng Story mới lên Firebase
 export const createStory = async (user: User, file: File): Promise<Story> => {
   const path = `stories/${user.id}/${Date.now()}_${file.name}`;
   const mediaUrl = await uploadFile(file, path);
@@ -51,7 +49,6 @@ export const createStory = async (user: User, file: File): Promise<Story> => {
   return { id: docRef.id, ...newStoryData };
 };
 
-// 3. Đánh dấu đã xem
 export const markStoryViewed = async (storyId: string, userId: string) => {
   try {
     const storyRef = doc(db, 'stories', storyId);
