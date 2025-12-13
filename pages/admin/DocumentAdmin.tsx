@@ -50,7 +50,6 @@ export const DocumentAdmin: React.FC = () => {
 
     // Forms
     const [catForm, setCatForm] = useState(initialCatForm);
-    
     const [docForm, setDocForm] = useState<Partial<Document>>(initialDocForm);
     const [tagsInput, setTagsInput] = useState('');
     const [inputMode, setInputMode] = useState<'upload' | 'link'>('upload'); 
@@ -85,7 +84,7 @@ export const DocumentAdmin: React.FC = () => {
             ]);
             setCategories(cats);
             setDocs(allDocs);
-            console.log("Danh mục đã tải:", cats.length); // Log số lượng danh mục để kiểm tra
+            console.log(`[Dữ liệu tải]: Đã tải ${cats.length} danh mục và ${allDocs.length} tài liệu.`);
         } catch (error) {
             console.error("Lỗi tải dữ liệu:", error);
         } finally {
@@ -195,7 +194,7 @@ export const DocumentAdmin: React.FC = () => {
     const handleSaveDoc = async () => {
         if (!currentUser) return alert("Không tìm thấy thông tin người dùng.");
         if (!docForm.title) return alert("Vui lòng nhập tiêu đề tài liệu.");
-        if (!docForm.categoryId) return alert("Vui lòng chọn danh mục."); // Kiểm tra chọn danh mục
+        if (!docForm.categoryId) return alert("Vui lòng chọn danh mục."); 
 
         const isExternal = inputMode === 'link';
         if (isExternal && !docForm.externalLink) return alert("Vui lòng nhập đường dẫn liên kết.");
@@ -405,7 +404,7 @@ export const DocumentAdmin: React.FC = () => {
 
             {/* CATEGORY MODAL */}
             {showCatModal && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in">
+                <div key="cat-modal" className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-fade-in">
                     <div className="bg-white p-6 rounded-2xl w-full max-w-md space-y-4 animate-pop-in">
                         <h3 className="font-bold text-xl text-gray-800">{catForm.id ? 'Sửa Danh mục' : 'Thêm Danh mục mới'}</h3>
                         <input 
@@ -439,7 +438,7 @@ export const DocumentAdmin: React.FC = () => {
 
             {/* DOCUMENT MODAL */}
             {showDocModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+                <div key="doc-modal" className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
                     <div className="bg-white p-6 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto space-y-5 animate-pop-in">
                         <div className="flex justify-between items-center border-b border-gray-100 pb-4">
                             <h3 className="font-bold text-xl text-gray-800">{docForm.id ? 'Sửa tài liệu' : 'Thêm tài liệu mới'}</h3>
@@ -480,12 +479,13 @@ export const DocumentAdmin: React.FC = () => {
                                         </p>
                                     ) : (
                                         <select 
-                                            // FIX CUỐI CÙNG: Đảm bảo giá trị là chuỗi và không bao giờ là null/undefined
+                                            // GIÁ TRỊ LUÔN LÀ CHUỖI VÀ ĐƯỢC KIỂM SOÁT
                                             value={docForm.categoryId || ''} 
                                             onChange={e => setDocForm({...docForm, categoryId: e.target.value})} 
                                             className="w-full p-2.5 border rounded-xl bg-white outline-none focus:ring-2 focus:ring-green-100"
                                         >
-                                            <option value="" disabled={docForm.categoryId !== ''}>-- Chọn chuyên mục --</option>
+                                            {/* Option này có value="" để khớp với docForm.categoryId khi tạo mới */}
+                                            <option value="">-- Chọn chuyên mục --</option>
                                             {categories.map(c => (
                                                 <option key={c.id} value={c.id}>
                                                     {c.iconEmoji} {c.name}
