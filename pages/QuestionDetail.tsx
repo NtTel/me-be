@@ -307,7 +307,7 @@ export default function QuestionDetail({
           const ans: Answer = { id: Date.now().toString(), questionId: question.id, author: user, content, likes: 0, isBestAnswer: false, createdAt: new Date().toISOString(), isAi: false }; 
           await onAddAnswer(question.id, ans); 
           setNewAnswer(''); setAnswerImage(null); 
-          setIsInputOpen(false);
+          setIsInputOpen(false); // Đóng input sau khi gửi thành công -> Menu chân trang sẽ hiện lại
           setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100); 
       } catch (e: any) { 
           if (e.message !== "LOGIN_REQUIRED") alert("Lỗi gửi."); 
@@ -569,11 +569,12 @@ export default function QuestionDetail({
           </div>
       </div>
 
-      {/* --- NEW FOOTER & BOTTOM SHEET (LOGIC GRID MỚI) --- */}
+      {/* --- NEW FOOTER & BOTTOM SHEET --- */}
       
-      {/* Container chính cho cả thanh placeholder và khung nhập liệu */}
-      {/* pointer-events-none để không chặn click vào các phần không có nội dung (như sidebar) */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none flex flex-col justify-end">
+      {/* Container chính - Logic Z-index quan trọng */}
+      {/* Nếu Input đang mở (isInputOpen): z-[60] để đè lên menu chân trang */}
+      {/* Nếu Input đóng: z-40 để nằm dưới các modal khác */}
+      <div className={`fixed bottom-0 left-0 right-0 pointer-events-none flex flex-col justify-end ${isInputOpen ? 'z-[60]' : 'z-40'}`}>
           
           <div className="max-w-6xl w-full mx-auto px-0 md:px-6">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -582,7 +583,6 @@ export default function QuestionDetail({
                   <div className="lg:col-span-8 relative">
                       
                       {/* 1. Placeholder Bar (Thanh hiển thị khi chưa bấm vào) */}
-                      {/* pointer-events-auto để cho phép click */}
                       {!isInputOpen && (
                           <div className="pointer-events-auto bg-white dark:bg-dark-card border-t border-gray-100 dark:border-dark-border p-3 pb-safe-bottom shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] md:rounded-t-2xl md:border-x md:border-t lg:mb-0">
                               <button 
@@ -598,14 +598,14 @@ export default function QuestionDetail({
                       {/* 2. Modal Bottom Sheet (Khung nhập liệu mở rộng) */}
                       {isInputOpen && (
                           <>
-                              {/* Backdrop (Chỉ hiện trên Mobile để tối màn hình, Desktop ẩn đi để nhìn thoáng hơn) */}
+                              {/* Backdrop */}
                               <div 
                                   className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-in lg:hidden pointer-events-auto" 
                                   onClick={() => setIsInputOpen(false)} 
                               />
                               
                               {/* Sheet Content */}
-                              {/* pointer-events-auto để thao tác nhập liệu */}
+                              {/* z-50 để đảm bảo nó nằm trên backdrop */}
                               <div className="pointer-events-auto bg-white dark:bg-dark-card w-full rounded-t-3xl shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.2)] animate-slide-up border border-gray-100 dark:border-slate-800 flex flex-col max-h-[85vh] md:max-h-[600px] relative z-50">
                                   
                                   {/* Drag Handle / Header */}
@@ -628,6 +628,7 @@ export default function QuestionDetail({
                                           </div>
                                       )}
 
+                                      {/*  */}
                                       {showMentions && filteredParticipants.length > 0 && (
                                           <div className="bg-white dark:bg-dark-card rounded-xl shadow-lg border border-gray-100 dark:border-dark-border max-h-40 overflow-y-auto mb-2">
                                               {filteredParticipants.map(p => (
@@ -639,6 +640,7 @@ export default function QuestionDetail({
                                           </div>
                                       )}
 
+                                      {/*  */}
                                       {showLinkInput && (
                                           <div className="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-2 flex gap-2 mb-3">
                                               <input type="url" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="Dán link..." className="flex-1 text-sm bg-white dark:bg-dark-card border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 outline-none focus:border-primary text-textDark dark:text-white" autoFocus />
@@ -647,6 +649,7 @@ export default function QuestionDetail({
                                           </div>
                                       )}
 
+                                      {/*  */}
                                       {answerImage && (
                                           <div className="flex items-center gap-2 mb-3 bg-gray-50 dark:bg-slate-800 p-2 rounded-xl w-fit border border-gray-200 dark:border-slate-700">
                                               <img src={answerImage} className="w-12 h-12 rounded-lg object-cover" />
@@ -683,6 +686,7 @@ export default function QuestionDetail({
                                           </div>
                                       </div>
 
+                                      {/*  */}
                                       {showStickers && (
                                           <div className="h-48 overflow-y-auto bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl mt-3 p-3 animate-slide-up">
                                               {Object.entries(STICKER_PACKS).map(([category, emojis]) => (
