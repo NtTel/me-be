@@ -1,3 +1,7 @@
+// =============================================================================
+//  CORE SYSTEM INTERFACES (USER, CHAT, NOTIFICATIONS)
+// =============================================================================
+
 export interface User {
   id: string;
   name: string;
@@ -68,11 +72,10 @@ export interface Notification {
   createdAt: string;
 }
 
-// SỬA LẠI INTERFACE MESSAGE:
 export interface Message {
   id: string;
   senderId: string;
-  receiverId: string; // <--- BẮT BUỘC PHẢI THÊM DÒNG NÀY
+  receiverId: string; // Đã thêm bắt buộc theo yêu cầu
   content: string;
   createdAt: string;
   isRead: boolean;
@@ -106,8 +109,21 @@ export interface Story {
   likes: string[];
 }
 
+// =============================================================================
+//  GAME ENGINE V2 INTERFACES (NÂNG CẤP CHO GAME CHO BÉ)
+// =============================================================================
+
 export type GameCategory = string;
-export type GameType = 'quiz' | 'html5' | 'story' | 'ai-story';
+
+// Mở rộng các loại game để hỗ trợ nhiều tính năng hơn
+export type GameType =
+  | 'quiz'          // Trắc nghiệm
+  | 'flashcard'     // Thẻ học (Hình + Tiếng)
+  | 'drag-drop'     // Kéo thả
+  | 'html5'         // Game nhúng (Iframe)
+  | 'story'         // Truyện đọc
+  | 'ai-story';     // AI kể chuyện
+
 export type GameOrientation = 'portrait' | 'landscape' | 'auto';
 
 export interface CategoryDef {
@@ -118,34 +134,73 @@ export interface CategoryDef {
   isDefault?: boolean;
 }
 
+// Định nghĩa một "Tài sản" trong game (Dùng chung cho cả Đáp án, Câu hỏi, Vật thể)
+export interface GameAsset {
+  id: string;
+  text?: string;        // Chữ hiển thị
+  imageUrl?: string;    // URL Hình ảnh
+  audioUrl?: string;    // URL Âm thanh (Giọng đọc)
+  color?: string;       // Màu nền (nếu không có ảnh)
+}
+
+// Cấu hình âm thanh & hiệu ứng (Juice)
+export interface GameConfig {
+  bgMusicUrl?: string;       // Nhạc nền
+  correctSoundUrl?: string;  // Tiếng khi chọn đúng
+  wrongSoundUrl?: string;    // Tiếng khi chọn sai
+  successConfetti?: boolean; // Bắn pháo hoa khi thắng
+  mascotGuide?: boolean;     // Hiển thị nhân vật hướng dẫn
+}
+
+// Dữ liệu của MỘT màn chơi (Level) - Thay thế GameQuestion cũ
+export interface GameLevel {
+  id: string;
+  instruction: GameAsset; // Đề bài (Có thể là Text hoặc Audio đọc đề)
+  items: GameAsset[];     // Danh sách các lựa chọn/thẻ bài
+  correctAnswerId?: string; // ID của đáp án đúng (cho Quiz)
+  pairs?: { itemId: string; targetId: string }[]; // Cặp đúng (cho Kéo thả)
+  dropZones?: GameAsset[]; // Vùng thả (cho Kéo thả)
+  order: number;
+}
+
+// Interface Game Chính (Updated V2)
 export interface Game {
   id: string;
   title: string;
+  slug: string;
   icon: string;
   color: string;
+
   gameType: GameType;
   category: GameCategory;
   orientation?: GameOrientation;
-  gameUrl?: string;
-  storyContent?: string;
+
   minAge: number;
   maxAge: number;
+
   isActive: boolean;
+  isPro?: boolean;
   order: number;
+
+  // Dữ liệu nội dung (Legacy & V2)
+  gameUrl?: string;       // Cho game HTML5
+  storyContent?: string;  // Cho truyện đọc
+
+  // Cấu hình V2
+  config: GameConfig;
+  levels: GameLevel[];    // Mảng chứa toàn bộ màn chơi
+
+  totalPlays: number;
   createdAt: string;
+  updatedAt: string;
+
+  // Trường cũ (có thể giữ lại để tránh lỗi type ở code cũ chưa clean)
   questionCount?: number;
 }
 
-export interface GameQuestion {
-  id: string;
-  q: string;
-  opts: string[];
-  a: string;
-  displayType: 'text' | 'emoji' | 'color';
-  order: number;
-  isActive: boolean;
-  createdAt: string;
-}
+// =============================================================================
+//  OTHER MODULES (EXPERT, BLOG, DOCS, ADS)
+// =============================================================================
 
 export interface ExpertApplication {
   id: string;
@@ -317,6 +372,10 @@ export interface DocumentReview {
   comment: string;
   createdAt: string;
 }
+
+// =============================================================================
+//  CONSTANTS & HELPERS
+// =============================================================================
 
 export const CATEGORIES = [
   "Mang thai",
