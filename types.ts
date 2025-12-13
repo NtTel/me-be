@@ -60,7 +60,12 @@ export interface Question {
   reportCount?: number;
   isFake?: boolean;
 }
-
+// --- NEW: Interface cho Quản lý Danh mục câu hỏi (Admin) ---
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
 export interface Notification {
   id: string;
   userId: string;

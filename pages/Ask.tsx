@@ -12,6 +12,8 @@ import { AuthModal } from '../components/AuthModal';
 import { uploadFile } from '../services/storage';
 import { loginAnonymously } from '../services/auth';
 import { useTranslation } from 'react-i18next';
+// --- IMPORT MỚI: Thêm hàm addCategory để lưu danh mục người dùng tạo ---
+import { fetchCategories, addCategory } from '../services/admin';
 
 // --- CONFIGURATION & CONSTANTS (Đã thêm Dark Mode Classes) ---
 export enum AskCategoryKey {
@@ -79,7 +81,6 @@ interface ToastMessage {
   type: 'success' | 'error' | 'info';
 }
 
-// --- HELPER FUNCTIONS ---
 const getCategoryStyle = (catName: string) => {
   const key = Object.keys(CATEGORY_CONFIG).find(k => catName.includes(k)) || "Default";
   return CATEGORY_CONFIG[key];
@@ -93,7 +94,6 @@ const getCategoryLabel = (catName: string, t: (key: string) => string) => {
   return catName;
 };
 
-// --- INTERNAL COMPONENT: TOAST NOTIFICATION ---
 const ToastContainer = ({ toasts }: { toasts: ToastMessage[] }) => (
   <div className="fixed top-4 left-0 right-0 z-[100] flex flex-col items-center gap-2 pointer-events-none px-4">
     {toasts.map(t => (
@@ -109,7 +109,6 @@ const ToastContainer = ({ toasts }: { toasts: ToastMessage[] }) => (
   </div>
 );
 
-// --- MAIN COMPONENT ---
 export const Ask: React.FC<AskProps> = ({
   onAddQuestion,
   currentUser,
@@ -123,6 +122,8 @@ export const Ask: React.FC<AskProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { t } = useTranslation();
+  const [allCategories, setAllCategories] = useState<string[]>(categories);
+  const [isAddingCategory, setIsAddingCategory] = useState(false); // Loading state khi thêm danh mục
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -143,6 +144,20 @@ export const Ask: React.FC<AskProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
+  useEffect(() => {
+    const loadDynamicCategories = async () => {
+      try {
+        const dbCategories = await fetchCategories();
+        const dbCategoryNames = dbCategories.map(c => c.name);
+        const merged = Array.from(new Set([...categories, ...dbCategoryNames]));
+        setAllCategories(merged);
+      } catch (error) {
+        console.error("Lỗi tải danh mục:", error);
+      }
+    };
+    loadDynamicCategories();
+  }, [categories]);
+
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now();
     setToasts(prev => [...prev, { id, message, type }]);
@@ -160,7 +175,7 @@ export const Ask: React.FC<AskProps> = ({
     return () => attachments.forEach(att => URL.revokeObjectURL(att.preview));
   }, []);
 
-  // --- HANDLERS (LOGIC GIỮ NGUYÊN) ---
+  // --- HANDLERS ---
   const handleAiSuggest = async () => {
     if (title.length < 3) {
       showToast(t("ask.aiSuggestErrorShortTitle"), "error");
@@ -234,12 +249,38 @@ export const Ask: React.FC<AskProps> = ({
     setAttachments(prev => prev.filter(att => att.id !== id));
   };
 
-  const handleAddCustomCategory = () => {
-    if (customCategory.trim()) {
-      onAddCategory(customCategory.trim());
-      setCategory(customCategory.trim());
-      setCustomCategory('');
-      setShowCategorySheet(false);
+  // --- XỬ LÝ THÊM DANH MỤC MỚI VÀO FIREBASE ---
+  const handleAddCustomCategory = async () => {
+    const newCat = customCategory.trim();
+    if (newCat) {
+      // 1. Kiểm tra xem đã có chưa
+      if (allCategories.includes(newCat)) {
+        setCategory(newCat);
+        setCustomCategory('');
+        setShowCategorySheet(false);
+        return;
+      }
+
+      setIsAddingCategory(true);
+      try {
+        // 2. Lưu vào Firebase (Collection 'categories')
+        await addCategory(newCat);
+
+        // 3. Cập nhật state cục bộ để hiện ngay
+        setAllCategories(prev => [...prev, newCat]);
+        setCategory(newCat);
+
+        // 4. Reset form
+        setCustomCategory('');
+        setShowCategorySheet(false);
+        showToast("Đã thêm chủ đề mới!", "success");
+      } catch (error) {
+        console.error("Lỗi thêm danh mục:", error);
+        showToast("Không thêm được chủ đề. Bạn cần đăng nhập!", "error");
+        if (!currentUser.id) setShowAuthModal(true);
+      } finally {
+        setIsAddingCategory(false);
+      }
     }
   };
 
@@ -337,7 +378,6 @@ export const Ask: React.FC<AskProps> = ({
   const activeCategoryStyle = getCategoryStyle(category);
 
   return (
-    // THAY ĐỔI: bg-white -> dark:bg-dark-bg
     <div className="min-h-screen bg-white dark:bg-dark-bg flex flex-col animate-fade-in relative transition-colors duration-300">
       <ToastContainer toasts={toasts} />
 
@@ -578,16 +618,16 @@ export const Ask: React.FC<AskProps> = ({
               />
               <button
                 onClick={handleAddCustomCategory}
-                disabled={!customCategory.trim()}
-                className="bg-gray-900 dark:bg-slate-700 text-white px-5 rounded-xl font-bold disabled:opacity-50 active:scale-95 transition-transform"
+                disabled={!customCategory.trim() || isAddingCategory}
+                className="bg-gray-900 dark:bg-slate-700 text-white px-5 rounded-xl font-bold disabled:opacity-50 active:scale-95 transition-transform flex items-center justify-center"
               >
-                <Plus size={24} />
+                {isAddingCategory ? <Loader2 className="animate-spin" size={24} /> : <Plus size={24} />}
               </button>
             </div>
 
             {/* Category Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-8">
-              {categories.map(cat => {
+              {allCategories.map(cat => {
                 const style = getCategoryStyle(cat);
                 const isSelected = category === cat;
                 return (
