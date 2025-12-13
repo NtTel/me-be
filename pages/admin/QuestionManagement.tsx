@@ -1,16 +1,123 @@
-
 import React, { useEffect, useState } from 'react';
-import { Question, toSlug } from '../../types';
-import { fetchAllQuestionsAdmin, bulkUpdateQuestions, bulkDeleteQuestions } from '../../services/admin';
-import { Search, Eye, EyeOff, Trash2, MoreHorizontal, Filter, AlertCircle } from 'lucide-react';
+import { Question, Category, toSlug } from '../../types'; // Nhớ import Category
+// Nhớ import thêm các hàm category từ service
+import { 
+  fetchAllQuestionsAdmin, 
+  bulkUpdateQuestions, 
+  bulkDeleteQuestions,
+  fetchCategories,
+  addCategory,
+  updateCategory,
+  deleteCategory
+} from '../../services/admin';
+import { Search, Eye, EyeOff, Trash2, Filter, Plus, X, Edit2, List, Save } from 'lucide-react';
 // @ts-ignore
 import { Link } from 'react-router-dom';
 
+// --- COMPONENT CON: Modal Quản lý Danh mục ---
+const CategoryModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [newCatName, setNewCatName] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => { loadData(); }, []);
+
+  const loadData = async () => {
+    const data = await fetchCategories();
+    setCategories(data);
+  };
+
+  const handleAdd = async () => {
+    if (!newCatName.trim()) return;
+    setLoading(true);
+    await addCategory(newCatName);
+    setNewCatName('');
+    await loadData();
+    setLoading(false);
+  };
+
+  const handleUpdate = async (id: string) => {
+    if (!editName.trim()) return;
+    setLoading(true);
+    await updateCategory(id, editName);
+    setEditingId(null);
+    await loadData();
+    setLoading(false);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Xóa danh mục này? Lưu ý: Các câu hỏi thuộc danh mục này sẽ không bị xóa nhưng có thể mất nhãn.')) return;
+    setLoading(true);
+    await deleteCategory(id);
+    await loadData();
+    setLoading(false);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-pop-in">
+        <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+          <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2"><List size={20}/> Quản lý Danh mục</h3>
+          <button onClick={onClose}><X size={20} className="text-gray-500 hover:text-red-500"/></button>
+        </div>
+        
+        <div className="p-4 max-h-[60vh] overflow-y-auto space-y-3">
+          {/* Form thêm mới */}
+          <div className="flex gap-2 mb-4">
+            <input 
+              value={newCatName} 
+              onChange={e => setNewCatName(e.target.value)}
+              placeholder="Tên danh mục mới..." 
+              className="flex-1 border p-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500/20 outline-none"
+            />
+            <button onClick={handleAdd} disabled={loading || !newCatName} className="bg-blue-600 text-white px-3 py-2 rounded-lg font-bold text-sm disabled:opacity-50">Thêm</button>
+          </div>
+
+          {/* Danh sách */}
+          <div className="space-y-2">
+            {categories.map(cat => (
+              <div key={cat.id} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100 group">
+                {editingId === cat.id ? (
+                  <div className="flex gap-2 flex-1">
+                    <input 
+                      value={editName} 
+                      onChange={e => setEditName(e.target.value)} 
+                      className="flex-1 border p-1 rounded text-sm"
+                      autoFocus
+                    />
+                    <button onClick={() => handleUpdate(cat.id)} className="text-green-600"><Save size={18}/></button>
+                    <button onClick={() => setEditingId(null)} className="text-gray-400"><X size={18}/></button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="font-medium text-gray-700">{cat.name}</span>
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => { setEditingId(cat.id); setEditName(cat.name); }} className="text-blue-500 hover:bg-white p-1 rounded"><Edit2 size={16}/></button>
+                      <button onClick={() => handleDelete(cat.id)} className="text-red-500 hover:bg-white p-1 rounded"><Trash2 size={16}/></button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+            {categories.length === 0 && <p className="text-center text-gray-400 text-sm">Chưa có danh mục nào.</p>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- COMPONENT CHÍNH ---
 export const QuestionManagement: React.FC = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  
+  // State cho Modal danh mục
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
 
   useEffect(() => {
     loadQuestions();
@@ -60,17 +167,25 @@ export const QuestionManagement: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6 pb-20 animate-fade-in">
+       {/* Toolbar */}
        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between gap-4">
           <div className="relative w-full md:w-96">
              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
              <input type="text" placeholder="Tìm câu hỏi..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20" />
           </div>
           <div className="flex gap-2">
-             <button className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-gray-50"><Filter size={16} /> Bộ lọc</button>
+             {/* Nút mở Modal Danh mục */}
+             <button onClick={() => setShowCategoryModal(true)} className="px-4 py-2 bg-purple-50 text-purple-600 border border-purple-100 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-purple-100 transition-colors">
+                <List size={18} /> QL Danh mục
+             </button>
+             <button className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-gray-50">
+                <Filter size={16} /> Bộ lọc
+             </button>
           </div>
        </div>
 
+       {/* Table */}
        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
              <table className="w-full text-left border-collapse">
@@ -107,6 +222,7 @@ export const QuestionManagement: React.FC = () => {
           </div>
        </div>
 
+       {/* Bulk Actions Bar */}
        {selectedIds.size > 0 && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-6 z-50 animate-pop-in">
              <span className="font-bold text-sm">{selectedIds.size} mục đã chọn</span>
@@ -118,6 +234,9 @@ export const QuestionManagement: React.FC = () => {
              </div>
           </div>
        )}
+
+       {/* Render Modal */}
+       {showCategoryModal && <CategoryModal onClose={() => setShowCategoryModal(false)} />}
     </div>
   );
 };
