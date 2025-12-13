@@ -218,7 +218,9 @@ export default function App() {
         </Route>
 
         {/* --- USER ROUTES --- */}
-        <Route path="/" element={<Layout><Home questions={questions} categories={categories} /></Layout>} />
+        {/* ĐÃ THÊM currentUser VÀO ĐÂY */}
+        <Route path="/" element={<Layout><Home questions={questions} categories={categories} currentUser={currentUser} /></Layout>} />
+        
         <Route path="/ask" element={
           <Layout>
             <Ask 
