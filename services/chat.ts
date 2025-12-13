@@ -1,47 +1,47 @@
-import { Message, ChatSession } from '../types';
-
-const STORAGE_KEY = 'asking_vn_messages';
+import { Message } from '../types';
+import { db } from './firebase';
+import { 
+  collection, addDoc, query, where, orderBy, getDocs 
+} from 'firebase/firestore';
 
 /**
- * Hàm lấy dữ liệu tươi mới nhất từ ổ cứng (localStorage)
+ * Tạo ID hội thoại duy nhất từ 2 User ID để gom tin nhắn
+ * Ví dụ: UserA="abc", UserB="xyz" -> ChatID luôn là "abc_xyz"
  */
-const getFreshMessages = (): Message[] => {
+const getConversationId = (uid1: string, uid2: string) => {
+  return [uid1, uid2].sort().join('_');
+};
+
+/**
+ * Lấy danh sách tin nhắn từ Firestore
+ */
+export const getMessages = async (currentUserId: string, otherUserId: string): Promise<Message[]> => {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
+    const conversationId = getConversationId(currentUserId, otherUserId);
+    const messagesRef = collection(db, 'messages');
+    
+    // Chỉ lấy tin nhắn thuộc cuộc hội thoại này
+    const q = query(
+      messagesRef,
+      where('conversationId', '==', conversationId),
+      orderBy('createdAt', 'asc')
+    );
+
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        // Convert timestamp Firestore nếu cần, hoặc dùng string ISO như hiện tại
+        return { id: doc.id, ...data } as Message;
+    });
   } catch (error) {
-    console.error("Lỗi đọc tin nhắn:", error);
+    console.error("Lỗi lấy tin nhắn:", error);
+    // Nếu lỗi do chưa tạo Index, nó sẽ hiện link trong Console trình duyệt
     return [];
   }
 };
 
 /**
- * Lấy danh sách tin nhắn giữa 2 người (Dùng cho cả Tab A và Tab B)
- */
-export const getMessages = async (currentUserId: string, otherUserId: string): Promise<Message[]> => {
-  // Delay nhẹ để tạo cảm giác load mạng
-  await new Promise(resolve => setTimeout(resolve, 200));
-
-  // Luôn lấy dữ liệu mới nhất từ Storage (để thấy tin nhắn từ Tab kia gửi sang)
-  const allMessages = getFreshMessages();
-
-  // Logic lọc tin nhắn 2 chiều:
-  // 1. Tin tôi gửi đi (sender = Me, receiver = You)
-  // 2. Tin tôi nhận được (sender = You, receiver = Me)
-  const conversation = allMessages.filter(msg => 
-    (msg.senderId === currentUserId && msg.receiverId === otherUserId) || 
-    (msg.senderId === otherUserId && msg.receiverId === currentUserId)
-  );
-
-  // Debug log để bạn kiểm tra nếu không thấy tin nhắn
-  // console.log(`GetMessages [${currentUserId} <-> ${otherUserId}]: Found ${conversation.length}`);
-
-  // Sắp xếp tin nhắn cũ -> mới
-  return conversation.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-};
-
-/**
- * Gửi tin nhắn
+ * Gửi tin nhắn lên Firebase
  */
 export const sendMessage = async (
   senderId: string, 
@@ -51,57 +51,25 @@ export const sendMessage = async (
   storyData?: { storyId: string, snapshotUrl: string }
 ): Promise<Message> => {
   
-  await new Promise(resolve => setTimeout(resolve, 300));
+  const conversationId = getConversationId(senderId, receiverId);
 
-  const newMessage: Message = {
-    id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // ID độc nhất
+  const newMessageData = {
+    conversationId, // Quan trọng: Để filter tin nhắn của cặp đôi này
     senderId,
-    receiverId, 
+    receiverId,
     content,
     createdAt: new Date().toISOString(),
     isRead: false,
-    type: type,
-    storyId: storyData?.storyId,
-    storySnapshotUrl: storyData?.snapshotUrl
+    type,
+    storyId: storyData?.storyId || null,
+    storySnapshotUrl: storyData?.snapshotUrl || null
   };
 
-  // 1. Lấy toàn bộ tin nhắn hiện có trong kho
-  const currentMessages = getFreshMessages();
-  
-  // 2. Thêm tin mới vào
-  const updatedMessages = [...currentMessages, newMessage];
-  
-  // 3. Lưu lại kho ngay lập tức
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedMessages));
-  
-  console.log("LOG: Đã gửi tin nhắn thành công:", newMessage);
+  const docRef = await addDoc(collection(db, 'messages'), newMessageData);
 
-  // --- MÌNH ĐÃ TẮT AUTO REPLY ĐỂ BẠN TEST NGƯỜI THẬT ---
-  // Nếu muốn bật lại bot, hãy uncomment dòng dưới:
-  // simulateAutoReply(receiverId, senderId);
-
-  return newMessage;
+  console.log("LOG: Đã lưu tin nhắn lên Firestore:", docRef.id);
+  return { id: docRef.id, ...newMessageData } as Message;
 };
 
-/**
- * Hàm giả lập Bot trả lời (Dành cho debug)
- */
-const simulateAutoReply = (botId: string, humanId: string) => {
-  setTimeout(() => {
-    const messages = getFreshMessages();
-    const reply: Message = {
-      id: `bot_${Date.now()}`,
-      senderId: botId,
-      receiverId: humanId,
-      content: "Bot: Đã nhận tin nhắn (Auto) 🤖",
-      createdAt: new Date().toISOString(),
-      isRead: false,
-      type: 'text'
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...messages, reply]));
-  }, 2000);
-};
-
-export const markMessagesAsRead = async (chatId: string, userId: string) => {
-    // Logic đánh dấu đã đọc (chưa cần thiết cho Mock)
-};
+// Hàm đánh dấu đã đọc (Có thể implement sau)
+export const markMessagesAsRead = async (chatId: string, userId: string) => {};
