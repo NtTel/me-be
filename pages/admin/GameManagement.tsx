@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Game, GameCategory, GameType, GameOrientation, CategoryDef } from '../../types';
-import { fetchAllGames, createGame, deleteGame, updateGame, fetchCategories, addCategory, deleteCategory } from '../../services/games';
+// ĐÃ SỬA DÒNG NÀY: import từ '../services/game' (KHÔNG CÓ 'S')
+import { fetchAllGames, createGame, deleteGame, updateGame, fetchCategories, addCategory, deleteCategory } from '../../services/game';
 import { Plus, Trash2, ToggleRight, ToggleLeft, Loader2, ArrowRight, X, RefreshCw, Palette, Smile, Eye, List, Smartphone, Monitor, Edit2, Check } from 'lucide-react';
 // @ts-ignore
 import { useNavigate } from 'react-router-dom';
