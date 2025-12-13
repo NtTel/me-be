@@ -6,7 +6,7 @@ import {
   Sparkles, Loader2, Send, MoreVertical, Trash2, Edit2, 
   Share2, Image as ImageIcon, X, Smile, 
   ThumbsUp, CheckCircle2, Eye, Bookmark, Filter, LogIn, AtSign, Paperclip, Flag, ExternalLink, Info,
-  TrendingUp 
+  TrendingUp, ChevronDown
 } from 'lucide-react';
 import { Question, Answer, User, getIdFromSlug, AdConfig, toSlug } from '../types';
 import { generateDraftAnswer } from '../services/gemini';
@@ -16,7 +16,6 @@ import { ShareModal } from '../components/ShareModal';
 import { loginAnonymously } from '../services/auth';
 import { uploadFile } from '../services/storage';
 import { AdBanner } from '../components/AdBanner';
-// IMPORT COMPONENT MỚI
 import { ExpertPromoBox } from '../components/ExpertPromoBox';
 
 interface DetailProps {
@@ -63,7 +62,6 @@ const FBImageGridDetail: React.FC<{ images: string[]; onImageClick: (url: string
       <img src={src} className="w-full h-full object-cover cursor-pointer active:opacity-90 hover:opacity-95 transition-opacity" onClick={() => onImageClick(src)} loading="lazy" />
   );
 
-  // Thêm dark mode cho border và background
   const containerClass = "mt-4 rounded-2xl overflow-hidden border border-gray-100 dark:border-dark-border bg-gray-50 dark:bg-slate-800 shadow-sm";
 
   if (count === 1) return <div className={containerClass}><img src={images[0]} className="w-full max-h-[500px] object-cover cursor-pointer hover:opacity-95 transition-opacity" onClick={() => onImageClick(images[0])} /></div>;
@@ -177,10 +175,11 @@ export default function QuestionDetail({
   // State
   const [adConfig, setAdConfig] = useState<AdConfig | null>(null);
   const [newAnswer, setNewAnswer] = useState('');
+  const [isInputOpen, setIsInputOpen] = useState(false); // NEW STATE FOR BOTTOM SHEET
   const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [sortOption, setSortOption] = useState<'best' | 'newest' | 'oldest'>('best');
+  const [sortOption, setSortOption] = useState<'best' | 'newest' | 'oldest'>('newest'); // Changed default to 'newest' as per logic
   const [isSaved, setIsSaved] = useState(false);
   const [showStickers, setShowStickers] = useState(false);
   const [showLinkInput, setShowLinkInput] = useState(false);
@@ -214,6 +213,15 @@ export default function QuestionDetail({
       loadAds();
   }, []);
 
+  // Auto-focus input when sheet opens
+  useEffect(() => {
+    if (isInputOpen && answerInputRef.current) {
+        setTimeout(() => {
+            answerInputRef.current?.focus();
+        }, 300); // Small delay for animation
+    }
+  }, [isInputOpen]);
+
   // Filter Trending Questions
   const trendingQuestions = useMemo(() => {
     if (!questions || !question) return [];
@@ -225,9 +233,38 @@ export default function QuestionDetail({
 
   const participants = useMemo(() => { if (!question) return []; const usersMap = new Map<string, User>(); usersMap.set(question.author.id, question.author); question.answers.forEach(a => usersMap.set(a.author.id, a.author)); if (currentUser && !currentUser.isGuest) usersMap.delete(currentUser.id); return Array.from(usersMap.values()); }, [question, currentUser]);
   const filteredParticipants = useMemo(() => { if (!mentionQuery) return participants; return participants.filter(p => p.name.toLowerCase().includes(mentionQuery.toLowerCase())); }, [participants, mentionQuery]);
+  
   useEffect(() => { const h = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setActiveMenuId(null); }; document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h); }, []);
   useEffect(() => { if (currentUser && question) setIsSaved(currentUser.savedQuestions?.includes(question.id) || false); }, [currentUser, question]);
-  useEffect(() => { if (answerInputRef.current) { answerInputRef.current.style.height = 'auto'; answerInputRef.current.style.height = Math.min(answerInputRef.current.scrollHeight, 150) + 'px'; } }, [newAnswer]);
+  
+  useEffect(() => { 
+      if (answerInputRef.current) { 
+          answerInputRef.current.style.height = 'auto'; 
+          answerInputRef.current.style.height = Math.min(answerInputRef.current.scrollHeight, 150) + 'px'; 
+      } 
+  }, [newAnswer]);
+
+  // NEW SORTING LOGIC: Verified/Best -> Newest -> Oldest
+  const sortedAnswers = useMemo(() => {
+      if (!question) return [];
+      return [...question.answers].sort((a, b) => {
+          // 1. Ưu tiên TUYỆT ĐỐI: Best Answer (Hay nhất)
+          if (a.isBestAnswer) return -1;
+          if (b.isBestAnswer) return 1;
+
+          // 2. Ưu tiên TIẾP THEO: Verified Answer (Chuyên gia xác thực)
+          if (a.isExpertVerified && !b.isExpertVerified) return -1;
+          if (b.isExpertVerified && !a.isExpertVerified) return 1;
+
+          // 3. Logic sắp xếp còn lại dựa trên filter (Mặc định là Newest)
+          if (sortOption === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+          if (sortOption === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+          if (sortOption === 'best') return b.likes - a.likes;
+
+          // Fallback mặc định: Mới nhất trước
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+  }, [question, sortOption]);
 
   if (!question) return <div className="p-10 text-center text-gray-500 font-medium mt-10 flex flex-col items-center gap-2"><Loader2 className="animate-spin text-primary"/> Đang tải câu hỏi...</div>;
 
@@ -277,6 +314,7 @@ export default function QuestionDetail({
           const ans: Answer = { id: Date.now().toString(), questionId: question.id, author: user, content, likes: 0, isBestAnswer: false, createdAt: new Date().toISOString(), isAi: false }; 
           await onAddAnswer(question.id, ans); 
           setNewAnswer(''); setAnswerImage(null); 
+          setIsInputOpen(false); // Close sheet on success
           setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 100); 
       } catch (e: any) { 
           if (e.message !== "LOGIN_REQUIRED") alert("Lỗi gửi."); 
@@ -288,7 +326,7 @@ export default function QuestionDetail({
   const submitReport = async (reason: string) => { if (!reportTarget) return; try { let user = currentUser; if (user.isGuest) try { user = await loginAnonymously(); } catch { onOpenAuth(); return; } await sendReport(reportTarget.id, reportTarget.type, reason, user.id); alert("Đã báo cáo."); setShowReportModal(false); } catch { alert("Lỗi."); } };
   
   const toggleMenu = (id: string, e: React.MouseEvent) => { e.stopPropagation(); setActiveMenuId(activeMenuId === id ? null : id); };
-  const sortedAnswers = [...question.answers].sort((a, b) => { if (a.isBestAnswer) return -1; if (b.isBestAnswer) return 1; if (sortOption === 'newest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); if (sortOption === 'oldest') return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(); if (a.isExpertVerified) return -1; if (b.isExpertVerified) return 1; return b.likes - a.likes; });
+  
   const getTagColor = (cat: string) => { if (cat.includes('Mang thai')) return 'bg-pink-50 text-pink-600 border-pink-100 dark:bg-pink-900/30 dark:text-pink-400 dark:border-pink-900'; if (cat.includes('Dinh dưỡng')) return 'bg-green-50 text-green-600 border-green-100 dark:bg-green-900/30 dark:text-green-400 dark:border-green-900'; return 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-900'; };
   
   const handleToggleUseful = async (ans: Answer) => {
@@ -299,7 +337,7 @@ export default function QuestionDetail({
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F7F7F5] dark:bg-dark-bg pb-[240px] md:pb-[100px] selectable-text animate-fade-in transition-colors duration-300">
+    <div className="flex flex-col min-h-screen bg-[#F7F7F5] dark:bg-dark-bg pb-[100px] selectable-text animate-fade-in transition-colors duration-300">
       {previewImage && <ImageViewer url={previewImage} onClose={() => setPreviewImage(null)} />}
 
       {/* HEADER */}
@@ -371,7 +409,7 @@ export default function QuestionDetail({
                               <button onClick={handleLike} className={`flex items-center gap-2 text-sm font-bold transition-all active:scale-90 ${question.likes > 0 ? 'text-red-500' : 'text-gray-500 dark:text-gray-400 hover:text-red-500'}`}>
                                   <Heart size={20} className={question.likes > 0 ? "fill-red-500" : ""} /><span>{question.likes || 'Thích'}</span>
                               </button>
-                              <button onClick={() => answerInputRef.current?.focus()} className="flex items-center gap-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-blue-500 transition-all active:scale-90">
+                              <button onClick={() => setIsInputOpen(true)} className="flex items-center gap-2 text-sm font-bold text-gray-500 dark:text-gray-400 hover:text-blue-500 transition-all active:scale-90">
                                   <MessageCircle size={20} /><span>{question.answers.length || 'Trả lời'}</span>
                               </button>
                           </div>
@@ -394,8 +432,8 @@ export default function QuestionDetail({
                       <div className="flex items-center justify-between mb-4 px-2">
                           <h3 className="font-bold text-textDark dark:text-white text-lg">Trả lời ({question.answers.length})</h3>
                           <div className="flex bg-white dark:bg-dark-card rounded-lg p-1 shadow-sm border border-gray-200 dark:border-slate-700">
-                              <button onClick={() => setSortOption('best')} className={`p-1.5 rounded-md transition-all ${sortOption === 'best' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' : 'text-gray-400'}`}><Sparkles size={16}/></button>
-                              <button onClick={() => setSortOption('newest')} className={`p-1.5 rounded-md transition-all ${sortOption === 'newest' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-400'}`}><Filter size={16}/></button>
+                              <button onClick={() => setSortOption('best')} title="Hay nhất/Nhiều like" className={`p-1.5 rounded-md transition-all ${sortOption === 'best' ? 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400' : 'text-gray-400'}`}><Sparkles size={16}/></button>
+                              <button onClick={() => setSortOption('newest')} title="Mới nhất" className={`p-1.5 rounded-md transition-all ${sortOption === 'newest' ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-400'}`}><Filter size={16}/></button>
                           </div>
                       </div>
 
@@ -540,79 +578,114 @@ export default function QuestionDetail({
           </div>
       </div>
 
-      {/* FOOTER INPUT */}
-      <div className="fixed bottom-[88px] md:bottom-0 left-0 right-0 z-40 bg-white dark:bg-dark-card border-t border-gray-100 dark:border-dark-border shadow-[0_-5px_30px_rgba(0,0,0,0.06)] dark:shadow-none pb-2 md:pb-safe-bottom px-4 py-3 transition-colors">
-          <div className="max-w-3xl mx-auto">
-              {currentUser.isGuest && (
-                  <div className="bg-blue-50 dark:bg-blue-900/30 px-4 py-2 rounded-xl flex justify-between items-center text-xs text-blue-700 dark:text-blue-300 mb-2 border border-blue-100 dark:border-blue-900/30">
-                      <span className="font-bold flex items-center gap-1"><LogIn size={14} /> Bạn đang là Khách</span>
-                      <button onClick={onOpenAuth} className="font-bold underline hover:text-blue-900 dark:hover:text-blue-100">Đăng nhập để bình luận</button>
-                  </div>
-              )}
-              
-              {showMentions && filteredParticipants.length > 0 && (
-                  <div className="absolute bottom-full left-4 right-4 mb-2 bg-white dark:bg-dark-card rounded-2xl shadow-xl border border-gray-100 dark:border-dark-border max-h-48 overflow-y-auto animate-slide-up max-w-lg mx-auto">
-                      <div className="bg-gray-50 dark:bg-slate-800 px-3 py-2 text-[10px] font-bold text-gray-500 uppercase sticky top-0">Gợi ý</div>
-                      {filteredParticipants.map(p => (
-                          <button key={p.id} onClick={() => handleSelectMention(p)} className="w-full flex items-center gap-3 p-3 hover:bg-blue-50 dark:hover:bg-slate-700 text-left border-b border-gray-50 dark:border-slate-800">
-                              <img src={p.avatar} className="w-8 h-8 rounded-full border border-gray-200 dark:border-slate-600" />
-                              <div><p className="font-bold text-sm text-textDark dark:text-white">{p.name}</p><p className="text-[10px] text-gray-400">{p.isExpert ? 'Chuyên gia' : 'Thành viên'}</p></div>
-                          </button>
-                      ))}
-                  </div>
-              )}
-
-              {showLinkInput && (
-                  <div className="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-2 flex gap-2 mb-2 animate-slide-up">
-                      <input type="url" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="Dán link..." className="flex-1 text-sm bg-white dark:bg-dark-card border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 outline-none focus:border-primary text-textDark dark:text-white" autoFocus />
-                      <button onClick={handleInsertLink} className="bg-primary text-white text-xs font-bold px-3 rounded-lg">Thêm</button>
-                      <button onClick={() => setShowLinkInput(false)} className="text-gray-400 p-1"><X size={16}/></button>
-                  </div>
-              )}
-
-              {answerImage && (
-                  <div className="flex items-center gap-2 mb-2 bg-gray-50 dark:bg-slate-800 p-2 rounded-xl w-fit border border-gray-200 dark:border-slate-700">
-                      <img src={answerImage} className="w-10 h-10 rounded-lg object-cover" />
-                      <span className="text-xs text-green-600 dark:text-green-400 font-bold">Đã tải ảnh</span>
-                      <button onClick={() => setAnswerImage(null)} className="bg-white dark:bg-slate-700 text-gray-400 p-1 rounded-full hover:text-red-500 shadow-sm"><X size={12}/></button>
-                  </div>
-              )}
-
-              <div className="flex items-end gap-2">
-                  <div className="flex items-center gap-1">
-                      <button onClick={handleAiDraft} disabled={isGeneratingDraft} className="p-2.5 rounded-full bg-gradient-to-tr from-purple-100 to-indigo-100 dark:from-purple-900/40 dark:to-indigo-900/40 text-indigo-600 dark:text-indigo-400 active:scale-90 transition-transform" title="AI Gợi ý">
-                          {isGeneratingDraft ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
-                      </button>
-                      <button onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 active:scale-90 transition-transform"><ImageIcon size={20} /></button>
-                      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                      <button onClick={() => {setShowStickers(!showStickers); setShowLinkInput(false)}} className={`p-2.5 rounded-full active:scale-90 transition-transform ${showStickers ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700'}`}><Smile size={20} /></button>
-                      <button onClick={() => {setShowLinkInput(!showLinkInput); setShowStickers(false)}} className={`hidden md:block p-2.5 rounded-full active:scale-90 transition-transform ${showLinkInput ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700'}`}><Paperclip size={20} /></button>
-                  </div>
-
-                  <div className="flex-1 bg-gray-50 dark:bg-slate-800 rounded-[1.5rem] flex items-center px-4 py-2 border border-transparent focus-within:border-primary/30 focus-within:bg-white dark:focus-within:bg-dark-card transition-all">
-                      <textarea ref={answerInputRef} value={newAnswer} onChange={handleInputChange} onClick={() => {setShowStickers(false); setShowLinkInput(false)}} placeholder="Viết câu trả lời..." className="w-full bg-transparent border-none outline-none text-[15px] resize-none max-h-[120px] py-1 placeholder-gray-400 dark:placeholder-gray-500 text-textDark dark:text-white" rows={1} />
-                      <button onClick={() => setNewAnswer(prev => prev + "@")} className="text-gray-400 hover:text-blue-500 p-1 md:hidden"><AtSign size={18} /></button>
-                  </div>
-
-                  <button onClick={handleSubmitAnswer} disabled={(!newAnswer.trim() && !answerImage) || isSubmitting} className="p-3 bg-gradient-to-tr from-primary to-[#26A69A] text-white rounded-full shadow-lg shadow-primary/30 active:scale-90 disabled:opacity-50 transition-all hover:shadow-xl hover:-translate-y-0.5">
-                      {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} className={newAnswer.trim() ? "translate-x-0.5" : ""} />}
-                  </button>
-              </div>
-
-              {showStickers && (
-                  <div className="h-48 overflow-y-auto bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl mt-2 p-3 animate-slide-up shadow-inner">
-                      {Object.entries(STICKER_PACKS).map(([category, emojis]) => (
-                          <div key={category} className="mb-3">
-                              <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-2 sticky top-0 bg-gray-50 dark:bg-slate-800 py-1">{category}</h4>
-                              <div className="grid grid-cols-8 gap-2">
-                                  {emojis.map(emoji => <button key={emoji} onClick={() => handleInsertSticker(emoji)} className="text-2xl hover:scale-125 transition-transform">{emoji}</button>)}
-                              </div>
-                          </div>
-                      ))}
-                  </div>
-              )}
-          </div>
+      {/* --- NEW FOOTER & BOTTOM SHEET (ZALO STYLE) --- */}
+      
+      {/* 1. Placeholder Bar (Always visible) */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white dark:bg-dark-card border-t border-gray-100 dark:border-dark-border px-4 py-3 pb-safe-bottom">
+          <button 
+              onClick={() => setIsInputOpen(true)}
+              className="w-full bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-gray-400 text-left rounded-full px-4 py-3 text-sm flex items-center justify-between hover:bg-gray-200 dark:hover:bg-slate-700 transition-colors"
+          >
+              <span>Viết câu trả lời của bạn...</span>
+              <MessageCircle size={18} className="text-gray-400" />
+          </button>
       </div>
+
+      {/* 2. Modal Bottom Sheet (Visible on Click) */}
+      {isInputOpen && (
+        <>
+            {/* Backdrop */}
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsInputOpen(false)} />
+            
+            {/* Sheet Content */}
+            <div className="fixed bottom-0 left-0 right-0 z-[51] bg-white dark:bg-dark-card rounded-t-3xl shadow-2xl animate-slide-up border-t border-gray-100 dark:border-slate-800 max-h-[90vh] flex flex-col">
+                
+                {/* Drag Handle / Header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50 dark:border-slate-800">
+                    <span className="font-bold text-sm text-gray-500 dark:text-gray-400">Trả lời</span>
+                    <button onClick={() => setIsInputOpen(false)} className="p-1 bg-gray-100 dark:bg-slate-800 rounded-full text-gray-500"><ChevronDown size={20}/></button>
+                </div>
+
+                {/* Input Area */}
+                <div className="p-4 pb-safe-bottom overflow-y-auto">
+                    {currentUser.isGuest && (
+                        <div className="bg-blue-50 dark:bg-blue-900/30 px-4 py-2 rounded-xl flex justify-between items-center text-xs text-blue-700 dark:text-blue-300 mb-3 border border-blue-100 dark:border-blue-900/30">
+                            <span className="font-bold flex items-center gap-1"><LogIn size={14} /> Bạn đang là Khách</span>
+                            <button onClick={onOpenAuth} className="font-bold underline hover:text-blue-900 dark:hover:text-blue-100">Đăng nhập ngay</button>
+                        </div>
+                    )}
+
+                    {showMentions && filteredParticipants.length > 0 && (
+                        <div className="bg-white dark:bg-dark-card rounded-xl shadow-lg border border-gray-100 dark:border-dark-border max-h-40 overflow-y-auto mb-2">
+                            {filteredParticipants.map(p => (
+                                <button key={p.id} onClick={() => handleSelectMention(p)} className="w-full flex items-center gap-3 p-2 hover:bg-blue-50 dark:hover:bg-slate-700 text-left border-b border-gray-50 dark:border-slate-800 last:border-0">
+                                    <img src={p.avatar} className="w-8 h-8 rounded-full border border-gray-200 dark:border-slate-600" />
+                                    <div><p className="font-bold text-sm text-textDark dark:text-white">{p.name}</p></div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {showLinkInput && (
+                        <div className="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-2 flex gap-2 mb-3">
+                            <input type="url" value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} placeholder="Dán link..." className="flex-1 text-sm bg-white dark:bg-dark-card border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 outline-none focus:border-primary text-textDark dark:text-white" autoFocus />
+                            <button onClick={handleInsertLink} className="bg-primary text-white text-xs font-bold px-3 rounded-lg">Thêm</button>
+                            <button onClick={() => setShowLinkInput(false)} className="text-gray-400 p-1"><X size={16}/></button>
+                        </div>
+                    )}
+
+                    {answerImage && (
+                        <div className="flex items-center gap-2 mb-3 bg-gray-50 dark:bg-slate-800 p-2 rounded-xl w-fit border border-gray-200 dark:border-slate-700">
+                            <img src={answerImage} className="w-12 h-12 rounded-lg object-cover" />
+                            <span className="text-xs text-green-600 dark:text-green-400 font-bold">Ảnh đính kèm</span>
+                            <button onClick={() => setAnswerImage(null)} className="bg-white dark:bg-slate-700 text-gray-400 p-1 rounded-full hover:text-red-500 shadow-sm"><X size={12}/></button>
+                        </div>
+                    )}
+
+                    <div className="flex flex-col gap-3">
+                        <textarea 
+                            ref={answerInputRef} 
+                            value={newAnswer} 
+                            onChange={handleInputChange} 
+                            onClick={() => {setShowStickers(false); setShowLinkInput(false)}} 
+                            placeholder="Nhập nội dung thảo luận..." 
+                            className="w-full bg-gray-50 dark:bg-slate-800 rounded-xl border-none outline-none text-[16px] resize-none min-h-[100px] p-3 placeholder-gray-400 dark:placeholder-gray-500 text-textDark dark:text-white focus:ring-2 focus:ring-primary/20 transition-all" 
+                        />
+
+                        <div className="flex justify-between items-center">
+                             <div className="flex items-center gap-1">
+                                <button onClick={handleAiDraft} disabled={isGeneratingDraft} className="p-2 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100" title="AI Gợi ý">
+                                    {isGeneratingDraft ? <Loader2 size={20} className="animate-spin" /> : <Sparkles size={20} />}
+                                </button>
+                                <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700"><ImageIcon size={20} /></button>
+                                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                                <button onClick={() => {setShowStickers(!showStickers); setShowLinkInput(false)}} className={`p-2 rounded-full ${showStickers ? 'bg-yellow-100 text-yellow-600' : 'text-gray-500 hover:bg-gray-100'}`}><Smile size={20} /></button>
+                                <button onClick={() => {setShowLinkInput(!showLinkInput); setShowStickers(false)}} className={`p-2 rounded-full ${showLinkInput ? 'bg-blue-100 text-blue-600' : 'text-gray-500 hover:bg-gray-100'}`}><Paperclip size={20} /></button>
+                                <button onClick={() => setNewAnswer(prev => prev + "@")} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 md:hidden"><AtSign size={20} /></button>
+                            </div>
+
+                            <button onClick={handleSubmitAnswer} disabled={(!newAnswer.trim() && !answerImage) || isSubmitting} className="px-5 py-2 bg-primary text-white rounded-full font-bold shadow-lg shadow-primary/30 active:scale-95 disabled:opacity-50 flex items-center gap-2">
+                                {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <>Gửi <Send size={18} /></>}
+                            </button>
+                        </div>
+                    </div>
+
+                    {showStickers && (
+                        <div className="h-48 overflow-y-auto bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl mt-3 p-3 animate-slide-up">
+                            {Object.entries(STICKER_PACKS).map(([category, emojis]) => (
+                                <div key={category} className="mb-3">
+                                    <h4 className="text-[10px] font-bold text-gray-400 uppercase mb-2 sticky top-0 bg-gray-50 dark:bg-slate-800 py-1">{category}</h4>
+                                    <div className="grid grid-cols-8 gap-2">
+                                        {emojis.map(emoji => <button key={emoji} onClick={() => handleInsertSticker(emoji)} className="text-2xl hover:scale-125 transition-transform">{emoji}</button>)}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </>
+      )}
 
       <ShareModal isOpen={showShareModal} onClose={() => setShowShareModal(false)} url={window.location.href} title={question.title} />
       <ReportModal isOpen={showReportModal} onClose={() => setShowReportModal(false)} onSubmit={submitReport} />
