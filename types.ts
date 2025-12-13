@@ -4,15 +4,14 @@ export interface User {
   avatar: string;
   isExpert: boolean;
   expertStatus?: 'none' | 'pending' | 'approved' | 'rejected';
-  specialty?: string; // e.g., "Bác sĩ Nhi khoa", "Chuyên gia Dinh dưỡng"
+  specialty?: string; 
   workplace?: string;
   isAdmin?: boolean;
   isBanned?: boolean;
   bio?: string;
   
-  // --- CÁC TRƯỜNG MỚI CHO PROFILE CHUYÊN NGHIỆP ---
-  username?: string; // Tên định danh (VD: "bacsihung")
-  coverUrl?: string; // Ảnh bìa (Cover Image)
+  username?: string; 
+  coverUrl?: string; 
   
   points?: number;
   joinedAt?: string;
@@ -69,13 +68,17 @@ export interface Notification {
   createdAt: string;
 }
 
+// SỬA LẠI INTERFACE MESSAGE:
 export interface Message {
   id: string;
   senderId: string;
+  receiverId: string; // <--- BẮT BUỘC PHẢI THÊM DÒNG NÀY
   content: string;
   createdAt: string;
   isRead: boolean;
-  type: 'text' | 'image';
+  type: 'text' | 'image' | 'story_reply'; 
+  storyId?: string;       
+  storySnapshotUrl?: string; 
 }
 
 export interface ChatSession {
@@ -88,7 +91,21 @@ export interface ChatSession {
   unreadCount: { [uid: string]: number };
 }
 
-// --- GAME TYPES ---
+export interface Story {
+  id: string;
+  userId: string;          
+  userName: string;        
+  userAvatar: string;      
+  userIsExpert?: boolean;  
+  mediaUrl: string;        
+  mediaType: 'image' | 'video';
+  caption?: string;        
+  createdAt: string;       
+  expiresAt: string;       
+  viewers: string[];       
+  likes: string[];         
+}
+
 export type GameCategory = string; 
 export type GameType = 'quiz' | 'html5' | 'story' | 'ai-story';
 export type GameOrientation = 'portrait' | 'landscape' | 'auto';
@@ -109,10 +126,8 @@ export interface Game {
   gameType: GameType;
   category: GameCategory;
   orientation?: GameOrientation;
-  
   gameUrl?: string;
   storyContent?: string;
-  
   minAge: number;
   maxAge: number;
   isActive: boolean;
@@ -157,7 +172,6 @@ export interface Report {
   status: 'open' | 'resolved' | 'dismissed';
 }
 
-// --- ADVERTISING ---
 export interface AdConfig {
   isEnabled: boolean;
   provider: 'adsense' | 'custom';
@@ -166,8 +180,16 @@ export interface AdConfig {
   customBannerUrl?: string;
   customTargetUrl?: string;
   frequency: number;
-
-  // --- THÊM KHỐI NÀY (NẰM TRONG DẤU NGOẶC CỦA INTERFACE) ---
+  homeAd?: {
+    enabled: boolean;
+    frequency: number;
+    title: string;
+    content: string;
+    imageUrl: string;
+    ctaText: string;
+    link: string;
+    sponsorName: string;
+  };
   sidebarAd?: {
     enabled: boolean;
     title: string;
@@ -175,42 +197,38 @@ export interface AdConfig {
     buttonText: string;
     link: string;
     gradient: string;
- };
-
-  // --- THÊM MỚI: QUẢNG CÁO XEN KẼ BLOG (NATIVE) ---
+  };
   blogFeedAd?: {
     enabled: boolean;
-    frequency: number; // Mặc định là 4
+    frequency: number;
     title: string;
-    excerpt: string; // Mô tả ngắn giống bài blog
-    imageUrl: string; // Ảnh bìa quảng cáo
-    ctaText: string; // Nút kêu gọi (VD: Xem ngay)
+    excerpt: string;
+    imageUrl: string;
+    ctaText: string;
     link: string;
-    sponsorName: string; // Tên nhà tài trợ (thay cho tên tác giả)
+    sponsorName: string;
   };
-// THÊM KHỐI NÀY:
   documentAd?: {
     enabled: boolean;
     frequency: number;
     title: string;
     description: string;
-    imageUrl: string; // Logo hoặc ảnh nhỏ
+    imageUrl: string;
     ctaText: string;
     link: string;
     sponsorName: string;
   };
-// THÊM KHỐI NÀY:
   questionDetailAd?: {
     enabled: boolean;
     title: string;
-    description: string; // Nội dung ngắn
+    description: string;
     imageUrl: string;
     ctaText: string;
     link: string;
     sponsorName: string;
   };
 }
-// --- BLOG MODULE TYPES ---
+
 export interface BlogCategory {
   id: string;
   name: string;
@@ -228,19 +246,15 @@ export interface BlogPost {
   content: string;
   coverImageUrl?: string;
   iconEmoji?: string;
-  
   youtubeUrl?: string;
   sourceUrl?: string;
   sourceLabel?: string;
-  
   categoryId?: string;
   tags?: string[];
-  
   authorId: string;
   authorName: string;
   authorAvatar: string;
   authorIsExpert: boolean;
-  
   status: 'draft' | 'published';
   views: number;
   createdAt: string;
@@ -259,7 +273,6 @@ export interface BlogComment {
   updatedAt: string;
 }
 
-// --- DOCUMENT MODULE TYPES ---
 export interface DocumentCategory {
   id: string;
   name: string;
@@ -274,28 +287,22 @@ export interface Document {
   title: string;
   slug: string;
   description: string;
-  
   isExternal?: boolean; 
   externalLink?: string; 
   fileUrl?: string;      
-  
   fileType: 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'image' | 'video' | 'link' | 'other';
   fileName?: string;
   fileSize?: number;
-  
   categoryId: string;
   tags: string[];
-  
   authorId: string;
   authorName: string;
   authorAvatar: string;
-  isExpert: boolean;
-  
+  authorIsExpert: boolean;
   views: number;
   downloads: number;
   rating: number; 
   ratingCount: number;
-  
   createdAt: string;
   updatedAt: string;
 }
@@ -335,42 +342,23 @@ export const DEFAULT_GAME_CATEGORIES: CategoryDef[] = [
 
 export const GAME_CATEGORIES = DEFAULT_GAME_CATEGORIES;
 
-// --- UTILS FOR SLUG (ĐÃ CẬP NHẬT CHUẨN SEO TIẾNG VIỆT) ---
-
 export const toSlug = (title: string, id?: string) => {
   if (!title) return '';
-
-  // 1. Chuyển hết sang chữ thường
   let slug = title.toLowerCase();
-
-  // 2. Xóa dấu tiếng Việt (Chuẩn hóa Unicode để tách dấu ra khỏi chữ, sau đó xóa dấu)
   slug = slug.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-  // 3. Xử lý riêng ký tự đ/Đ
   slug = slug.replace(/[đĐ]/g, "d");
-
-  // 4. Xóa các ký tự đặc biệt (chỉ giữ lại chữ, số và khoảng trắng)
   slug = slug.replace(/([^0-9a-z-\s])/g, "");
-
-  // 5. Thay khoảng trắng bằng dấu gạch ngang
   slug = slug.replace(/(\s+)/g, "-");
-
-  // 6. Xóa gạch ngang dư thừa (ví dụ: "a---b" -> "a-b") và gạch ngang ở đầu/cuối
   slug = slug.replace(/-+/g, "-");
   slug = slug.replace(/^-+|-+$/g, "");
-
-  // 7. Nối ID vào cuối để tạo đường dẫn duy nhất (nếu có ID)
-  // LƯU Ý: Với Username profile thì KHÔNG dùng cái này, dùng trực tiếp username.
   if (id) {
     return `${slug}-${id}`;
   }
-
   return slug;
 };
 
 export const getIdFromSlug = (slug: string | undefined): string => {
   if (!slug) return '';
-  // Tìm dấu gạch ngang cuối cùng để cắt lấy ID phía sau
   const lastHyphenIndex = slug.lastIndexOf('-');
   if (lastHyphenIndex !== -1) {
       return slug.substring(lastHyphenIndex + 1);

@@ -9,7 +9,8 @@ import {
   Loader2, BookOpen, Clock, PenTool, Search, X, ArrowDown, 
   Sparkles, AlertCircle, ChevronLeft, ChevronRight, Flame, Eye, ExternalLink 
 } from 'lucide-react';
-
+// IMPORT COMPONENT MỚI
+import { ExpertPromoBox } from '../components/ExpertPromoBox';
 const PAGE_SIZE = 8; 
 
 // --- COMPONENT: SKELETON LOADER (Đã thêm Dark Mode) ---
@@ -212,7 +213,6 @@ export const BlogList: React.FC = () => {
          </div>
       </div>
 
-      {/* --- MAIN CONTENT --- */}
       <div className="max-w-5xl mx-auto px-4 py-8">
          {loading ? (
              <BlogSkeleton />
@@ -225,6 +225,7 @@ export const BlogList: React.FC = () => {
              </div>
          ) : (
              <>
+                
                  {/* 1. HERO POST */}
                  {heroPost && (
                     <div className="mb-10 animate-slide-up">
@@ -253,7 +254,13 @@ export const BlogList: React.FC = () => {
                         </Link>
                     </div>
                  )}
-
+{/* --- THÊM KHỐI ĐĂNG KÝ CHUYÊN GIA TẠI ĐÂY --- */}
+                 {!currentUser?.isExpert && (
+                    <div className="mb-12 animate-slide-up" style={{ animationDelay: '0.08s' }}>
+                        <ExpertPromoBox />
+                    </div>
+                 )}
+      {/* --- MAIN CONTENT --- */}
                  {/* 2. TRENDING SECTION */}
                  {trendingPosts.length > 0 && (
                      <div className="mb-12 animate-slide-up" style={{ animationDelay: '0.05s' }}>
@@ -300,12 +307,7 @@ export const BlogList: React.FC = () => {
                         </div>
                      </div>
                  )}
- {/* --- THÊM KHỐI ĐĂNG KÝ CHUYÊN GIA TẠI ĐÂY --- */}
-                 {!currentUser?.isExpert && (
-                    <div className="mb-12 animate-slide-up" style={{ animationDelay: '0.08s' }}>
-                        <ExpertPromoBox />
-                    </div>
-                 )}
+
                  {/* 3. MAIN GRID POSTS (WITH NATIVE ADS) */}
                  <div className="flex items-center gap-2 mb-4">
                      <h3 className="font-bold text-xl text-gray-900 dark:text-white">Bài viết mới</h3>

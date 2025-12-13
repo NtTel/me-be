@@ -12,7 +12,8 @@ import {
 } from 'lucide-react';
 import { AuthModal } from '../components/AuthModal';
 import { ShareModal } from '../components/ShareModal';
-
+// IMPORT COMPONENT MỚI
+import { ExpertPromoBox } from '../components/ExpertPromoBox';
 // --- CONSTANTS ---
 const PAGE_SIZE = 5;
 
@@ -251,7 +252,12 @@ export const BlogDetail: React.FC<{ currentUser: User; onOpenAuth: () => void }>
             {/* --- RIGHT SIDEBAR --- */}
             <aside className="lg:col-span-4 space-y-8">
                 <div className="sticky top-24 space-y-8">
-                    
+                    {/* --- KHỐI ĐĂNG KÝ CHUYÊN GIA --- */}
+                    {!currentUser?.isExpert && (
+                        <div className="animate-slide-up">
+                            <ExpertPromoBox />
+                        </div>
+                    )}
                     {/* 1. MOST VIEWED */}
                     {mostViewedPosts.length > 0 && (
                         <div className="bg-white dark:bg-dark-card rounded-3xl p-6 border border-gray-100 dark:border-dark-border shadow-sm">

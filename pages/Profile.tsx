@@ -12,11 +12,12 @@ import { db } from '../firebaseConfig';
 import { doc, updateDoc, onSnapshot, query, where, getDocs, collection, limit, getDoc } from 'firebase/firestore'; 
 import { uploadFile } from '../services/storage';
 import { ShareModal } from '../components/ShareModal';
+// --- THÊM IMPORT NÀY ---
+import { ExpertPromoBox } from '../components/ExpertPromoBox';
 
 interface ProfileProps {
     user: User;
     questions: Question[];
-    // Fix lỗi Đăng xuất: Hàm này phải trả về Promise để chúng ta await
     onLogout: () => Promise<void> | void; 
     onOpenAuth: () => void;
 }
@@ -42,16 +43,15 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
     useEffect(() => {
         if (!userId) {
             if (user && !user.isGuest) {
-                // Tự động chuyển hướng sang Username hoặc ID của mình
                 const slug = user.username || user.id;
                 navigate(`/profile/${slug}`, { replace: true });
             } else if (user?.isGuest) {
-                setLoadingProfile(false); // Dừng loading để hiện Guest View
+                setLoadingProfile(false); 
             }
         }
     }, [userId, user, navigate]);
 
-    // --- 2. TẢI DỮ LIỆU PROFILE (HỖ TRỢ ID & USERNAME) ---
+    // --- 2. TẢI DỮ LIỆU PROFILE ---
     useEffect(() => {
         if (!userId) return;
         
@@ -61,14 +61,12 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
             setLoadingProfile(true);
             let foundId = '';
 
-            // A. Thử tìm theo ID (nếu chuỗi dài > 20 ký tự)
             if (userId.length > 20 && /^[a-zA-Z0-9]+$/.test(userId)) { 
                 const docRef = doc(db, 'users', userId);
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) foundId = docSnap.id;
             }
 
-            // B. Nếu chưa thấy, tìm theo Username (Chuyển về chữ thường)
             if (!foundId) {
                 const q = query(
                     collection(db, 'users'), 
@@ -80,7 +78,6 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
             }
 
             if (foundId) {
-                // Lắng nghe trực tiếp theo ID đã tìm thấy
                 unsubscribe = onSnapshot(doc(db, 'users', foundId), (docSnap) => {
                     if (docSnap.exists()) {
                         // @ts-ignore
@@ -117,7 +114,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
         }
     }, [user.id, profileData?.id]);
 
-    // --- 4. TỰ ĐỘNG CHUYỂN LINK XẤU -> LINK ĐẸP (CANONICAL) ---
+    // --- 4. CANONICAL URL ---
     useEffect(() => {
         if (loadingProfile || !profileData) return;
         
@@ -276,7 +273,6 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
         : "h-48 md:h-64 bg-gradient-to-r from-blue-400 to-cyan-300 dark:from-blue-900 dark:to-cyan-800 relative overflow-hidden transition-all duration-500";
 
     return (
-        // THAY ĐỔI: bg-white -> dark:bg-dark-bg
         <div className="pb-24 bg-white dark:bg-dark-bg min-h-screen animate-fade-in transition-colors duration-300">
             
             {/* 1. COVER PHOTO */}
@@ -350,8 +346,15 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
                 </div>
 
                 {profileData.bio && (
-                    <div className="mb-8">
+                    <div className="mb-6">
                         <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed max-w-2xl bg-gray-50 dark:bg-slate-800 p-4 rounded-xl border border-gray-200/60 dark:border-slate-700 shadow-sm">"{profileData.bio}"</p>
+                    </div>
+                )}
+                
+                {/* --- KHỐI ĐĂNG KÝ CHUYÊN GIA (CHÈN VÀO ĐÂY) --- */}
+                {!user?.isExpert && (
+                    <div className="mb-8">
+                        <ExpertPromoBox />
                     </div>
                 )}
 
