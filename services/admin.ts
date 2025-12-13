@@ -1,8 +1,8 @@
 import { 
-  collection, getDocs, doc, updateDoc, query, orderBy, where, deleteDoc, getDoc, writeBatch 
+  collection, getDocs, doc, updateDoc, query, orderBy, where, deleteDoc, getDoc, writeBatch, addDoc
 } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-import { User, Question, ExpertApplication, Report } from '../types';
+import { User, Question, ExpertApplication, Report, Category, toSlug } from '../types';
 
 // --- USERS ---
 export const fetchAllUsers = async (): Promise<User[]> => {
@@ -155,4 +155,33 @@ export const deleteReportedContent = async (report: Report) => {
     } catch (e) {
         console.error("Error deleting reported content", e);
     }
+};
+
+// --- CATEGORIES (NEW) ---
+export const fetchCategories = async (): Promise<Category[]> => {
+  if (!db) return [];
+  try {
+    const snapshot = await getDocs(collection(db, 'categories'));
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Category));
+  } catch (e) {
+    console.error("Error fetching categories", e);
+    return [];
+  }
+};
+
+export const addCategory = async (name: string) => {
+  if (!db) return;
+  const slug = toSlug(name);
+  await addDoc(collection(db, 'categories'), { name, slug });
+};
+
+export const updateCategory = async (id: string, name: string) => {
+  if (!db) return;
+  const slug = toSlug(name);
+  await updateDoc(doc(db, 'categories', id), { name, slug });
+};
+
+export const deleteCategory = async (id: string) => {
+  if (!db) return;
+  await deleteDoc(doc(db, 'categories', id));
 };

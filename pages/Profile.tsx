@@ -12,7 +12,6 @@ import { db } from '../firebaseConfig';
 import { doc, updateDoc, onSnapshot, query, where, getDocs, collection, limit, getDoc } from 'firebase/firestore'; 
 import { uploadFile } from '../services/storage';
 import { ShareModal } from '../components/ShareModal';
-// --- THÊM IMPORT NÀY ---
 import { ExpertPromoBox } from '../components/ExpertPromoBox';
 
 interface ProfileProps {
@@ -351,7 +350,7 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
                     </div>
                 )}
                 
-                {/* --- KHỐI ĐĂNG KÝ CHUYÊN GIA (CHÈN VÀO ĐÂY) --- */}
+                {/* --- KHỐI ĐĂNG KÝ CHUYÊN GIA --- */}
                 {!user?.isExpert && (
                     <div className="mb-8">
                         <ExpertPromoBox />
@@ -403,16 +402,17 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
                 </div>
             </div>
 
-            {/* EDIT MODAL */}
+            {/* EDIT MODAL - ĐÃ SỬA: Z-Index cao và Fullscreen trên mobile để che footer */}
             {showEditModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in no-scrollbar overflow-y-auto">
-                    <div className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl w-full max-w-md my-auto animate-pop-in relative flex flex-col max-h-[90vh] transition-colors">
-                        <div className="px-6 py-4 border-b border-gray-100 dark:border-dark-border flex justify-between items-center bg-gray-50 dark:bg-slate-800 shrink-0 rounded-t-2xl">
+                <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-0 sm:p-4 animate-fade-in">
+                    <div className="bg-white dark:bg-dark-card w-full h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:rounded-2xl shadow-2xl sm:max-w-md animate-slide-up sm:animate-pop-in relative flex flex-col transition-colors">
+                        
+                        <div className="px-6 py-4 border-b border-gray-100 dark:border-dark-border flex justify-between items-center bg-gray-50 dark:bg-slate-800 shrink-0 sm:rounded-t-2xl pt-safe-top sm:pt-4">
                             <h3 className="font-bold text-lg text-gray-800 dark:text-white">Chỉnh sửa hồ sơ</h3>
                             <button onClick={() => setShowEditModal(false)} className="hover:bg-gray-200 dark:hover:bg-slate-600 p-1 rounded-full text-gray-500 dark:text-gray-300"><X size={20} /></button>
                         </div>
                         
-                        <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
+                        <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1">
                             
                             {/* Ảnh bìa */}
                             <div>
@@ -475,7 +475,8 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
                                 <textarea rows={3} value={editForm.bio} onChange={e => setEditForm({...editForm, bio: e.target.value})} placeholder="Chia sẻ đôi chút về bạn..." className="w-full px-4 py-2.5 bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl resize-none outline-none focus:ring-2 focus:ring-primary/20 text-sm text-gray-800 dark:text-white" />
                             </div>
                         </div>
-                        <div className="px-6 py-4 bg-gray-50 dark:bg-slate-800 border-t border-gray-100 dark:border-dark-border flex justify-end gap-3 shrink-0 rounded-b-2xl">
+                        
+                        <div className="px-6 py-4 bg-gray-50 dark:bg-slate-800 border-t border-gray-100 dark:border-dark-border flex justify-end gap-3 shrink-0 sm:rounded-b-2xl pb-safe-bottom sm:pb-4">
                             <button onClick={() => setShowEditModal(false)} className="px-5 py-2.5 text-sm font-bold text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-xl transition-colors">Hủy</button>
                             <button onClick={handleSaveProfile} disabled={isSaving || isUploading} className="px-5 py-2.5 text-sm bg-primary text-white font-bold rounded-xl flex items-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-70 transition-all active:scale-95">
                                 {isSaving ? <Loader2 className="animate-spin" size={16}/> : <Save size={16}/>} Lưu thay đổi
