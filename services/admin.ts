@@ -185,3 +185,33 @@ export const deleteCategory = async (id: string) => {
   if (!db) return;
   await deleteDoc(doc(db, 'categories', id));
 };
+// ... Các import cũ giữ nguyên
+import { CATEGORIES } from '../types'; // Import danh mục cứng từ file types
+
+// ... Các hàm cũ giữ nguyên ...
+
+// --- HÀM MỚI: ĐỒNG BỘ DANH MỤC CŨ LÊN FIREBASE ---
+export const syncCategoriesFromCode = async () => {
+  if (!db) return;
+  const batch = writeBatch(db);
+  const existing = await fetchCategories();
+  const existingNames = existing.map(c => c.name);
+
+  let count = 0;
+  CATEGORIES.forEach(catName => {
+    // Chỉ thêm nếu chưa có trên Firebase
+    if (!existingNames.includes(catName)) {
+      const docRef = doc(collection(db, 'categories'));
+      batch.set(docRef, { 
+        name: catName, 
+        slug: toSlug(catName) 
+      });
+      count++;
+    }
+  });
+
+  if (count > 0) {
+    await batch.commit();
+  }
+  return count;
+};
