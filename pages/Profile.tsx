@@ -50,51 +50,75 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
         }
     }, [userId, user, navigate]);
 
-    // --- 2. TẢI DỮ LIỆU PROFILE ---
+    // --- 2. TẢI DỮ LIỆU PROFILE & XỬ LÝ REDIRECT (ĐÃ SỬA LỖI TRẮNG TRANG) ---
     useEffect(() => {
         if (!userId) return;
         
-        let unsubscribe: () => void;
+        // Cờ kiểm tra để ngăn chặn cập nhật state nếu component đã unmount
+        let isMounted = true; 
         
-        const fetchProfile = async () => {
+        const fetchProfileAndRedirect = async () => {
             setLoadingProfile(true);
-            let foundId = '';
+            
+            try {
+                let targetUserData: User | null = null;
 
-            if (userId.length > 20 && /^[a-zA-Z0-9]+$/.test(userId)) { 
+                // A. Thử tìm bằng ID trước (Ưu tiên ID chính xác)
                 const docRef = doc(db, 'users', userId);
                 const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) foundId = docSnap.id;
-            }
 
-            if (!foundId) {
-                const q = query(
-                    collection(db, 'users'), 
-                    where('username', '==', userId.toLowerCase()), 
-                    limit(1)
-                );
-                const querySnap = await getDocs(q);
-                if (!querySnap.empty) foundId = querySnap.docs[0].id;
-            }
-
-            if (foundId) {
-                unsubscribe = onSnapshot(doc(db, 'users', foundId), (docSnap) => {
-                    if (docSnap.exists()) {
+                if (docSnap.exists()) {
+                    // @ts-ignore
+                    targetUserData = { id: docSnap.id, ...docSnap.data() };
+                } else {
+                    // B. Nếu không thấy ID, thử tìm bằng Username
+                    const q = query(
+                        collection(db, 'users'), 
+                        where('username', '==', userId.toLowerCase()), 
+                        limit(1)
+                    );
+                    const querySnap = await getDocs(q);
+                    if (!querySnap.empty) {
+                        const d = querySnap.docs[0];
                         // @ts-ignore
-                        setProfileData({ id: docSnap.id, ...docSnap.data() });
-                    } else {
-                        setProfileData(null);
+                        targetUserData = { id: d.id, ...d.data() };
                     }
-                    setLoadingProfile(false);
-                });
-            } else {
-                setProfileData(null);
-                setLoadingProfile(false);
+                }
+
+                // C. Xử lý kết quả và chuyển hướng
+                if (!isMounted) return;
+
+                if (targetUserData) {
+                    setProfileData(targetUserData);
+
+                    // LOGIC QUAN TRỌNG: Kiểm tra Canonical URL
+                    const currentSlug = userId.toLowerCase();
+                    const canonicalSlug = (targetUserData.username || targetUserData.id).toLowerCase();
+
+                    // Nếu URL hiện tại khác URL chuẩn (Ví dụ đang là ID mà user có username)
+                    // Thì thực hiện chuyển hướng.
+                    if (canonicalSlug && currentSlug !== canonicalSlug) {
+                        // Dùng replace: true để thay thế lịch sử duyệt web
+                        // navigate sẽ kích hoạt lại useEffect này với userId mới, nên ta return luôn
+                        navigate(`/profile/${canonicalSlug}`, { replace: true });
+                        return; 
+                    }
+                } else {
+                    setProfileData(null);
+                }
+            } catch (err) {
+                console.error("Lỗi tải profile:", err);
+                if (isMounted) setProfileData(null);
+            } finally {
+                // Chỉ tắt loading nếu component vẫn còn mount
+                if (isMounted) setLoadingProfile(false);
             }
         };
 
-        fetchProfile();
-        return () => { if (unsubscribe) unsubscribe(); };
-    }, [userId]);
+        fetchProfileAndRedirect();
+        
+        return () => { isMounted = false; };
+    }, [userId, navigate]); // Chỉ chạy lại khi userId thay đổi
 
     const isViewingSelf = user && profileData && user.id === profileData.id;
 
@@ -112,20 +136,6 @@ export const Profile: React.FC<ProfileProps> = ({ user, questions, onLogout, onO
             setIsFollowing(false);
         }
     }, [user.id, profileData?.id]);
-
-    // --- 4. CANONICAL URL ---
-    useEffect(() => {
-        if (loadingProfile || !profileData) return;
-        
-        const currentSlug = userId.toLowerCase();
-        const canonicalSlug = profileData.username ? profileData.username.toLowerCase() : profileData.id;
-
-        if (profileData.username && currentSlug !== canonicalSlug) {
-            if (currentSlug !== profileData.id) {
-                navigate(`/profile/${canonicalSlug}`, { replace: true });
-            }
-        }
-    }, [profileData, userId, navigate, loadingProfile]);
 
 
     // --- ACTIONS ---
