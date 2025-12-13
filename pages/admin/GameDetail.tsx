@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 // @ts-ignore
 import { useParams, useNavigate } from 'react-router-dom';
 import { Game, GameLevel, CategoryDef, GameAsset, GameConfig } from '../../types';
-import { getGameById, updateGame, addLevelToGame, updateLevelInGame, deleteLevelFromGame, importLevelsBatch, fetchCategories } from '../../services/games';
+import { getGameById, updateGame, addLevelToGame, updateLevelInGame, deleteLevelFromGame, importLevelsBatch, fetchCategories } from '../../services/game';
 import { generateGameContent, generateStory } from '../../services/gemini';
 import { ArrowLeft, Sparkles, Trash2, Save, Loader2, Bot, X, Link as LinkIcon, BookOpen, ImageIcon, Volume2, Code } from 'lucide-react';
 

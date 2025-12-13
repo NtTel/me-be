@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Volume2, Star, Trophy, Sparkles, Play, Loader2, RotateCcw, ArrowDown } from 'lucide-react';
 import { Game, GameLevel, GameCategory, CategoryDef, GameAsset } from '../types';
-import { fetchAllGames, fetchCategories } from '../services/games';
+// Import từ service (đã sửa đúng đường dẫn không có chữ 's')
+import { fetchAllGames, fetchCategories } from '../services/game';
 import { generateStory } from '../services/gemini';
 import confetti from 'canvas-confetti';
 
