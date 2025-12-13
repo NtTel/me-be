@@ -1,15 +1,16 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { Document, DocumentCategory } from '../../types';
-import { toSlug } from '../../types'; // Giả định hàm toSlug được import đúng
+// Giả định các types được định nghĩa đúng
+import { Document, DocumentCategory } from '../../types'; 
+import { toSlug } from '../../types'; // Giả định hàm toSlug chuẩn
 import { 
     fetchDocumentCategories, createDocumentCategory, updateDocumentCategory, deleteDocumentCategory,
     fetchAllDocumentsAdmin, createDocument, updateDocument, deleteDocument 
-} from '../../services/documents'; // Giả định các service functions
+} from '../../services/documents'; // Giả định service documents
 import { uploadFile } from '../../services/storage'; // Giả định service upload file
 import { subscribeToAuthChanges } from '../../services/auth'; // Giả định service auth
 import { 
     Plus, Trash2, Edit2, X, FileText, Folder, UploadCloud, Loader2, 
-    File, Link as LinkIcon, Globe, RefreshCw, CheckCircle, Download, FileAudio, FileVideo, FileImage, FileType, BookText
+    File, Link as LinkIcon, Globe, RefreshCw, CheckCircle, Download, FileImage, FileVideo, BookText
 } from 'lucide-react';
 
 // --- UTILITY FUNCTIONS ---
@@ -50,9 +51,10 @@ export const DocumentAdmin: React.FC = () => {
     // Forms
     const [catForm, setCatForm] = useState(initialCatForm);
     
+    // Sử dụng useMemo để đảm bảo docForm luôn có giá trị mặc định cho tất cả các trường
     const [docForm, setDocForm] = useState<Partial<Document>>(initialDocForm);
     const [tagsInput, setTagsInput] = useState('');
-    const [inputMode, setInputMode] = useState<'upload' | 'link'>('upload'); // 'upload' (internal) or 'link' (external)
+    const [inputMode, setInputMode] = useState<'upload' | 'link'>('upload'); 
 
     // Lấy tên danh mục từ ID
     const getCategoryName = useMemo(() => {
@@ -64,11 +66,10 @@ export const DocumentAdmin: React.FC = () => {
     useEffect(() => {
         const unsub = subscribeToAuthChanges(user => {
             setCurrentUser(user);
-            // Chỉ tải dữ liệu nếu người dùng là Admin hoặc Expert
             if (user && (user.isAdmin || user.isExpert)) {
                 loadData(user);
             } else {
-                setLoading(false); // Ngừng loading nếu không có quyền
+                setLoading(false);
             }
         });
         return () => unsub();
@@ -77,7 +78,6 @@ export const DocumentAdmin: React.FC = () => {
     const loadData = async (user: any) => {
         setLoading(true);
         try {
-            // Admin thấy tất cả, Expert thấy của mình (dựa trên authorId)
             const authorFilter = user?.isAdmin ? undefined : user?.id;
             
             const [cats, allDocs] = await Promise.all([
@@ -88,7 +88,7 @@ export const DocumentAdmin: React.FC = () => {
             setDocs(allDocs);
         } catch (error) {
             console.error("Lỗi tải dữ liệu:", error);
-            alert("Lỗi tải dữ liệu: Vui lòng kiểm tra console.");
+            // Không alert, chỉ log
         } finally {
             setLoading(false);
         }
@@ -100,14 +100,18 @@ export const DocumentAdmin: React.FC = () => {
         const slug = toSlug(catForm.name);
         
         try {
+            const dataToSave = { 
+                ...catForm, 
+                slug, 
+                order: Number(catForm.order) 
+            };
+            
             if (catForm.id) {
-                await updateDocumentCategory(catForm.id, { ...catForm, slug, order: Number(catForm.order) });
+                await updateDocumentCategory(catForm.id, dataToSave);
             } else {
                 await createDocumentCategory({ 
-                    ...catForm, 
-                    slug, 
+                    ...dataToSave, 
                     isActive: true, 
-                    order: Number(catForm.order) 
                 } as DocumentCategory);
             }
             setShowCatModal(false);
@@ -146,7 +150,7 @@ export const DocumentAdmin: React.FC = () => {
         setDocForm(prev => ({
             ...prev,
             title: newTitle,
-            // Chỉ tự động tạo slug nếu là tài liệu mới (không có id) HOẶC slug hiện tại đang trống
+            // Chỉ tạo slug nếu là tài liệu mới HOẶC slug hiện tại đang trống
             slug: (!prev.id || !prev.slug) ? toSlug(newTitle) : prev.slug 
         }));
     };
@@ -179,15 +183,14 @@ export const DocumentAdmin: React.FC = () => {
                 fileSize: file.size,
                 fileType: type,
                 isExternal: false,
-                externalLink: ''
+                externalLink: '' // Reset link ngoài
             }));
-            // Sau khi upload thành công, chuyển sang chế độ upload (nếu chưa phải)
             setInputMode('upload'); 
         } catch (e) {
             alert("Upload thất bại, vui lòng thử lại.");
         } finally {
             setUploading(false);
-            e.target.value = ''; // Reset input file để có thể upload lại file cùng tên
+            e.target.value = ''; // Reset input file để upload lại file cùng tên nếu cần
         }
     };
 
@@ -196,15 +199,13 @@ export const DocumentAdmin: React.FC = () => {
         if (!docForm.title) return alert("Vui lòng nhập tiêu đề tài liệu.");
         if (!docForm.categoryId) return alert("Vui lòng chọn danh mục.");
 
-        // Kiểm tra nguồn tài liệu
         const isExternal = inputMode === 'link';
         if (isExternal && !docForm.externalLink) return alert("Vui lòng nhập đường dẫn liên kết.");
-        if (!isExternal && !docForm.fileUrl) return alert("Vui lòng tải file lên hoặc chọn liên kết ngoài.");
+        if (!isExternal && !docForm.fileUrl && !docForm.id) return alert("Vui lòng tải file lên."); // Check file upload cho tài liệu mới
         
         const slug = docForm.slug || toSlug(docForm.title);
         const tags = tagsInput.split(',').map(t => t.trim()).filter(t => t);
 
-        // Chuẩn bị dữ liệu để lưu
         const data: Partial<Document> = {
             ...docForm,
             slug,
@@ -212,23 +213,21 @@ export const DocumentAdmin: React.FC = () => {
             authorId: currentUser.id,
             authorName: currentUser.name || 'Admin',
             authorAvatar: currentUser.avatar,
-            isExpert: !!currentUser.isExpert, // Chuyển sang boolean
+            isExpert: !!currentUser.isExpert, 
             isExternal: isExternal,
-            // Gán lại giá trị dựa trên inputMode
+            
+            // Đảm bảo chỉ có một nguồn được lưu
             fileType: isExternal ? 'link' : docForm.fileType,
             fileUrl: isExternal ? '' : docForm.fileUrl,
             externalLink: isExternal ? docForm.externalLink : ''
         };
 
         try {
-            // Lọc bỏ trường id trước khi gửi đi (trừ trường hợp update)
             const { id, ...dataToSave } = data;
             
             if (docForm.id) {
-                // UPDATE
                 await updateDocument(docForm.id, dataToSave as Document);
             } else {
-                // CREATE
                 await createDocument(dataToSave as Document);
             }
             setShowDocModal(false);
@@ -250,17 +249,17 @@ export const DocumentAdmin: React.FC = () => {
     };
 
     const openEditDocModal = (doc: Document) => {
+        // Gán docForm đầy đủ
         setDocForm(doc);
         setTagsInput(doc.tags?.join(', ') || '');
-        // Xác định mode dựa trên isExternal của tài liệu
         setInputMode(doc.isExternal ? 'link' : 'upload');
         setShowDocModal(true);
     };
 
     const openCreateDocModal = () => {
+        // FIX LỖI CHỌN DANH MỤC: Đặt categoryId là chuỗi rỗng để chọn option đầu tiên
         setDocForm({ 
             ...initialDocForm,
-            // FIX: Không chọn categories[0] mặc định, đặt là rỗng
             categoryId: '' 
         }); 
         setTagsInput('');
@@ -333,7 +332,7 @@ export const DocumentAdmin: React.FC = () => {
                             </thead>
                             <tbody className="divide-y divide-gray-100">
                                 {categories
-                                    .sort((a, b) => (a.order || 0) - (b.order || 0)) // Sắp xếp theo thứ tự
+                                    .sort((a, b) => (a.order || 0) - (b.order || 0)) 
                                     .map(cat => (
                                     <tr key={cat.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 font-bold">{cat.name}</td>
@@ -474,13 +473,18 @@ export const DocumentAdmin: React.FC = () => {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Danh mục</label>
+                                    {/* FIX LỖI CHỌN DANH MỤC: Đảm bảo value luôn là chuỗi và categories phải có dữ liệu */}
                                     <select 
-                                        value={docForm.categoryId} 
+                                        value={docForm.categoryId || ''} 
                                         onChange={e => setDocForm({...docForm, categoryId: e.target.value})} 
                                         className="w-full p-2.5 border rounded-xl bg-white outline-none focus:ring-2 focus:ring-green-100"
                                     >
                                         <option value="">-- Chọn chuyên mục --</option>
-                                        {categories.map(c => <option key={c.id} value={c.id}>{c.iconEmoji} {c.name}</option>)}
+                                        {categories.map(c => (
+                                            <option key={c.id} value={c.id}>
+                                                {c.iconEmoji} {c.name}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>
@@ -566,6 +570,7 @@ export const DocumentAdmin: React.FC = () => {
                             <button onClick={() => setShowDocModal(false)} className="px-6 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors">Hủy</button>
                             <button 
                                 onClick={handleSaveDoc} 
+                                // Vô hiệu hóa nút nếu đang upload HOẶC (chế độ upload và chưa có fileUrl) HOẶC (chế độ link và chưa có externalLink)
                                 disabled={uploading || (inputMode === 'upload' && !docForm.fileUrl && !docForm.id) || (inputMode === 'link' && !docForm.externalLink)} 
                                 className="px-6 py-2.5 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 disabled:opacity-50 shadow-lg shadow-green-200 transition-all active:scale-95 flex items-center gap-2"
                             >
