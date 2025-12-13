@@ -2,7 +2,7 @@ import {
   collection, getDocs, doc, updateDoc, query, orderBy, where, deleteDoc, getDoc, writeBatch, addDoc
 } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
-import { User, Question, ExpertApplication, Report, Category, toSlug } from '../types';
+import { User, Question, ExpertApplication, Report, Category, toSlug, CATEGORIES } from '../types';
 
 // --- USERS ---
 export const fetchAllUsers = async (): Promise<User[]> => {
@@ -157,7 +157,7 @@ export const deleteReportedContent = async (report: Report) => {
     }
 };
 
-// --- CATEGORIES (NEW) ---
+// --- CATEGORIES (NEW & UPDATED) ---
 export const fetchCategories = async (): Promise<Category[]> => {
   if (!db) return [];
   try {
@@ -169,26 +169,25 @@ export const fetchCategories = async (): Promise<Category[]> => {
   }
 };
 
-export const addCategory = async (name: string) => {
+// Cập nhật: Thêm tham số style để lưu icon và màu sắc
+export const addCategory = async (name: string, style?: { icon: string, color: string, bg: string }) => {
   if (!db) return;
   const slug = toSlug(name);
-  await addDoc(collection(db, 'categories'), { name, slug });
+  // Nếu có style truyền vào thì lưu, không thì để null
+  await addDoc(collection(db, 'categories'), { name, slug, ...style });
 };
 
-export const updateCategory = async (id: string, name: string) => {
+// Cập nhật: Thêm tham số style để lưu icon và màu sắc
+export const updateCategory = async (id: string, name: string, style?: { icon: string, color: string, bg: string }) => {
   if (!db) return;
   const slug = toSlug(name);
-  await updateDoc(doc(db, 'categories', id), { name, slug });
+  await updateDoc(doc(db, 'categories', id), { name, slug, ...style });
 };
 
 export const deleteCategory = async (id: string) => {
   if (!db) return;
   await deleteDoc(doc(db, 'categories', id));
 };
-// ... Các import cũ giữ nguyên
-import { CATEGORIES } from '../types'; // Import danh mục cứng từ file types
-
-// ... Các hàm cũ giữ nguyên ...
 
 // --- HÀM MỚI: ĐỒNG BỘ DANH MỤC CŨ LÊN FIREBASE ---
 export const syncCategoriesFromCode = async () => {
@@ -204,7 +203,10 @@ export const syncCategoriesFromCode = async () => {
       const docRef = doc(collection(db, 'categories'));
       batch.set(docRef, { 
         name: catName, 
-        slug: toSlug(catName) 
+        slug: toSlug(catName),
+        icon: 'Tag', // Icon mặc định cho danh mục cũ
+        color: 'text-gray-600', // Màu mặc định
+        bg: 'bg-gray-100' // Nền mặc định
       });
       count++;
     }
