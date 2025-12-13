@@ -51,7 +51,6 @@ export const DocumentAdmin: React.FC = () => {
     // Forms
     const [catForm, setCatForm] = useState(initialCatForm);
     
-    // Sử dụng useMemo để đảm bảo docForm luôn có giá trị mặc định cho tất cả các trường
     const [docForm, setDocForm] = useState<Partial<Document>>(initialDocForm);
     const [tagsInput, setTagsInput] = useState('');
     const [inputMode, setInputMode] = useState<'upload' | 'link'>('upload'); 
@@ -86,9 +85,9 @@ export const DocumentAdmin: React.FC = () => {
             ]);
             setCategories(cats);
             setDocs(allDocs);
+            console.log("Danh mục đã tải:", cats.length); // Log số lượng danh mục để kiểm tra
         } catch (error) {
             console.error("Lỗi tải dữ liệu:", error);
-            // Không alert, chỉ log
         } finally {
             setLoading(false);
         }
@@ -150,7 +149,6 @@ export const DocumentAdmin: React.FC = () => {
         setDocForm(prev => ({
             ...prev,
             title: newTitle,
-            // Chỉ tạo slug nếu là tài liệu mới HOẶC slug hiện tại đang trống
             slug: (!prev.id || !prev.slug) ? toSlug(newTitle) : prev.slug 
         }));
     };
@@ -183,25 +181,25 @@ export const DocumentAdmin: React.FC = () => {
                 fileSize: file.size,
                 fileType: type,
                 isExternal: false,
-                externalLink: '' // Reset link ngoài
+                externalLink: '' 
             }));
             setInputMode('upload'); 
         } catch (e) {
             alert("Upload thất bại, vui lòng thử lại.");
         } finally {
             setUploading(false);
-            e.target.value = ''; // Reset input file để upload lại file cùng tên nếu cần
+            e.target.value = ''; 
         }
     };
 
     const handleSaveDoc = async () => {
         if (!currentUser) return alert("Không tìm thấy thông tin người dùng.");
         if (!docForm.title) return alert("Vui lòng nhập tiêu đề tài liệu.");
-        if (!docForm.categoryId) return alert("Vui lòng chọn danh mục.");
+        if (!docForm.categoryId) return alert("Vui lòng chọn danh mục."); // Kiểm tra chọn danh mục
 
         const isExternal = inputMode === 'link';
         if (isExternal && !docForm.externalLink) return alert("Vui lòng nhập đường dẫn liên kết.");
-        if (!isExternal && !docForm.fileUrl && !docForm.id) return alert("Vui lòng tải file lên."); // Check file upload cho tài liệu mới
+        if (!isExternal && !docForm.fileUrl && !docForm.id) return alert("Vui lòng tải file lên."); 
         
         const slug = docForm.slug || toSlug(docForm.title);
         const tags = tagsInput.split(',').map(t => t.trim()).filter(t => t);
@@ -216,7 +214,6 @@ export const DocumentAdmin: React.FC = () => {
             isExpert: !!currentUser.isExpert, 
             isExternal: isExternal,
             
-            // Đảm bảo chỉ có một nguồn được lưu
             fileType: isExternal ? 'link' : docForm.fileType,
             fileUrl: isExternal ? '' : docForm.fileUrl,
             externalLink: isExternal ? docForm.externalLink : ''
@@ -249,15 +246,19 @@ export const DocumentAdmin: React.FC = () => {
     };
 
     const openEditDocModal = (doc: Document) => {
-        // Gán docForm đầy đủ
-        setDocForm(doc);
+        // Đảm bảo categoryId không phải là null/undefined khi vào chế độ Edit
+        const safeDoc: Partial<Document> = {
+            ...doc,
+            categoryId: doc.categoryId || '' 
+        }
+        setDocForm(safeDoc);
         setTagsInput(doc.tags?.join(', ') || '');
         setInputMode(doc.isExternal ? 'link' : 'upload');
         setShowDocModal(true);
     };
 
     const openCreateDocModal = () => {
-        // FIX LỖI CHỌN DANH MỤC: Đặt categoryId là chuỗi rỗng để chọn option đầu tiên
+        // LUÔN đặt categoryId là chuỗi rỗng để kích hoạt option đầu tiên
         setDocForm({ 
             ...initialDocForm,
             categoryId: '' 
@@ -473,19 +474,25 @@ export const DocumentAdmin: React.FC = () => {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Danh mục</label>
-                                    {/* FIX LỖI CHỌN DANH MỤC: Đảm bảo value luôn là chuỗi và categories phải có dữ liệu */}
-                                    <select 
-                                        value={docForm.categoryId || ''} 
-                                        onChange={e => setDocForm({...docForm, categoryId: e.target.value})} 
-                                        className="w-full p-2.5 border rounded-xl bg-white outline-none focus:ring-2 focus:ring-green-100"
-                                    >
-                                        <option value="">-- Chọn chuyên mục --</option>
-                                        {categories.map(c => (
-                                            <option key={c.id} value={c.id}>
-                                                {c.iconEmoji} {c.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    {categories.length === 0 ? (
+                                        <p className="text-sm text-red-500 p-2 border border-red-200 bg-red-50 rounded-xl">
+                                            Chưa có danh mục nào được tải. Vui lòng tạo danh mục trước.
+                                        </p>
+                                    ) : (
+                                        <select 
+                                            // FIX CUỐI CÙNG: Đảm bảo giá trị là chuỗi và không bao giờ là null/undefined
+                                            value={docForm.categoryId || ''} 
+                                            onChange={e => setDocForm({...docForm, categoryId: e.target.value})} 
+                                            className="w-full p-2.5 border rounded-xl bg-white outline-none focus:ring-2 focus:ring-green-100"
+                                        >
+                                            <option value="" disabled={docForm.categoryId !== ''}>-- Chọn chuyên mục --</option>
+                                            {categories.map(c => (
+                                                <option key={c.id} value={c.id}>
+                                                    {c.iconEmoji} {c.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    )}
                                 </div>
                             </div>
                             
@@ -570,8 +577,7 @@ export const DocumentAdmin: React.FC = () => {
                             <button onClick={() => setShowDocModal(false)} className="px-6 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors">Hủy</button>
                             <button 
                                 onClick={handleSaveDoc} 
-                                // Vô hiệu hóa nút nếu đang upload HOẶC (chế độ upload và chưa có fileUrl) HOẶC (chế độ link và chưa có externalLink)
-                                disabled={uploading || (inputMode === 'upload' && !docForm.fileUrl && !docForm.id) || (inputMode === 'link' && !docForm.externalLink)} 
+                                disabled={uploading || !docForm.categoryId || (inputMode === 'upload' && !docForm.fileUrl && !docForm.id) || (inputMode === 'link' && !docForm.externalLink)} 
                                 className="px-6 py-2.5 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 disabled:opacity-50 shadow-lg shadow-green-200 transition-all active:scale-95 flex items-center gap-2"
                             >
                                 <CheckCircle size={18} /> Lưu tài liệu
