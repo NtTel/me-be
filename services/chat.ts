@@ -1,27 +1,19 @@
 import { Message } from '../types';
-// SỬA DÒNG NÀY: Dùng ../ để tìm file firebase.ts ở thư mục cha
-import { db } from '../firebase'; 
+// SỬA LẠI DÒNG NÀY:
+import { db } from '../firebaseConfig';
 import { 
   collection, addDoc, query, where, orderBy, getDocs 
 } from 'firebase/firestore';
 
-/**
- * Tạo ID hội thoại duy nhất từ 2 User ID để gom tin nhắn
- * Ví dụ: UserA="abc", UserB="xyz" -> ChatID luôn là "abc_xyz"
- */
 const getConversationId = (uid1: string, uid2: string) => {
   return [uid1, uid2].sort().join('_');
 };
 
-/**
- * Lấy danh sách tin nhắn từ Firestore
- */
 export const getMessages = async (currentUserId: string, otherUserId: string): Promise<Message[]> => {
   try {
     const conversationId = getConversationId(currentUserId, otherUserId);
     const messagesRef = collection(db, 'messages');
     
-    // Chỉ lấy tin nhắn thuộc cuộc hội thoại này
     const q = query(
       messagesRef,
       where('conversationId', '==', conversationId),
@@ -39,9 +31,6 @@ export const getMessages = async (currentUserId: string, otherUserId: string): P
   }
 };
 
-/**
- * Gửi tin nhắn lên Firebase
- */
 export const sendMessage = async (
   senderId: string, 
   receiverId: string, 
@@ -53,7 +42,7 @@ export const sendMessage = async (
   const conversationId = getConversationId(senderId, receiverId);
 
   const newMessageData = {
-    conversationId, // Quan trọng: Để filter tin nhắn của cặp đôi này
+    conversationId,
     senderId,
     receiverId,
     content,
