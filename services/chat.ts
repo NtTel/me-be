@@ -1,6 +1,7 @@
 // src/services/chat.ts
-import { Message, ChatSession, User } from '../types';
+import { Message, ChatSession } from '../types';
 
+// Dữ liệu giả lập (Lưu vào RAM, reset khi F5)
 let MOCK_CHATS: ChatSession[] = [];
 let MOCK_MESSAGES: Message[] = [];
 
@@ -8,9 +9,12 @@ let MOCK_MESSAGES: Message[] = [];
  * Lấy danh sách tin nhắn giữa 2 người
  */
 export const getMessages = async (currentUserId: string, otherUserId: string): Promise<Message[]> => {
+  // Giả lập delay mạng
   await new Promise(resolve => setTimeout(resolve, 300));
 
-  // LỌC CHUẨN XÁC: Tin nhắn giữa tôi và bạn (2 chiều)
+  // --- SỬA LỖI LOGIC LỌC ---
+  // File cũ của bạn viết sai: (msg.senderId === current && msg.senderId === other) -> Vô lý
+  // Logic đúng: (Người gửi là Tôi VÀ Người nhận là Bạn) HOẶC (Người gửi là Bạn VÀ Người nhận là Tôi)
   return MOCK_MESSAGES.filter(msg => 
     (msg.senderId === currentUserId && msg.receiverId === otherUserId) || 
     (msg.senderId === otherUserId && msg.receiverId === currentUserId)
@@ -33,7 +37,7 @@ export const sendMessage = async (
   const newMessage: Message = {
     id: `msg_${Date.now()}`,
     senderId,
-    receiverId, // ĐÃ CÓ TRONG TYPE
+    receiverId, // <--- ĐÃ THÊM: Lưu ID người nhận vào tin nhắn
     content,
     createdAt: new Date().toISOString(),
     isRead: false,
@@ -42,19 +46,26 @@ export const sendMessage = async (
     storySnapshotUrl: storyData?.snapshotUrl
   };
 
+  // Lưu vào mảng dữ liệu giả
   MOCK_MESSAGES.push(newMessage);
   
+  // Cập nhật session chat (nếu cần)
   await updateChatSession(senderId, receiverId, newMessage);
 
-  console.log("LOG: Đã gửi tin nhắn (Saved):", newMessage);
+  console.log("LOG: Đã gửi tin nhắn (Có receiverId):", newMessage);
   return newMessage;
 };
 
+/**
+ * Cập nhật phiên chat (Mock)
+ */
 const updateChatSession = async (senderId: string, receiverId: string, lastMessage: Message) => {
-    // Logic giả lập update session
     console.log("LOG: Đã cập nhật Chat Session");
 };
 
+/**
+ * Đánh dấu đã đọc
+ */
 export const markMessagesAsRead = async (chatId: string, userId: string) => {
     console.log(`LOG: Đã đánh dấu đọc cho chat ${chatId} bởi user ${userId}`);
 };
