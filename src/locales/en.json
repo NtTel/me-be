@@ -7,6 +7,16 @@
         "ask": "Question",
         "ai-chat": "AI assistant"
     },
+    "home": {
+        "heroTitle": "Share your parenting experience",
+        "heroSubtitle": "Help other parents and create positive change in the community.",
+        "heroCta": "Sign up now",
+        "suggestedForYou": "Suggested for you",
+        "sponsorDefault": "Sponsor",
+        "sponsoredLabel": "Sponsored",
+        "uploadImageTitle": "Choose image",
+        "uploadImageFormats": "JPG, PNG, WEBP"
+    },
     "ask": {
         "pageTitle": "Ask a question",
         "categorySheetTitle": "Choose a question topic",

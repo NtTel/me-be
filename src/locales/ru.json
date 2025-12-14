@@ -7,6 +7,16 @@
         "ask": "Вопрос",
         "ai-chat": " AI чат"
     },
+    "home": {
+        "heroTitle": "Делитесь родительским опытом",
+        "heroSubtitle": "Помогайте другим родителям и создавайте позитивные изменения в сообществе.",
+        "heroCta": "Зарегистрироваться",
+        "suggestedForYou": "Рекомендации для вас",
+        "sponsorDefault": "Спонсор",
+        "sponsoredLabel": "Реклама",
+        "uploadImageTitle": "Выберите изображение",
+        "uploadImageFormats": "JPG, PNG, WEBP"
+    },
     "ask": {
         "pageTitle": "Задать вопрос",
         "categorySheetTitle": "Выберите тему вопроса",
