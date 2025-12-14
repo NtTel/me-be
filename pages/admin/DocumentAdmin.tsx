@@ -1,380 +1,267 @@
 import React, { useEffect, useState } from 'react';
 
 import { Document, DocumentCategory } from '../../types';
+import { toSlug } from '../../types';
 
-import { toSlug } from '../../types'; // Import hàm toSlug chuẩn
-
-import { 
-
-  fetchDocumentCategories, createDocumentCategory, updateDocumentCategory, deleteDocumentCategory,
-
-  fetchAllDocumentsAdmin, createDocument, updateDocument, deleteDocument 
-
+import {
+  fetchDocumentCategories,
+  createDocumentCategory,
+  updateDocumentCategory,
+  deleteDocumentCategory,
+  fetchAllDocumentsAdmin,
+  createDocument,
+  updateDocument,
+  deleteDocument
 } from '../../services/documents';
 
 import { uploadFile } from '../../services/storage';
-
 import { subscribeToAuthChanges } from '../../services/auth';
 
-import { 
-
-  Plus, Trash2, Edit2, X, FileText, Folder, UploadCloud, Loader2, 
-
-  Video, Image as ImageIcon, File, Link as LinkIcon, Globe, RefreshCw, CheckCircle, Download
-
+import {
+  Plus,
+  Trash2,
+  Edit2,
+  X,
+  FileText,
+  Folder,
+  UploadCloud,
+  Loader2,
+  Link as LinkIcon,
+  Globe,
+  RefreshCw,
+  CheckCircle,
+  Download
 } from 'lucide-react';
 
+/* =======================
+   HELPERS
+======================= */
+const normalizeCategoryId = (value: any): string => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value.id) return value.id;
+  return '';
+};
 
-
+/* =======================
+   COMPONENT
+======================= */
 export const DocumentAdmin: React.FC = () => {
-
   const [currentUser, setCurrentUser] = useState<any>(null);
-
   const [activeTab, setActiveTab] = useState<'docs' | 'categories'>('docs');
 
-  
-
   const [categories, setCategories] = useState<DocumentCategory[]>([]);
-
   const [docs, setDocs] = useState<Document[]>([]);
-
   const [loading, setLoading] = useState(true);
 
-
-
   // Modals
-
   const [showCatModal, setShowCatModal] = useState(false);
-
   const [showDocModal, setShowDocModal] = useState(false);
-
   const [uploading, setUploading] = useState(false);
 
-
-
   // Forms
-
-  const [catForm, setCatForm] = useState({ id: '', name: '', iconEmoji: '📁', order: 1 });
-
-  
+  const [catForm, setCatForm] = useState({
+    id: '',
+    name: '',
+    iconEmoji: '📁',
+    order: 1
+  });
 
   const [docForm, setDocForm] = useState<Partial<Document>>({
-
-      title: '', slug: '', description: '', categoryId: '', tags: [], 
-
-      fileUrl: '', fileType: 'other', isExternal: false, externalLink: ''
-
+    title: '',
+    slug: '',
+    description: '',
+    categoryId: '',
+    tags: [],
+    fileUrl: '',
+    fileType: 'other',
+    isExternal: false,
+    externalLink: ''
   });
 
   const [tagsInput, setTagsInput] = useState('');
-
   const [inputMode, setInputMode] = useState<'upload' | 'link'>('upload');
 
-
-
+  /* =======================
+     INIT
+  ======================= */
   useEffect(() => {
-
     const unsub = subscribeToAuthChanges(user => {
-
       setCurrentUser(user);
-
       if (user) loadData(user);
-
     });
-
     return () => unsub();
-
   }, []);
 
-
-
   const loadData = async (user: any) => {
-
     setLoading(true);
-
-    // Admin thấy tất cả, Expert thấy của mình
-
     const authorFilter = user.isAdmin ? undefined : user.id;
 
-    
-
     const [cats, allDocs] = await Promise.all([
-
       fetchDocumentCategories(),
-
       fetchAllDocumentsAdmin(authorFilter)
-
     ]);
 
     setCategories(cats);
-
     setDocs(allDocs);
-
     setLoading(false);
-
   };
 
-
-
-  // --- CATEGORY HANDLERS ---
-
+  /* =======================
+     CATEGORY HANDLERS
+  ======================= */
   const handleSaveCat = async () => {
+    if (!catForm.name) return;
 
-      if (!catForm.name) return;
+    const slug = toSlug(catForm.name);
 
-      const slug = toSlug(catForm.name); // Dùng toSlug chuẩn
+    if (catForm.id) {
+      await updateDocumentCategory(catForm.id, {
+        name: catForm.name,
+        iconEmoji: catForm.iconEmoji,
+        order: catForm.order,
+        slug
+      });
+    } else {
+      await createDocumentCategory({
+        name: catForm.name,
+        iconEmoji: catForm.iconEmoji,
+        order: catForm.order,
+        slug,
+        isActive: true
+      } as any);
+    }
 
-      try {
-
-          if (catForm.id) {
-
-              await updateDocumentCategory(catForm.id, { ...catForm, slug });
-
-          } else {
-
-              await createDocumentCategory({ ...catForm, slug, isActive: true } as any);
-
-          }
-
-          setShowCatModal(false);
-
-          loadData(currentUser);
-
-      } catch (e) { alert("Lỗi: " + e); }
-
+    setShowCatModal(false);
+    loadData(currentUser);
   };
-
-
 
   const handleDeleteCat = async (id: string) => {
-
-      if(confirm("Bạn chắc chắn muốn xóa danh mục này?")) {
-
-          await deleteDocumentCategory(id);
-
-          loadData(currentUser);
-
-      }
-
+    if (confirm('Bạn chắc chắn muốn xóa danh mục này?')) {
+      await deleteDocumentCategory(id);
+      loadData(currentUser);
+    }
   };
 
-
-
-  // --- DOCUMENT HANDLERS ---
-
-  
-
-  // Tự động tạo slug khi nhập tiêu đề
-
+  /* =======================
+     DOCUMENT HANDLERS
+  ======================= */
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-
-      const newTitle = e.target.value;
-
-      setDocForm(prev => ({
-
-          ...prev,
-
-          title: newTitle,
-
-          slug: (!prev.id || !prev.slug) ? toSlug(newTitle) : prev.slug
-
-      }));
-
+    const newTitle = e.target.value;
+    setDocForm(prev => ({
+      ...prev,
+      title: newTitle,
+      slug: !prev.id ? toSlug(newTitle) : prev.slug
+    }));
   };
-
-
 
   const handleRegenerateSlug = () => {
-
-      if (docForm.title) {
-
-          setDocForm(prev => ({ ...prev, slug: toSlug(prev.title || '') }));
-
-      }
-
+    if (docForm.title) {
+      setDocForm(prev => ({
+        ...prev,
+        slug: toSlug(prev.title || '')
+      }));
+    }
   };
-
-
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-      const file = e.target.files?.[0];
+    setUploading(true);
+    try {
+      const url = await uploadFile(file, 'documents');
 
-      if (!file) return;
+      let type: any = 'other';
+      if (file.type.includes('pdf')) type = 'pdf';
+      else if (file.type.includes('image')) type = 'image';
+      else if (file.type.includes('video')) type = 'video';
+      else if (file.name.endsWith('docx') || file.name.endsWith('doc')) type = 'docx';
+      else if (file.name.endsWith('xlsx') || file.name.endsWith('xls')) type = 'xlsx';
 
-      
-
-      setUploading(true);
-
-      try {
-
-          const url = await uploadFile(file, 'documents');
-
-          
-
-          let type: any = 'other';
-
-          if (file.type.includes('pdf')) type = 'pdf';
-
-          else if (file.type.includes('image')) type = 'image';
-
-          else if (file.type.includes('video')) type = 'video';
-
-          else if (file.name.endsWith('docx') || file.name.endsWith('doc')) type = 'docx';
-
-          else if (file.name.endsWith('xlsx') || file.name.endsWith('xls')) type = 'xlsx';
-
-          
-
-          setDocForm(prev => ({
-
-              ...prev,
-
-              fileUrl: url,
-
-              fileName: file.name,
-
-              fileSize: file.size,
-
-              fileType: type
-
-          }));
-
-      } catch (e) {
-
-          alert("Upload thất bại, vui lòng thử lại.");
-
-      } finally {
-
-          setUploading(false);
-
-      }
-
+      setDocForm(prev => ({
+        ...prev,
+        fileUrl: url,
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: type
+      }));
+    } finally {
+      setUploading(false);
+    }
   };
-
-
 
   const handleSaveDoc = async () => {
+    if (!docForm.title) return alert('Vui lòng nhập tiêu đề');
+    if (inputMode === 'upload' && !docForm.fileUrl) return alert('Vui lòng tải file');
+    if (inputMode === 'link' && !docForm.externalLink) return alert('Vui lòng nhập link');
 
-      if (!docForm.title) return alert("Vui lòng nhập tiêu đề tài liệu");
+    const slug = docForm.slug || toSlug(docForm.title);
+    const tags = tagsInput.split(',').map(t => t.trim()).filter(Boolean);
 
-      if (inputMode === 'upload' && !docForm.fileUrl) return alert("Vui lòng tải file lên");
+    const data: any = {
+      ...docForm,
+      categoryId: normalizeCategoryId(docForm.categoryId),
+      slug,
+      tags,
+      authorId: currentUser.id,
+      authorName: currentUser.name,
+      authorAvatar: currentUser.avatar,
+      isExpert: currentUser.isExpert,
+      isExternal: inputMode === 'link',
+      fileType: inputMode === 'link' ? 'link' : docForm.fileType,
+      fileUrl: inputMode === 'link' ? '' : docForm.fileUrl,
+      externalLink: inputMode === 'upload' ? '' : docForm.externalLink
+    };
 
-      if (inputMode === 'link' && !docForm.externalLink) return alert("Vui lòng nhập đường dẫn");
+    if (docForm.id) {
+      await updateDocument(docForm.id, data);
+    } else {
+      await createDocument(data);
+    }
 
-      
-
-      const slug = docForm.slug || toSlug(docForm.title);
-
-      const tags = tagsInput.split(',').map(t => t.trim()).filter(t => t);
-
-
-
-      const data: any = {
-
-          ...docForm,
-
-          slug,
-
-          tags,
-
-          authorId: currentUser.id,
-
-          authorName: currentUser.name,
-
-          authorAvatar: currentUser.avatar,
-
-          isExpert: currentUser.isExpert,
-
-          isExternal: inputMode === 'link',
-
-          fileType: inputMode === 'link' ? 'link' : docForm.fileType,
-
-          fileUrl: inputMode === 'link' ? '' : docForm.fileUrl,
-
-          externalLink: inputMode === 'upload' ? '' : docForm.externalLink
-
-      };
-
-
-
-      try {
-
-          if (docForm.id) {
-
-              await updateDocument(docForm.id, data);
-
-          } else {
-
-              await createDocument(data);
-
-          }
-
-          setShowDocModal(false);
-
-          loadData(currentUser);
-
-      } catch (e) { alert("Lỗi lưu tài liệu: " + e); }
-
+    setShowDocModal(false);
+    loadData(currentUser);
   };
-
-
 
   const handleDeleteDoc = async (id: string) => {
-
-      if(confirm("Xóa tài liệu này?")) {
-
-          await deleteDocument(id);
-
-          loadData(currentUser);
-
-      }
-
+    if (confirm('Xóa tài liệu này?')) {
+      await deleteDocument(id);
+      loadData(currentUser);
+    }
   };
-
-
 
   const openEditDocModal = (doc: Document) => {
-
-      setDocForm(doc);
-
-      setTagsInput(doc.tags?.join(', ') || '');
-
-      setInputMode(doc.isExternal ? 'link' : 'upload');
-
-      setShowDocModal(true);
-
+    setDocForm({
+      ...doc,
+      categoryId: normalizeCategoryId(doc.categoryId)
+    });
+    setTagsInput(doc.tags?.join(', ') || '');
+    setInputMode(doc.isExternal ? 'link' : 'upload');
+    setShowDocModal(true);
   };
-
-
 
   const openCreateDocModal = () => {
-
-      setDocForm({ 
-
-          title: '', slug: '', description: '', 
-
-          categoryId: categories[0]?.id || '', tags: [], 
-
-          fileUrl: '', fileType: 'other', isExternal: false, externalLink: '' 
-
-      });
-
-      setTagsInput('');
-
-      setInputMode('upload');
-
-      setShowDocModal(true);
-
+    setDocForm({
+      title: '',
+      slug: '',
+      description: '',
+      categoryId: categories[0]?.id || '',
+      tags: [],
+      fileUrl: '',
+      fileType: 'other',
+      isExternal: false,
+      externalLink: ''
+    });
+    setTagsInput('');
+    setInputMode('upload');
+    setShowDocModal(true);
   };
 
-
-
   if (!currentUser || (!currentUser.isAdmin && !currentUser.isExpert)) {
-
-      return <div className="p-10 text-center">Không có quyền truy cập</div>;
-
+    return <div className="p-10 text-center">Không có quyền truy cập</div>;
   }
+
 
 
 
