@@ -11,6 +11,18 @@ const savedLang = (() => {
     }
 })();
 
+export const formatDate = (date: string | number | Date) => {
+    const d = new Date(date);
+    const lang = i18n.language || "en";
+    // Маппинг кодов i18next на локали Intl, если нужно
+    // Но обычно 'en', 'ru' браузер понимает напрямую
+    return new Intl.DateTimeFormat(lang, {
+        day: "numeric",
+        month: "numeric", // или 'long'
+        year: "numeric",
+    }).format(d);
+};
+
 i18n
     .use(initReactI18next)
     .init({
